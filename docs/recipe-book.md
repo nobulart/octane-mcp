@@ -133,3 +133,22 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - For native Octane final renders, convert OBJ line primitives to thin cylinders/tubes if the importer drops l commands.
 - Add octane-preview.png beside recipes after verified bridge renders are inspected.
+
+## Photoreal Earth-in-space target recipe
+
+- **Outcome:** success
+- **Recorded:** 2026-07-04 23:29 UTC
+- **Context:** Added a photoreal/PBR space-rendering recipe with procedural Earth geometry and a target preview image for visual quality direction.
+
+### Steps
+- Generated layered Earth geometry with ocean/land/ice, cloud shell, and atmosphere shell material regions.
+- Added scene.mtl and scene.json with camera, space-lighting intent, PBR material notes, commands, and quality checklist.
+- Included photoreal-preview.png as a target/reference image and documented that native Octane render verification is still required.
+
+### Signals / evidence
+- file reports photoreal-preview.png as a valid 1024x576 RGB PNG.
+- scene.obj, scene.mtl, scene.json, and README.md exist under examples/recipes/photoreal-earth-space.
+
+### Follow-ups
+- Re-render the scene in Octane X and add octane-preview.png after visual inspection.
+- Replace procedural continent/cloud masks with real Earth texture maps or Octane texture nodes when bridge support exists.

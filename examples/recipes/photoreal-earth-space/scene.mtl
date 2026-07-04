@@ -1,0 +1,38 @@
+# Material intent for Octane/PBR translation
+newmtl mat_ocean
+Kd 0.015 0.110 0.330
+Ks 0.45 0.62 0.82
+Ns 420
+
+newmtl mat_shallow_water
+Kd 0.030 0.300 0.500
+Ks 0.35 0.50 0.70
+Ns 280
+
+newmtl mat_land
+Kd 0.170 0.360 0.140
+Ks 0.08 0.08 0.06
+Ns 80
+
+newmtl mat_polar_ice
+Kd 0.820 0.900 0.960
+Ks 0.55 0.60 0.65
+Ns 220
+
+newmtl mat_cloud
+Kd 0.920 0.950 1.000
+Ks 0.30 0.32 0.35
+Ns 160
+d 0.72
+
+newmtl mat_cloud_faint
+Kd 0.700 0.760 0.850
+Ks 0.15 0.18 0.22
+Ns 80
+d 0.18
+
+newmtl mat_atmosphere
+Kd 0.080 0.380 1.000
+Ks 0.50 0.75 1.000
+Ns 300
+d 0.22

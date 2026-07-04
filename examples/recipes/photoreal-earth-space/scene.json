@@ -1,0 +1,147 @@
+{
+  "slug": "photoreal-earth-space",
+  "title": "Photoreal Earth in Space",
+  "category": "Photoreal/PBR space rendering",
+  "purpose": "Demonstrate a high-quality orbital Earth target with ocean/land materials, cloud shells, atmospheric rim glow, and space lighting.",
+  "preview_note": "photoreal-preview.png is a generated target/reference render, not a verified native Octane output. Re-render scene.obj/scene.mtl in Octane X for native validation.",
+  "camera": {
+    "position": [
+      0.15,
+      -3.15,
+      1.05
+    ],
+    "target": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "fov": 34
+  },
+  "lighting": {
+    "preset": "space_sun",
+    "intent": "hard distant sunlight from camera-left/front, deep black background, faint blue atmospheric rim"
+  },
+  "materials": {
+    "mat_ocean": {
+      "kind": "glossy ocean",
+      "color": [
+        0.015,
+        0.11,
+        0.33
+      ],
+      "roughness": 0.08,
+      "specular": 0.7
+    },
+    "mat_shallow_water": {
+      "kind": "glossy shallow water",
+      "color": [
+        0.03,
+        0.3,
+        0.5
+      ],
+      "roughness": 0.12
+    },
+    "mat_land": {
+      "kind": "matte land",
+      "color": [
+        0.17,
+        0.36,
+        0.14
+      ],
+      "roughness": 0.58
+    },
+    "mat_polar_ice": {
+      "kind": "snow/ice",
+      "color": [
+        0.82,
+        0.9,
+        0.96
+      ],
+      "roughness": 0.25
+    },
+    "mat_cloud": {
+      "kind": "translucent cloud",
+      "color": [
+        0.92,
+        0.95,
+        1.0
+      ],
+      "opacity": 0.72,
+      "roughness": 0.45
+    },
+    "mat_cloud_faint": {
+      "kind": "faint translucent cloud",
+      "color": [
+        0.7,
+        0.76,
+        0.85
+      ],
+      "opacity": 0.18
+    },
+    "mat_atmosphere": {
+      "kind": "thin blue transparent shell",
+      "color": [
+        0.08,
+        0.38,
+        1.0
+      ],
+      "opacity": 0.22,
+      "emission_hint": 0.25
+    }
+  },
+  "quality_checklist": [
+    "Target/reference image shows a recognizable Earth, cloud bands, atmosphere rim, and black space background.",
+    "Native Octane output must be saved as octane-preview.png before claiming native photoreal success.",
+    "Oceans should be glossy and darker than land; land should not read as flat neon texture.",
+    "Cloud shell should remain visibly above the surface without hiding continents entirely.",
+    "Atmosphere should read as a thin rim/glow, not a thick opaque shell."
+  ],
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/photoreal-earth-space/scene.obj",
+        "format": "obj",
+        "name": "photoreal-earth-space"
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          0.15,
+          -3.15,
+          1.05
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.05
+        ],
+        "fov": 34
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "space_sun"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 768,
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/photoreal-earth-space/octane-preview.png",
+        "width": 1280,
+        "height": 720
+      }
+    }
+  ]
+}
