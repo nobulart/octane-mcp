@@ -236,3 +236,10 @@ Reusable sample scenes live under `examples/recipes/`. Each recipe directory con
 Start with `docs/recipe-library.md` when exploring applications beyond the built-in bars/surface/avatar tools.
 
 Animated examples live under `examples/animations/`. The first example, `orbit-reveal`, includes a GitHub-friendly GIF, MP4, PNG frame sequence, OBJ frame states, and storyboard metadata. The current robust animation pattern is frame-by-frame scene generation plus `ffmpeg` encoding; native Octane timeline control can be added later.
+
+---
+
+## Links
+
+- X / Twitter: [@nobulart](https://x.com/nobulart/)
+- Support: [Buy me a coffee](https://buymeacoffee.com/nobulart)
