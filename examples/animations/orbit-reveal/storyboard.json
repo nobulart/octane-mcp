@@ -1,0 +1,23 @@
+{
+  "slug": "orbit-reveal",
+  "title": "Animated Orbit Reveal",
+  "purpose": "Demonstrate an animated product: a short explainer loop built from generated scene states.",
+  "fps": 12,
+  "frames": 32,
+  "products": [
+    "animation.gif",
+    "animation.mp4",
+    "frames/frame_000.png",
+    "obj_frames/scene_000.obj"
+  ],
+  "mcp_pattern": [
+    "Generate a series of OBJ frame states under obj_frames/.",
+    "For a true Octane render, import each OBJ state, render/save a PNG, then encode the PNG sequence with ffmpeg.",
+    "For fast docs, use the lightweight preview frames and animation.gif included here."
+  ],
+  "ffmpeg": {
+    "ffmpeg_found": true,
+    "animation_gif": true,
+    "animation_mp4": true
+  }
+}

@@ -10,3 +10,5 @@ Each recipe directory contains:
 - `preview.png` — deterministic lightweight preview render for quick review.
 
 These previews are not final Octane renders; they are repo-generated teaching previews. Re-render a selected recipe in Octane X when validating visual quality or producing final documentation.
+
+Animated examples are under [`animations/`](animations/). They use the frame-sequence pattern: generated OBJ states plus PNG frames encoded into GIF/MP4 products.

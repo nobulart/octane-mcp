@@ -74,3 +74,22 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Re-render selected recipes in Octane X and add octane-preview.png variants when available.
 - Promote especially useful generator patterns into first-class MCP tools.
+
+## Animated products via frame sequences
+
+- **Outcome:** success
+- **Recorded:** 2026-07-04 23:07 UTC
+- **Context:** Added an animated orbit reveal example using generated PNG frames, OBJ frame states, GIF, and MP4 artifacts.
+
+### Steps
+- Generated per-frame lightweight previews and reusable OBJ scene states.
+- Encoded frames into animation.gif and animation.mp4 with ffmpeg.
+- Documented current robust animation pattern: frame-by-frame scene generation before native Octane timeline tools.
+
+### Signals / evidence
+- ffmpeg produced animation.gif and animation.mp4.
+- storyboard.json records FPS, frame count, and product files.
+
+### Follow-ups
+- Add an MCP helper to queue/import/render frame sequences automatically.
+- Explore native Octane timeline or animation APIs once the bridge surface expands.

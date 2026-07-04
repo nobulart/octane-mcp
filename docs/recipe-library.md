@@ -9,6 +9,8 @@ This library gives agents copyable scenes, preview renders, and operational reci
 
 The previews are intentionally small, deterministic repo-generated renders so they can be reviewed on GitHub and reused without launching Octane. For final quality, run the listed command sequence through the Octane Lua bridge and save an Octane preview next to the sample.
 
+Animated products are also possible by generating frame-by-frame scene states. See [`examples/animations/orbit-reveal/`](../examples/animations/orbit-reveal/README.md) for a checked-in GIF/MP4 example with PNG frames and OBJ frame states.
+
 | Recipe | Application area | Slug | Why it matters |
 | --- | --- | --- | --- |
 | [3D KPI Bar Chart](../examples/recipes/data-bars/README.md) | Data visualization | `data-bars` | Compare a short numeric sequence as spatial bars with a clear baseline and highlight bars above threshold. |
@@ -38,3 +40,13 @@ The previews are intentionally small, deterministic repo-generated renders so th
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
+
+## Animation pattern
+
+Current reliable animation flow:
+
+```text
+Python generator -> obj_frames/scene_000.obj ... -> frame PNGs -> animation.gif / animation.mp4
+```
+
+Native Octane timeline controls are not yet exposed by the MCP. For now, generate one OBJ scene state per frame, render or preview each frame, then encode with `ffmpeg`. This is enough for data stories, trajectory reveals, system-flow explainers, and parameter sweeps.
