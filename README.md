@@ -8,6 +8,26 @@ Hermes MCP tool call -> Python MCP server -> JSON command queue -> Octane Lua br
 
 The bridge intentionally avoids arbitrary Lua execution. The MCP server emits a small allowlisted command DSL, and the Octane-side Lua bridge validates and processes those commands inside Octane X.
 
+## Example visual products
+
+### Photoreal product studio
+
+![Photoreal product studio target render](examples/recipes/photoreal-product-studio/photoreal-preview.png)
+
+The recipe library starts with copyable visual targets, not just prose. The headline example above is a photoreal/PBR product-studio setup with glass, metal, softbox reflections, camera intent, material notes, and a native-render validation checklist. See [`examples/recipes/photoreal-product-studio/`](examples/recipes/photoreal-product-studio/) for the reusable OBJ/MTL scene and MCP command metadata.
+
+### More recipe previews
+
+| Photoreal Earth | Data bars | Math surface |
+| --- | --- | --- |
+| [![Photoreal Earth in space](examples/recipes/photoreal-earth-space/photoreal-preview.png)](examples/recipes/photoreal-earth-space/) | [![3D KPI bar chart](examples/recipes/data-bars/preview.png)](examples/recipes/data-bars/) | [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) |
+| Space rendering target with clouds, atmosphere, and sunlight. | Fast generated chart geometry for numeric comparisons. | Damped radial surface for mathematical explanation. |
+
+| Architecture flow | Animated orbit reveal |
+| --- | --- |
+| [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
+| Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
+
 ## What this is for
 
 Use this project when an agent needs to turn an explanation into a rendered scene:
