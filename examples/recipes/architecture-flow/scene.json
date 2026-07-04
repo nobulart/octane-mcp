@@ -1,0 +1,82 @@
+{
+  "slug": "architecture-flow",
+  "title": "MCP Architecture Flow",
+  "category": "Architecture/explanation",
+  "purpose": "Turn an architecture diagram into geometry: user, agent, queue, and Octane as spatial blocks connected by flow lines.",
+  "prompt": "Explain how Hermes MCP commands become Octane scene updates.",
+  "camera": {
+    "position": [
+      2.8,
+      -5.2,
+      2.6
+    ],
+    "target": [
+      0,
+      0,
+      0.5
+    ],
+    "fov": 36
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/architecture-flow/scene.obj",
+        "format": "obj",
+        "name": "architecture-flow"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "architecture-flow_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          2.8,
+          -5.2,
+          2.6
+        ],
+        "target": [
+          0,
+          0,
+          0.5
+        ],
+        "fov": 36
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/architecture-flow/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

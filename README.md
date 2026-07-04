@@ -219,6 +219,18 @@ hermes mcp test octanex
 ## More docs
 
 - `docs/agent-quickstart.md` — short examples designed for small/local models.
+- `docs/recipe-library.md` — broad example scenes with reusable OBJ files, command metadata, and preview renders.
 - `docs/recipe-book.md` — self-improving successes, failures, partials, and pitfalls.
 - `docs/canvas-roadmap.md` — visual canvas roadmap.
 - `docs/local-model-rich-moa.md` — local visual R&D process.
+
+## Example recipe library
+
+Reusable sample scenes live under `examples/recipes/`. Each recipe directory contains:
+
+- `README.md` — prompt, purpose, steps, and variations;
+- `scene.obj` — reusable geometry;
+- `scene.json` — camera and MCP command sequence metadata;
+- `preview.png` — deterministic lightweight preview render for quick review.
+
+Start with `docs/recipe-library.md` when exploring applications beyond the built-in bars/surface/avatar tools.

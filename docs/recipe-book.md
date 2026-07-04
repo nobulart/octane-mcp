@@ -55,3 +55,22 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ### Follow-ups
 - Run hermes mcp test octanex after Hermes reload to confirm tool discovery includes recipe tools.
+
+## Example scene recipe library generated
+
+- **Outcome:** success
+- **Recorded:** 2026-07-04 23:00 UTC
+- **Context:** Added broad reusable examples with OBJ scenes, scene metadata, and lightweight PNG previews for agent learning.
+
+### Steps
+- Created scripts/generate_recipe_examples.py as a deterministic stdlib generator.
+- Generated eight recipe directories under examples/recipes covering data, math, vector fields, graphs, terrain, physics, architecture, and avatar guidance.
+- Linked docs/recipe-library.md from README and agent quickstart.
+
+### Signals / evidence
+- file identified every preview as 960x640 RGB PNG.
+- Vision inspection confirmed math-surface and geospatial-terrain previews are recognizable and not blank.
+
+### Follow-ups
+- Re-render selected recipes in Octane X and add octane-preview.png variants when available.
+- Promote especially useful generator patterns into first-class MCP tools.

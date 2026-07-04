@@ -1,0 +1,82 @@
+{
+  "slug": "geospatial-terrain",
+  "title": "Terrain and Site Markers",
+  "category": "Geospatial/science",
+  "purpose": "Represent a small terrain tile with highlighted points of interest, suitable for GIS-to-Octane experiments.",
+  "prompt": "Show terrain relief with several site markers for a geospatial explanation.",
+  "camera": {
+    "position": [
+      5.5,
+      -6.5,
+      4.2
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "fov": 46
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/geospatial-terrain/scene.obj",
+        "format": "obj",
+        "name": "geospatial-terrain"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "geospatial-terrain_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          5.5,
+          -6.5,
+          4.2
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 46
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/geospatial-terrain/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

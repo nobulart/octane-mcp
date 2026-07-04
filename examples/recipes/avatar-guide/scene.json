@@ -1,0 +1,82 @@
+{
+  "slug": "avatar-guide",
+  "title": "Hermes Avatar Guide",
+  "category": "Agent communication",
+  "purpose": "Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually.",
+  "prompt": "Render Hermes as a non-human guide pointing at an object or idea.",
+  "camera": {
+    "position": [
+      0,
+      -4.5,
+      2.0
+    ],
+    "target": [
+      0,
+      0,
+      1.2
+    ],
+    "fov": 38
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/avatar-guide/scene.obj",
+        "format": "obj",
+        "name": "avatar-guide"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "avatar-guide_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          0,
+          -4.5,
+          2.0
+        ],
+        "target": [
+          0,
+          0,
+          1.2
+        ],
+        "fov": 38
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/avatar-guide/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

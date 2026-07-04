@@ -1,0 +1,82 @@
+{
+  "slug": "network-graph",
+  "title": "Knowledge Graph Topology",
+  "category": "Graphs/knowledge",
+  "purpose": "Render nodes and links as spatial graph geometry to discuss hubs, bridges, and communities.",
+  "prompt": "Turn a dependency or knowledge graph into a spatial scene with highlighted hubs.",
+  "camera": {
+    "position": [
+      4.8,
+      -5.4,
+      4.1
+    ],
+    "target": [
+      0,
+      0,
+      0.4
+    ],
+    "fov": 40
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/network-graph/scene.obj",
+        "format": "obj",
+        "name": "network-graph"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "network-graph_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.8,
+          -5.4,
+          4.1
+        ],
+        "target": [
+          0,
+          0,
+          0.4
+        ],
+        "fov": 40
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/network-graph/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

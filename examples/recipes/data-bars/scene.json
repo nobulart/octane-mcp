@@ -1,0 +1,82 @@
+{
+  "slug": "data-bars",
+  "title": "3D KPI Bar Chart",
+  "category": "Data visualization",
+  "purpose": "Compare a short numeric sequence as spatial bars with a clear baseline and highlight bars above threshold.",
+  "prompt": "Visualize quarterly or experiment metrics as a 3D bar chart, highlighting unusually high values.",
+  "camera": {
+    "position": [
+      4.2,
+      -5.0,
+      3.0
+    ],
+    "target": [
+      0,
+      0,
+      0.8
+    ],
+    "fov": 45
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/data-bars/scene.obj",
+        "format": "obj",
+        "name": "data-bars"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "data-bars_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.2,
+          -5.0,
+          3.0
+        ],
+        "target": [
+          0,
+          0,
+          0.8
+        ],
+        "fov": 45
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/data-bars/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

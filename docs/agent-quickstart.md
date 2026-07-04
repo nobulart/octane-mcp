@@ -124,3 +124,17 @@ octane_recipe_book(limit_chars=12000)
 ```
 
 Prefer recipes over improvisation when a recipe matches the task.
+
+## Example scene library
+
+For broader applications, inspect `docs/recipe-library.md` and `examples/recipes/` before inventing a scene from scratch. Each example includes a reusable `scene.obj`, `scene.json`, and `preview.png`.
+
+Good first examples:
+
+- `examples/recipes/data-bars/` for metric comparisons.
+- `examples/recipes/math-surface/` for function landscapes.
+- `examples/recipes/vector-field/` for flow/dynamics explanations.
+- `examples/recipes/geospatial-terrain/` for map/terrain scenes.
+- `examples/recipes/architecture-flow/` for system diagrams.
+
+Copy a matching recipe, adjust geometry or camera, then record any useful result with `octane_record_recipe(...)`.

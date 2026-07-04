@@ -1,0 +1,82 @@
+{
+  "slug": "math-surface",
+  "title": "Radial Math Surface",
+  "category": "Mathematics",
+  "purpose": "Render a height field for z = sin(r*2.2)/max(r, 0.45) to explain radial damping and singularity protection.",
+  "prompt": "Show a damped radial wave surface for a math explanation.",
+  "camera": {
+    "position": [
+      4.5,
+      -5.5,
+      3.2
+    ],
+    "target": [
+      0,
+      0,
+      0.1
+    ],
+    "fov": 42
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/math-surface/scene.obj",
+        "format": "obj",
+        "name": "math-surface"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "math-surface_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.5,
+          -5.5,
+          3.2
+        ],
+        "target": [
+          0,
+          0,
+          0.1
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/math-surface/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

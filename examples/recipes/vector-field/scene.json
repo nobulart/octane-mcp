@@ -1,0 +1,82 @@
+{
+  "slug": "vector-field",
+  "title": "Rotating Vector Field",
+  "category": "Math/physics",
+  "purpose": "Show a 2D rotational vector field lifted into 3D with arrow tips to explain flow direction.",
+  "prompt": "Render a rotational field around the origin for a dynamics lesson.",
+  "camera": {
+    "position": [
+      0,
+      -7,
+      5
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "fov": 38
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/vector-field/scene.obj",
+        "format": "obj",
+        "name": "vector-field"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "vector-field_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          0,
+          -7,
+          5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 38
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/vector-field/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}

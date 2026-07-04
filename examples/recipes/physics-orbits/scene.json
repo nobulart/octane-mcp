@@ -1,0 +1,82 @@
+{
+  "slug": "physics-orbits",
+  "title": "Orbital Trajectories",
+  "category": "Physics/simulation",
+  "purpose": "Show several trajectories around a central body to explain orbital state, phase, or simulation snapshots.",
+  "prompt": "Visualize N-body or orbit paths with current particle positions.",
+  "camera": {
+    "position": [
+      4.8,
+      -6.0,
+      3.7
+    ],
+    "target": [
+      0,
+      0,
+      0.3
+    ],
+    "fov": 42
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/physics-orbits/scene.obj",
+        "format": "obj",
+        "name": "physics-orbits"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "physics-orbits_primary",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.8,
+          -6.0,
+          3.7
+        ],
+        "target": [
+          0,
+          0,
+          0.3
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/physics-orbits/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+}
