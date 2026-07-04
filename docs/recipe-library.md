@@ -3,11 +3,14 @@
 This library gives agents copyable scenes, preview renders, and operational recipes for exploring OctaneX MCP applications. Each recipe includes:
 
 - `scene.obj` reusable geometry;
+- `scene.mtl` material hints for OBJ import;
 - `scene.json` MCP command/camera metadata;
-- `preview.png` lightweight generated render for quick review;
-- `README.md` with prompts, steps, and variations.
+- `preview.png` or `photoreal-preview.png` generated preview/target render for quick review;
+- `README.md` with prompts, steps, variations, and quality checklist.
 
 The previews are intentionally small, deterministic repo-generated renders so they can be reviewed on GitHub and reused without launching Octane. For final quality, run the listed command sequence through the Octane Lua bridge and save an Octane preview next to the sample.
+
+Photoreal target examples may include an external target/reference image. These are visual quality bars, not claims of native Octane success until an `octane-preview.png` is saved and inspected.
 
 Animated products are also possible by generating frame-by-frame scene states. See [`examples/animations/orbit-reveal/`](../examples/animations/orbit-reveal/README.md) for a checked-in GIF/MP4 example with PNG frames and OBJ frame states.
 
@@ -25,7 +28,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 
 ## Recommended agent loop
 
-1. Read the recipe README and inspect `preview.png`.
+1. Read the recipe README and inspect `preview.png` or the recipe-specific target preview.
 2. Reuse or modify `scene.obj` / the generator pattern.
 3. Queue import/camera/render commands through MCP.
 4. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.

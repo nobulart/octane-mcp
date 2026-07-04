@@ -13,6 +13,7 @@
   "mcp_pattern": [
     "Generate a series of OBJ frame states under obj_frames/.",
     "For a true Octane render, import each OBJ state, render/save a PNG, then encode the PNG sequence with ffmpeg.",
+    "If the native OBJ importer drops line primitives, convert orbit/path lines to thin cylinders or tubes before final rendering.",
     "For fast docs, use the lightweight preview frames and animation.gif included here."
   ],
   "ffmpeg": {

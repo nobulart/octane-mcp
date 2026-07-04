@@ -1,4 +1,5 @@
 # Generated sample scene for OctaneX MCP recipes
+mtllib scene.mtl
 o math-surface
 v -3.35000 -3.35000 -0.21000
 v 3.35000 -3.35000 -0.21000

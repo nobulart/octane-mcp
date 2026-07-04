@@ -112,3 +112,24 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Re-render the scene in Octane X and add octane-preview.png after visual inspection.
 - Expand MCP material tools to support glass/transmission, IOR, metalness, and area lights directly.
+
+## Recipe library quality pass: materials, validation, animation OBJ ordering
+
+- **Outcome:** success
+- **Recorded:** 2026-07-04 23:23 UTC
+- **Context:** Reviewed example previews and refined recipe assets/docs to be easier for smaller agents to use and safer to re-render natively.
+
+### Steps
+- Added scene.mtl files and material metadata to static recipes so OBJ usemtl names have matching material hints.
+- Added quality checklists and native-render caveats to generated recipe READMEs and scene.json files.
+- Fixed animated OBJ frame generation so vertices are written before faces/lines with stable indices.
+- Updated index documentation to preserve photoreal and animation guidance when regenerating examples.
+
+### Signals / evidence
+- Validation found no missing README/OBJ/JSON/preview files across 9 recipes.
+- All preview PNGs and animation products passed file/ffprobe checks.
+- compileall and hermes mcp test octanex passed.
+
+### Follow-ups
+- For native Octane final renders, convert OBJ line primitives to thin cylinders/tubes if the importer drops l commands.
+- Add octane-preview.png beside recipes after verified bridge renders are inspected.

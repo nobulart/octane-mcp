@@ -60,8 +60,24 @@
         0.035
       ],
       "roughness": 0.7
+    },
+    "mat_light_panel": {
+      "kind": "emissive area-light proxy",
+      "color": [
+        1.0,
+        0.96,
+        0.86
+      ],
+      "power": 4.0
     }
   },
+  "quality_checklist": [
+    "Target/reference image is visibly photoreal and free of text/watermarks.",
+    "Native Octane output must be saved as octane-preview.png before claiming native photoreal success.",
+    "Glass cube shows transmission/refraction rather than opaque cyan plastic.",
+    "Gold sphere shows metallic reflections and manageable roughness.",
+    "Softbox/cyclorama framing keeps product centered with realistic shadows."
+  ],
   "commands": [
     {
       "op": "import_geometry",

@@ -1,4 +1,5 @@
 # Generated sample scene for OctaneX MCP recipes
+mtllib scene.mtl
 o vector-field
 v -3.25000 -3.25000 -0.06500
 v 3.25000 -3.25000 -0.06500

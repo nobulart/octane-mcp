@@ -1,4 +1,5 @@
 # Generated sample scene for OctaneX MCP recipes
+mtllib scene.mtl
 o geospatial-terrain
 v -4.00000 -3.00000 0.07891
 v -3.75758 -3.00000 0.01669

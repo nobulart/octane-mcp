@@ -42,6 +42,14 @@ Photoreal examples need more than geometry:
 - camera intent: product-photo perspective and shallow depth of field;
 - validation: do not claim photoreal success until a native render exists and is inspected.
 
+## Quality checklist
+
+- Target/reference image is visibly photoreal and free of text/watermarks.
+- Native Octane output must be saved as `octane-preview.png` before claiming native photoreal success.
+- Glass cube should read as transmissive/refractive, not opaque cyan plastic.
+- Gold sphere should read as metallic with realistic roughness and reflected softboxes.
+- Product should remain centered, grounded by contact shadows, and framed with enough negative space for documentation thumbnails.
+
 ## Variations to explore
 
 - Replace the cube/sphere with imported product CAD or USD assets.

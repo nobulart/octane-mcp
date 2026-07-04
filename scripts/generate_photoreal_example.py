@@ -138,8 +138,16 @@ def main() -> None:
             "mat_cyan_glass": {"kind": "specular/glass", "color": [0.05, 0.75, 1.0], "transmission": 0.7, "roughness": 0.03, "ior": 1.45},
             "mat_brushed_gold": {"kind": "metallic", "color": [1.0, 0.62, 0.16], "metallic": 1.0, "roughness": 0.18},
             "mat_pedestal": {"kind": "matte", "color": [0.12, 0.12, 0.13], "roughness": 0.55},
-            "mat_charcoal": {"kind": "matte backdrop", "color": [0.025, 0.028, 0.035], "roughness": 0.7}
+            "mat_charcoal": {"kind": "matte backdrop", "color": [0.025, 0.028, 0.035], "roughness": 0.7},
+            "mat_light_panel": {"kind": "emissive area-light proxy", "color": [1.0, 0.96, 0.86], "power": 4.0}
         },
+        "quality_checklist": [
+            "Target/reference image is visibly photoreal and free of text/watermarks.",
+            "Native Octane output must be saved as octane-preview.png before claiming native photoreal success.",
+            "Glass cube shows transmission/refraction rather than opaque cyan plastic.",
+            "Gold sphere shows metallic reflections and manageable roughness.",
+            "Softbox/cyclorama framing keeps product centered with realistic shadows."
+        ],
         "commands": [
             {"op": "import_geometry", "payload": {"path": "examples/recipes/photoreal-product-studio/scene.obj", "format": "obj", "name": "photoreal-product-studio"}},
             {"op": "set_camera", "payload": {"position": [2.6, -4.2, 2.0], "target": [0.05, -0.35, 0.85], "fov": 38}},

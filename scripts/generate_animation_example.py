@@ -149,9 +149,9 @@ def draw_frame(frame: int) -> list[list[Color]]:
 
 def obj_for_frame(frame: int) -> str:
     t = frame / FRAME_COUNT
-    lines = ["# Animated recipe frame for OctaneX MCP", f"o orbit_reveal_frame_{frame:03d}"]
     vertices: list[Point3] = []
     edges: list[tuple[int, int, str]] = []
+    faces_by_material: list[tuple[str, tuple[int, ...]]] = []
 
     def v(p: Point3) -> int:
         vertices.append(p)
@@ -171,18 +171,21 @@ def obj_for_frame(frame: int) -> str:
         body = (math.cos(angle) * radius, math.sin(angle) * radius * 0.72, zoff + 0.20 * math.sin(angle + phase))
         s = 0.09
         cx, cy, cz = body
-        # small cube body
         base = len(vertices)
-        for dx, dy, dz in [(-s,-s,-s),(s,-s,-s),(s,s,-s),(-s,s,-s),(-s,-s,s),(s,-s,s),(s,s,s),(-s,s,s)]:
-            v((cx+dx, cy+dy, cz+dz))
-        faces = [(1,2,3,4),(5,8,7,6),(1,5,6,2),(2,6,7,3),(3,7,8,4),(5,1,4,8)]
-        for face in faces:
-            lines.append(f"usemtl {mat}")
-            lines.append("f " + " ".join(str(base + i) for i in face))
+        for dx, dy, dz in [(-s, -s, -s), (s, -s, -s), (s, s, -s), (-s, s, -s), (-s, -s, s), (s, -s, s), (s, s, s), (-s, s, s)]:
+            v((cx + dx, cy + dy, cz + dz))
+        for face in ((1, 2, 3, 4), (5, 8, 7, 6), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 8, 4), (5, 1, 4, 8)):
+            faces_by_material.append((mat, tuple(base + i for i in face)))
 
+    lines = ["# Animated recipe frame for OctaneX MCP", f"o orbit_reveal_frame_{frame:03d}"]
     for p in vertices:
-        lines.insert(2, f"v {p[0]:.5f} {p[1]:.5f} {p[2]:.5f}")
+        lines.append(f"v {p[0]:.5f} {p[1]:.5f} {p[2]:.5f}")
     current = None
+    for mat, face in faces_by_material:
+        if mat != current:
+            lines.append(f"usemtl {mat}")
+            current = mat
+        lines.append("f " + " ".join(str(i) for i in face))
     for a, b, mat in edges:
         if mat != current:
             lines.append(f"usemtl {mat}")
@@ -219,6 +222,7 @@ def main() -> None:
         "mcp_pattern": [
             "Generate a series of OBJ frame states under obj_frames/.",
             "For a true Octane render, import each OBJ state, render/save a PNG, then encode the PNG sequence with ffmpeg.",
+            "If the native OBJ importer drops line primitives, convert orbit/path lines to thin cylinders or tubes before final rendering.",
             "For fast docs, use the lightweight preview frames and animation.gif included here."
         ],
         "ffmpeg": ffmpeg_result,
@@ -239,7 +243,7 @@ This is a minimal animated product example for OctaneX MCP. It demonstrates the 
 - `animation.gif` — GitHub-friendly animated preview.
 - `animation.mp4` — video product encoded with ffmpeg.
 - `frames/` — deterministic lightweight PNG frames.
-- `obj_frames/` — reusable OBJ scene states for Octane re-rendering.
+- `obj_frames/` — reusable OBJ scene states for Octane re-rendering. These use line primitives for orbit paths; convert paths to thin cylinders/tubes if the native importer drops lines.
 - `storyboard.json` — metadata, FPS, product list, and agent pattern.
 
 ## Why this matters

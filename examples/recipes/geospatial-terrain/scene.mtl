@@ -1,0 +1,15 @@
+# Generated material hints for OctaneX MCP recipe assets
+newmtl earth
+Kd 0.3451 0.6118 0.4471
+Ks 0.4951 0.7618 0.5971
+Ns 224
+
+newmtl water
+Kd 0.1647 0.4196 0.8039
+Ks 0.3147 0.5696 0.9539
+Ns 224
+
+newmtl gold
+Kd 1.0000 0.7098 0.2392
+Ks 1.0000 0.8598 0.3892
+Ns 410

@@ -17,6 +17,26 @@
     ],
     "fov": 42
   },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "gold": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.18
+    }
+  },
   "commands": [
     {
       "op": "import_geometry",
@@ -29,14 +49,27 @@
     {
       "op": "create_material",
       "payload": {
-        "name": "math-surface_primary",
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "gold",
         "kind": "glossy",
         "color": [
-          0.05,
-          0.75,
-          1.0
+          1.0,
+          0.7098,
+          0.2392
         ],
-        "roughness": 0.22
+        "roughness": 0.18
       }
     },
     {
@@ -78,5 +111,13 @@
       }
     }
   ],
-  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality."
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "Some teaching assets use OBJ line primitives for paths/arrows. If the Octane OBJ importer drops lines, convert those paths to thin cylinders/tubes before final native rendering.",
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "If native Octane output differs from preview.png, record the lesson in docs/recipe-book.md."
+  ]
 }

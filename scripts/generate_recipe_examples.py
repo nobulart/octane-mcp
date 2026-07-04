@@ -108,7 +108,7 @@ class Mesh:
             self.add_line(a, b, mat)
 
     def to_obj(self, name: str) -> str:
-        lines = ["# Generated sample scene for OctaneX MCP recipes", f"o {name}"]
+        lines = ["# Generated sample scene for OctaneX MCP recipes", "mtllib scene.mtl", f"o {name}"]
         for x, y, z in self.vertices:
             lines.append(f"v {x:.5f} {y:.5f} {z:.5f}")
         current = None
@@ -227,6 +227,38 @@ class Recipe:
     mesh: Mesh
     colors: dict[str, Color]
     camera: dict[str, object]
+
+
+def color_to_float(color: Color) -> list[float]:
+    return [round(c / 255, 4) for c in color]
+
+
+def material_kind(name: str) -> str:
+    if name in {"base", "navy", "earth", "water"}:
+        return "diffuse"
+    return "glossy"
+
+
+def material_roughness(name: str) -> float:
+    if name == "gold":
+        return 0.18
+    if name in {"base", "navy", "earth", "water"}:
+        return 0.55
+    return 0.25
+
+
+def write_mtl(path: Path, colors: dict[str, Color]) -> None:
+    lines = ["# Generated material hints for OctaneX MCP recipe assets"]
+    for name, color in colors.items():
+        r, g, b = color_to_float(color)
+        lines.extend([
+            f"newmtl {name}",
+            f"Kd {r:.4f} {g:.4f} {b:.4f}",
+            f"Ks {min(1.0, r + 0.15):.4f} {min(1.0, g + 0.15):.4f} {min(1.0, b + 0.15):.4f}",
+            f"Ns {max(20, int(500 * (1 - material_roughness(name))))}",
+            "",
+        ])
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def bars_recipe() -> Recipe:
@@ -356,9 +388,21 @@ RECIPES = [bars_recipe(), surface_recipe(), vector_field_recipe(), network_recip
 
 
 def command_sequence(recipe: Recipe) -> list[dict[str, object]]:
+    material_commands = [
+        {
+            "op": "create_material",
+            "payload": {
+                "name": name,
+                "kind": material_kind(name),
+                "color": color_to_float(color),
+                "roughness": material_roughness(name),
+            },
+        }
+        for name, color in recipe.colors.items()
+    ]
     return [
         {"op": "import_geometry", "payload": {"path": f"examples/recipes/{recipe.slug}/scene.obj", "format": "obj", "name": recipe.slug}},
-        {"op": "create_material", "payload": {"name": f"{recipe.slug}_primary", "kind": "glossy", "color": [0.05, 0.75, 1.0], "roughness": 0.22}},
+        *material_commands,
         {"op": "set_camera", "payload": recipe.camera},
         {"op": "set_lighting", "payload": {"preset": "soft_studio"}},
         {"op": "start_render", "payload": {"samples": 128, "width": 1280, "height": 1280}},
@@ -370,6 +414,7 @@ def write_recipe(recipe: Recipe) -> None:
     d = OUT / recipe.slug
     d.mkdir(parents=True, exist_ok=True)
     (d / "scene.obj").write_text(recipe.mesh.to_obj(recipe.slug), encoding="utf-8")
+    write_mtl(d / "scene.mtl", recipe.colors)
     (d / "scene.json").write_text(json.dumps({
         "slug": recipe.slug,
         "title": recipe.title,
@@ -377,8 +422,20 @@ def write_recipe(recipe: Recipe) -> None:
         "purpose": recipe.purpose,
         "prompt": recipe.prompt,
         "camera": recipe.camera,
+        "materials": {
+            name: {"kind": material_kind(name), "color": color_to_float(color), "roughness": material_roughness(name)}
+            for name, color in recipe.colors.items()
+        },
         "commands": command_sequence(recipe),
         "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+        "native_render_note": "Some teaching assets use OBJ line primitives for paths/arrows. If the Octane OBJ importer drops lines, convert those paths to thin cylinders/tubes before final native rendering.",
+        "quality_checklist": [
+            "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+            "Scene imports the local scene.obj path listed in commands[].",
+            "Camera frames the entire subject with margin.",
+            "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+            "If native Octane output differs from preview.png, record the lesson in docs/recipe-book.md."
+        ],
     }, indent=2), encoding="utf-8")
     preview = Preview()
     preview.draw_mesh(recipe.mesh, recipe.colors)
@@ -394,6 +451,7 @@ def write_recipe(recipe: Recipe) -> None:
 ## Files
 
 - `scene.obj` — reusable geometry scene.
+- `scene.mtl` — material color/roughness hints matching the OBJ `usemtl` names.
 - `scene.json` — command sequence and camera metadata for agents.
 - `preview.png` — lightweight generated preview for quick review in GitHub/docs.
 
@@ -408,6 +466,14 @@ def write_recipe(recipe: Recipe) -> None:
 ## Variations to explore
 
 {chr(10).join(f"- {item}" for item in recipe.variations)}
+
+## Quality checklist
+
+- Preview is non-blank and recognizable at thumbnail size.
+- Camera frames the entire subject with clear margins.
+- Materials in `scene.obj` match `scene.mtl` and `scene.json`.
+- If Octane drops OBJ line primitives, convert paths/arrows to thin cylinders or tubes for final native renders.
+- Record any useful native-render success or failure in `docs/recipe-book.md`.
 
 ## Re-render in Octane
 
@@ -427,19 +493,25 @@ def write_index() -> None:
 This library gives agents copyable scenes, preview renders, and operational recipes for exploring OctaneX MCP applications. Each recipe includes:
 
 - `scene.obj` reusable geometry;
+- `scene.mtl` material hints for OBJ import;
 - `scene.json` MCP command/camera metadata;
-- `preview.png` lightweight generated render for quick review;
-- `README.md` with prompts, steps, and variations.
+- `preview.png` or `photoreal-preview.png` generated preview/target render for quick review;
+- `README.md` with prompts, steps, variations, and quality checklist.
 
 The previews are intentionally small, deterministic repo-generated renders so they can be reviewed on GitHub and reused without launching Octane. For final quality, run the listed command sequence through the Octane Lua bridge and save an Octane preview next to the sample.
+
+Photoreal target examples may include an external target/reference image. These are visual quality bars, not claims of native Octane success until an `octane-preview.png` is saved and inspected.
+
+Animated products are also possible by generating frame-by-frame scene states. See [`examples/animations/orbit-reveal/`](../examples/animations/orbit-reveal/README.md) for a checked-in GIF/MP4 example with PNG frames and OBJ frame states.
 
 | Recipe | Application area | Slug | Why it matters |
 | --- | --- | --- | --- |
 {chr(10).join(rows)}
+| [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
 
 ## Recommended agent loop
 
-1. Read the recipe README and inspect `preview.png`.
+1. Read the recipe README and inspect `preview.png` or the recipe-specific target preview.
 2. Reuse or modify `scene.obj` / the generator pattern.
 3. Queue import/camera/render commands through MCP.
 4. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.
@@ -455,6 +527,17 @@ The previews are intentionally small, deterministic repo-generated renders so th
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
+- **Photoreal:** product-studio scene with PBR material intent and target render.
+
+## Animation pattern
+
+Current reliable animation flow:
+
+```text
+Python generator -> obj_frames/scene_000.obj ... -> frame PNGs -> animation.gif / animation.mp4
+```
+
+Native Octane timeline controls are not yet exposed by the MCP. For now, generate one OBJ scene state per frame, render or preview each frame, then encode with `ffmpeg`. This is enough for data stories, trajectory reveals, system-flow explainers, and parameter sweeps.
 """, encoding="utf-8")
 
 

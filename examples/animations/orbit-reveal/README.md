@@ -13,7 +13,7 @@ This is a minimal animated product example for OctaneX MCP. It demonstrates the 
 - `animation.gif` — GitHub-friendly animated preview.
 - `animation.mp4` — video product encoded with ffmpeg.
 - `frames/` — deterministic lightweight PNG frames.
-- `obj_frames/` — reusable OBJ scene states for Octane re-rendering.
+- `obj_frames/` — reusable OBJ scene states for Octane re-rendering. These use line primitives for orbit paths; convert paths to thin cylinders/tubes if the native importer drops lines.
 - `storyboard.json` — metadata, FPS, product list, and agent pattern.
 
 ## Why this matters
