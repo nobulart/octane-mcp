@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# macOS/editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Local Octane/generated runtime artifacts if copied into repo
+OctaneMCP/
+assets/
+renders/
+*.log

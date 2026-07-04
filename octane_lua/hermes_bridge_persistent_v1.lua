@@ -1,0 +1,704 @@
+-- Hermes / OctaneX MCP bridge persistent v1. Run inside Octane X.
+--
+-- Keeps a small Octane window open and processes Hermes command JSON files from
+-- the Octane sandbox container queue. This avoids rerunning the one-shot script
+-- for every command. If Octane's timer API signature differs, the window still
+-- provides a safe "Process next" button.
+
+local ROOT = "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+local QUEUE = ROOT .. "/queue"
+local INBOX = ROOT .. "/inbox.json"
+local PROCESSED = ROOT .. "/processed"
+local FAILED = ROOT .. "/failed"
+local STATUS = ROOT .. "/status.json"
+local LOG = ROOT .. "/bridge.log"
+local DEFAULT_PREVIEW = ROOT .. "/renders/preview.png"
+local DEFAULT_WIDTH = 1280
+local DEFAULT_HEIGHT = 1280
+local LISTING = ROOT .. "/queue_listing.txt"
+
+local bridge_timer = nil
+local status_label = nil
+local count_label = nil
+local bridge_window = nil
+local processed_count = 0
+local failed_count = 0
+local running = true
+local close_requested = false
+
+local function append_log(message)
+    local f = io.open(LOG, "a")
+    if f then
+        f:write(os.date("!%Y-%m-%dT%H:%M:%SZ"), " ", tostring(message), "\n")
+        f:close()
+    else
+        print("Hermes persistent bridge could not open log: " .. LOG)
+    end
+end
+
+local function write_file(path, text)
+    local f, err = io.open(path, "w")
+    if not f then
+        print("Hermes persistent bridge write failed " .. tostring(path) .. ": " .. tostring(err))
+        append_log("write_file failed: " .. tostring(path) .. " " .. tostring(err))
+        return false, err
+    end
+    f:write(text)
+    f:close()
+    return true
+end
+
+local function read_file(path, quiet)
+    local f, err = io.open(path, "r")
+    if not f then
+        if not quiet then print("Hermes persistent bridge read failed " .. tostring(path) .. ": " .. tostring(err)) end
+        return nil, err
+    end
+    local data = f:read("*a")
+    f:close()
+    return data
+end
+
+local function file_exists(path)
+    local f = io.open(path, "r")
+    if f then f:close(); return true end
+    return false
+end
+
+local function basename(path)
+    return tostring(path):match("([^/]+)$") or tostring(path)
+end
+
+local function dirname(path)
+    return tostring(path):match("^(.*)/[^/]+$") or "."
+end
+
+local function json_escape(s)
+    s = tostring(s or "")
+    s = s:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+    return s
+end
+
+local function update_label(text)
+    if status_label then pcall(function() status_label:updateProperties{ text=tostring(text) } end) end
+    if count_label then pcall(function() count_label:updateProperties{ text="processed=" .. tostring(processed_count) .. " failed=" .. tostring(failed_count) } end) end
+end
+
+local function write_status(state, extra)
+    local text = "{\n" ..
+        "  \"bridge_seen\": true,\n" ..
+        "  \"bridge\": \"hermes_bridge_persistent_v1.lua\",\n" ..
+        "  \"mode\": \"persistent_window\",\n" ..
+        "  \"status\": \"" .. json_escape(state or "ok") .. "\",\n" ..
+        "  \"updated_at\": \"" .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. "\",\n" ..
+        "  \"octane_available\": " .. tostring(octane ~= nil) .. ",\n" ..
+        "  \"octane_node_available\": " .. tostring(octane and octane.node ~= nil) .. ",\n" ..
+        "  \"processed_count\": " .. tostring(processed_count) .. ",\n" ..
+        "  \"failed_count\": " .. tostring(failed_count) .. ",\n" ..
+        "  \"root\": \"" .. json_escape(ROOT) .. "\""
+    if extra then text = text .. ",\n  \"last_event\": \"" .. json_escape(extra) .. "\"" end
+    text = text .. "\n}\n"
+    write_file(STATUS, text)
+    update_label(state .. (extra and (": " .. tostring(extra)) or ""))
+end
+
+local function request_bridge_close(reason)
+    reason = reason or "releasing bridge window"
+    if close_requested then
+        append_log("bridge release already requested; ignoring duplicate: " .. tostring(reason))
+        return
+    end
+    close_requested = true
+    running = false
+    append_log("bridge release requested: " .. tostring(reason))
+    if bridge_timer then pcall(function() bridge_timer:stop() end); pcall(function() octane.timer.stop(bridge_timer) end) end
+    write_status("releasing", reason)
+    if bridge_window then
+        local closed = false
+        local ok = pcall(function() octane.gui.closeWindow(bridge_window) end)
+        closed = closed or ok
+        ok = pcall(function() bridge_window:closeWindow() end)
+        closed = closed or ok
+        append_log("bridge release close attempted closed=" .. tostring(closed))
+    end
+end
+
+local function extract_string(raw, key)
+    return raw:match('"' .. key .. '"%s*:%s*"([^"]*)"')
+end
+
+local function extract_number(raw, key)
+    local value = raw:match('"' .. key .. '"%s*:%s*([%-%d%.]+)')
+    if value then return tonumber(value) end
+    return nil
+end
+
+local function extract_array(raw, key)
+    local body = raw:match('"' .. key .. '"%s*:%s*%[([^%]]+)%]')
+    if not body then return nil end
+    local values = {}
+    for number in body:gmatch('[%-%d%.]+') do table.insert(values, tonumber(number)) end
+    return values
+end
+
+local function parse_command(raw)
+    return {
+        id = extract_string(raw, "id") or "unknown",
+        op = extract_string(raw, "op") or "unknown",
+        path = extract_string(raw, "path"),
+        name = extract_string(raw, "name"),
+        kind = extract_string(raw, "kind"),
+        preset = extract_string(raw, "preset"),
+        message = extract_string(raw, "message"),
+        object_name = extract_string(raw, "object_name"),
+        material_name = extract_string(raw, "material_name"),
+        fov = extract_number(raw, "fov"),
+        samples = extract_number(raw, "samples"),
+        width = extract_number(raw, "width"),
+        height = extract_number(raw, "height"),
+        color = extract_array(raw, "color"),
+        position = extract_array(raw, "position"),
+        target = extract_array(raw, "target"),
+    }
+end
+
+local function ensure_octane()
+    if not (octane and octane.node and octane.project) then
+        return false, "Octane node/project API unavailable; acknowledged only"
+    end
+    return true, nil
+end
+
+local function scene_graph()
+    if octane.project and octane.project.getSceneGraph then return octane.project.getSceneGraph() end
+    if octane.nodegraph and octane.nodegraph.getRootGraph then return octane.nodegraph.getRootGraph() end
+    return nil
+end
+
+local function find_item_by_name(name)
+    if not name or name == "" then return nil end
+    local graph = scene_graph()
+    if not graph then return nil end
+    local ok, items = pcall(function() return graph:findItemsByName(name) end)
+    if ok and items and #items > 0 then return items[1] end
+    ok, items = pcall(function() return graph:getOwnedItems() end)
+    if ok and items then
+        for _, item in ipairs(items) do
+            local okp, props = pcall(function() return item:getProperties() end)
+            if okp and props and props.name == name then return item end
+        end
+    end
+    return nil
+end
+
+local function create_node(type_id, name, position)
+    if not type_id then return nil, "missing node type for " .. tostring(name) end
+    local ok, node_or_err = pcall(function()
+        return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
+    end)
+    if ok then return node_or_err, nil end
+    return nil, tostring(node_or_err)
+end
+
+local function set_pin_value(node, pin, value)
+    if not node or not pin then return false end
+    local ok, err = pcall(function() node:setPinValue(pin, value) end)
+    if not ok then append_log("setPinValue failed pin=" .. tostring(pin) .. " err=" .. tostring(err)) end
+    return ok
+end
+
+local function connect_to(node, pin, src)
+    if not node or not pin or not src then return false end
+    local ok, err = pcall(function() node:connectTo(pin, src) end)
+    if not ok then append_log("connectTo failed pin=" .. tostring(pin) .. " err=" .. tostring(err)) end
+    return ok
+end
+
+local function disconnect_pin(node, pin)
+    if not node or not pin then return false end
+    local ok, err = pcall(function() node:disconnect(pin) end)
+    if not ok then append_log("disconnect failed pin=" .. tostring(pin) .. " err=" .. tostring(err)) end
+    return ok
+end
+
+local function connected_node_label(node, pin)
+    if not node or not pin then return "nil" end
+    local ok, connected = pcall(function() return node:getConnectedNode(pin) end)
+    if ok then return tostring(connected) end
+    ok, connected = pcall(function() return node:getConnectedNodeIx(pin) end)
+    if ok then return tostring(connected) end
+    return "<unknown>"
+end
+
+local function connected_node(node, pin)
+    if not node or not pin then return nil end
+    local ok, connected = pcall(function() return node:getConnectedNode(pin) end)
+    if ok and connected then return connected end
+    ok, connected = pcall(function() return node:getConnectedNodeIx(pin) end)
+    if ok and connected then return connected end
+    return nil
+end
+
+local function ensure_film_settings(rt)
+    if not rt then return nil, "missing render target" end
+    local pin = octane.P_FILM_SETTINGS or "filmSettings"
+    local film = connected_node(rt, pin) or connected_node(rt, "filmSettings")
+    if film then return film, nil end
+    local film_type = octane.NT_FILM_SETTINGS
+    if not film_type then return nil, "octane.NT_FILM_SETTINGS unavailable" end
+    local created, err = create_node(film_type, "Hermes Film Settings", {520, 300})
+    if not created then return nil, err end
+    connect_to(rt, pin, created)
+    return created, nil
+end
+
+local function set_render_resolution(rt, width, height)
+    width = tonumber(width) or DEFAULT_WIDTH
+    height = tonumber(height) or DEFAULT_HEIGHT
+    local film, err = ensure_film_settings(rt)
+    if not film then
+        append_log("film resolution failed: " .. tostring(err))
+        return false
+    end
+    local resolution = {width, height}
+    local ok_any = false
+    for _, pin in ipairs({octane.P_RESOLUTION, "resolution", "filmResolution", "res", "size"}) do
+        if pin then ok_any = set_pin_value(film, pin, resolution) or ok_any end
+    end
+    for _, pin in ipairs({"width", "x", "filmWidth"}) do
+        ok_any = set_pin_value(film, pin, width) or ok_any
+    end
+    for _, pin in ipairs({"height", "y", "filmHeight"}) do
+        ok_any = set_pin_value(film, pin, height) or ok_any
+    end
+    append_log("film resolution requested " .. tostring(width) .. "x" .. tostring(height) .. " ok=" .. tostring(ok_any) .. " film=" .. tostring(film))
+    return ok_any
+end
+
+local function connect_material_to_all_mesh_pins(mesh, mat)
+    local connected = false
+    if not mesh or not mat then return connected end
+    local ok_count, pin_count = pcall(function() return mesh:getPinCount() end)
+    if ok_count and pin_count then
+        for i = 1, pin_count do
+            local ok_info, info = pcall(function() return mesh:getPinInfoIx(i) end)
+            if not ok_info then ok_info, info = pcall(function() return mesh:getPinInfoIx(i - 1) end) end
+            if ok_info and info then
+                local is_material = (octane.PT_MATERIAL and info.type == octane.PT_MATERIAL) or info.label == "Material" or info.name == "Material"
+                if is_material then
+                    if info.name then connected = connect_to(mesh, info.name, mat) or connected end
+                    if info.id then connected = connect_to(mesh, info.id, mat) or connected end
+                end
+            end
+        end
+    end
+    return connected
+end
+
+local function get_or_create_render_target()
+    local rt = find_item_by_name("Hermes Render Target") or find_item_by_name("Hermes_RT")
+    if rt then return rt end
+    local node, err = create_node(octane.NT_RENDERTARGET, "Hermes Render Target", {300, 300})
+    if not node then return nil, err end
+    return node, nil
+end
+
+local function activate_render_target(rt)
+    if not rt then return false end
+    local activated = false
+    if octane and octane.project then
+        local ok = pcall(function() octane.project.setSelection{rt} end)
+        activated = activated or ok
+        ok = pcall(function() octane.project.setSelection({rt}) end)
+        activated = activated or ok
+        ok = pcall(function() octane.project.select(rt) end)
+        activated = activated or ok
+    end
+    if activated then append_log("activated render target " .. tostring(rt)) end
+    return activated
+end
+
+local function try_render_call(label, fn)
+    local ok, result = pcall(fn)
+    append_log("render attempt " .. tostring(label) .. " ok=" .. tostring(ok) .. " result=" .. tostring(result))
+    return ok, result
+end
+
+local function request_render_restart(samples, width, height)
+    if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
+    local rt, rt_err = get_or_create_render_target()
+    if not rt then return false, "render target failed: " .. tostring(rt_err) end
+    activate_render_target(rt)
+    set_render_resolution(rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
+    samples = samples or 64
+
+    -- If the viewport already has a selected/active render target, restart is
+    -- the least invasive refresh and avoids the persistent bridge's modal
+    -- window keeping the viewport visually stale until the window is closed.
+    local ok, result = try_render_call("restart()", function() return octane.render.restart() end)
+    if ok then return true, "render restart requested" end
+
+    -- Keep every failed signature in bridge.log so render API mismatches are
+    -- diagnosable instead of only surfacing the last exception.
+    ok, result = try_render_call("start{renderTargetNode=rt,maxSamples=samples}", function() return octane.render.start{ renderTargetNode=rt, maxSamples=samples } end)
+    if ok then return true, "render start requested" end
+    ok, result = try_render_call("start({renderTargetNode=rt,maxSamples=samples})", function() return octane.render.start({ renderTargetNode=rt, maxSamples=samples }) end)
+    if ok then return true, "render start requested" end
+    ok, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode=rt } end)
+    if ok then return true, "render start requested" end
+    ok, result = try_render_call("continue()", function() return octane.render.continue() end)
+    if ok then return true, "render continue requested" end
+    return false, "render refresh failed; see bridge.log for attempted signatures"
+end
+
+local function latest_imported_geometry_fallback()
+    local graph = scene_graph()
+    if graph then
+        local ok, nodes = pcall(function() return graph:findNodes(octane.NT_GEO_MESH, true) end)
+        if ok and nodes and #nodes > 0 then return nodes[#nodes] end
+    end
+    return find_item_by_name("octane_live_cube") or find_item_by_name("concept_anchor_cube") or find_item_by_name("hermes_mcp_cube")
+end
+
+local function maybe_connect_geometry_to_rt(mesh)
+    local rt = get_or_create_render_target()
+    if not rt or not mesh then return false end
+    activate_render_target(rt)
+    local mesh_pin = octane.P_MESH or "mesh"
+    disconnect_pin(rt, mesh_pin)
+    disconnect_pin(rt, "mesh")
+    local connected = connect_to(rt, mesh_pin, mesh) or connect_to(rt, "mesh", mesh)
+    append_log("render target mesh connection requested mesh=" .. tostring(mesh) .. " connected=" .. tostring(connected) .. " now=" .. connected_node_label(rt, mesh_pin))
+    return connected
+end
+
+local function handle_import_geometry(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    if not cmd.path then return false, "import_geometry missing path" end
+    local name = cmd.name or basename(cmd.path)
+    local mesh = find_item_by_name(name)
+    if not mesh then
+        local err
+        mesh, err = create_node(octane.NT_GEO_MESH, name, {500, 500})
+        if not mesh then return false, "create mesh failed: " .. tostring(err) end
+    end
+    local loaded, load_err = pcall(function() mesh:setAttribute(octane.A_FILENAME, cmd.path, true) end)
+    if not loaded then return false, "mesh load failed: " .. tostring(load_err) end
+    maybe_connect_geometry_to_rt(mesh)
+    local refreshed, refresh_msg = request_render_restart(64)
+    append_log("post-import render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+    return true, "imported geometry " .. tostring(name)
+end
+
+local function handle_create_material(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local name = cmd.name or "mcp_material"
+    local existing = find_item_by_name(name)
+    if existing then return true, "material exists " .. tostring(name) end
+    local matType = octane.NT_MAT_DIFFUSE
+    if cmd.kind == "glossy" and octane.NT_MAT_GLOSSY then matType = octane.NT_MAT_GLOSSY end
+    if cmd.kind == "specular" and octane.NT_MAT_SPECULAR then matType = octane.NT_MAT_SPECULAR end
+    if cmd.kind == "metallic" and octane.NT_MAT_METALLIC then matType = octane.NT_MAT_METALLIC end
+    local mat, err = create_node(matType, name, {650, 500})
+    if not mat then return false, "create material failed: " .. tostring(err) end
+    if cmd.color then set_pin_value(mat, octane.P_DIFFUSE or "diffuse", {cmd.color[1] or 0.8, cmd.color[2] or 0.8, cmd.color[3] or 0.8}) end
+    return true, "created material " .. tostring(name)
+end
+
+local function handle_assign_material(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local mesh = find_item_by_name(cmd.object_name) or latest_imported_geometry_fallback()
+    local mat = find_item_by_name(cmd.material_name)
+    if not mesh then return false, "unknown object " .. tostring(cmd.object_name) end
+    if not mat then return false, "unknown material " .. tostring(cmd.material_name) end
+    local connected = connect_material_to_all_mesh_pins(mesh, mat)
+    for _, pin in ipairs({"default", "Material", "material", "m1", "mat", octane.P_MATERIAL}) do
+        if pin then connected = connect_to(mesh, pin, mat) or connected end
+    end
+    if connected then
+        local refreshed, refresh_msg = request_render_restart(64)
+        append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+        return true, "assigned material " .. tostring(cmd.material_name)
+    end
+    return true, "material exists; no known material pin accepted on mesh"
+end
+
+local function handle_set_camera(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local rt, rt_err = get_or_create_render_target()
+    if not rt then return false, "render target failed: " .. tostring(rt_err) end
+    activate_render_target(rt)
+    local cam = find_item_by_name("Hermes Camera")
+    if not cam then
+        local err
+        cam, err = create_node(octane.NT_CAM_THINLENS or octane.NT_CAM_PANORAMIC, "Hermes Camera", {300, 520})
+        if not cam then return false, "camera create failed: " .. tostring(err) end
+    end
+    if cmd.fov then set_pin_value(cam, octane.P_FOV or "fov", cmd.fov) end
+    if cmd.position then set_pin_value(cam, octane.P_POSITION or "pos", cmd.position) end
+    if cmd.target then set_pin_value(cam, octane.P_TARGET or "target", cmd.target) end
+    connect_to(rt, octane.P_CAMERA or "camera", cam)
+    local refreshed, refresh_msg = request_render_restart(64)
+    append_log("post-camera render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+    return true, "camera connected"
+end
+
+local function handle_set_lighting(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local rt, rt_err = get_or_create_render_target()
+    if not rt then return false, "render target failed: " .. tostring(rt_err) end
+    activate_render_target(rt)
+    local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
+    if not env_type then return true, "no known environment node type constant" end
+    local env = find_item_by_name("Hermes Environment")
+    if not env then
+        local err
+        env, err = create_node(env_type, "Hermes Environment", {300, 680})
+        if not env then return false, "environment create failed: " .. tostring(err) end
+    end
+    connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
+    local refreshed, refresh_msg = request_render_restart(64)
+    append_log("post-lighting render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+    return true, "lighting preset " .. tostring(cmd.preset or "default") .. " connected"
+end
+
+local function handle_start_render(cmd)
+    return request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
+end
+
+local function handle_save_preview(cmd)
+    if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
+    local path = cmd.path or DEFAULT_PREVIEW
+    local rt = get_or_create_render_target()
+    activate_render_target(rt)
+    set_render_resolution(rt, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
+    os.execute("mkdir -p '" .. dirname(path):gsub("'", "'\\''") .. "'")
+
+    local candidates = {}
+    if octane.imageSaveType then
+        if octane.imageSaveType.PNG8 ~= nil then table.insert(candidates, {"imageSaveType.PNG8", octane.imageSaveType.PNG8}) end
+        if octane.imageSaveType.PNG16 ~= nil then table.insert(candidates, {"imageSaveType.PNG16", octane.imageSaveType.PNG16}) end
+    end
+    if octane.imageSaveFormat then
+        if octane.imageSaveFormat.PNG_8 ~= nil then table.insert(candidates, {"imageSaveFormat.PNG_8", octane.imageSaveFormat.PNG_8}) end
+        if octane.imageSaveFormat.PNG_16 ~= nil then table.insert(candidates, {"imageSaveFormat.PNG_16", octane.imageSaveFormat.PNG_16}) end
+    end
+
+    local last_err = "no PNG save constants found"
+    local function attempt(label, fn)
+        local ok, r1, r2, r3 = pcall(fn)
+        append_log("save attempt " .. tostring(label) .. " ok=" .. tostring(ok) .. " r1=" .. tostring(r1) .. " r2=" .. tostring(r2) .. " r3=" .. tostring(r3) .. " exists=" .. tostring(file_exists(path)))
+        if ok and r1 ~= false and file_exists(path) then return true, nil end
+        if ok and r1 == false then return false, "returned false" end
+        if ok then return false, "reported success but file missing" end
+        return false, tostring(r1)
+    end
+
+    for _, candidate in ipairs(candidates) do
+        local cname, cvalue = candidate[1], candidate[2]
+        local ok, err = attempt("saveImage path," .. cname, function() return octane.render.saveImage(path, cvalue) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage2 table path/saveType " .. cname, function() return octane.render.saveImage2{ path=path, saveType=cvalue, type=cvalue, renderTargetNode=rt } end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage2 filename,props saveType " .. cname, function() return octane.render.saveImage2(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage2 filename,props imageSaveType " .. cname, function() return octane.render.saveImage2(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage3 filename,props saveType " .. cname, function() return octane.render.saveImage3(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage3 filename,props imageSaveType " .. cname, function() return octane.render.saveImage3(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveRenderPass beauty,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveRenderPass beauty,path,props " .. cname, function() return octane.render.saveRenderPass(0, path, { saveType=cvalue, type=cvalue }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+    end
+    return false, "save preview failed: " .. tostring(last_err)
+end
+
+local function handle_command(cmd)
+    append_log("persistent command " .. tostring(cmd.id) .. " op=" .. tostring(cmd.op))
+    if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
+    if cmd.op == "import_geometry" then return handle_import_geometry(cmd) end
+    if cmd.op == "create_material" then return handle_create_material(cmd) end
+    if cmd.op == "assign_material" then return handle_assign_material(cmd) end
+    if cmd.op == "set_camera" then return handle_set_camera(cmd) end
+    if cmd.op == "set_lighting" then return handle_set_lighting(cmd) end
+    if cmd.op == "start_render" then return handle_start_render(cmd) end
+    if cmd.op == "save_preview" then return handle_save_preview(cmd) end
+    return true, "acknowledged " .. tostring(cmd.op)
+end
+
+local function processed_or_failed_exists(id)
+    return file_exists(PROCESSED .. "/" .. tostring(id) .. ".json") or file_exists(FAILED .. "/" .. tostring(id) .. ".json")
+end
+
+local function list_queue_files()
+    local files = {}
+    if octane and octane.file and octane.file.listDirectory then
+        local ok, entries = pcall(function() return octane.file.listDirectory(QUEUE) end)
+        if ok and entries then
+            for _, e in ipairs(entries) do
+                local name = type(e) == "table" and (e.name or e.path or e.filename) or tostring(e)
+                if name and name:match("%.json$") then
+                    if name:sub(1,1) == "/" then table.insert(files, name) else table.insert(files, QUEUE .. "/" .. basename(name)) end
+                end
+            end
+        end
+    end
+    if #files == 0 then
+        os.execute("ls -1 '" .. QUEUE:gsub("'", "'\\''") .. "'/*.json 2>/dev/null > '" .. LISTING:gsub("'", "'\\''") .. "'")
+        local listing = read_file(LISTING, true)
+        if listing then for line in listing:gmatch("[^\r\n]+") do table.insert(files, line) end end
+    end
+    table.sort(files)
+    return files
+end
+
+local function next_queue_file()
+    local files = list_queue_files()
+    for _, path in ipairs(files) do
+        local id = basename(path):gsub("%.json$", "")
+        if not processed_or_failed_exists(id) then return path, id end
+    end
+    return nil, nil
+end
+
+local function process_file(path, id)
+    local raw = read_file(path)
+    if not raw or raw == "" then return false, "empty command file" end
+    local cmd = parse_command(raw)
+    if not cmd.id or cmd.id == "unknown" then cmd.id = id or "unknown" end
+    local ok, handled, message = pcall(function()
+        local success, msg = handle_command(cmd)
+        return success, msg
+    end)
+    local dst_dir = (ok and handled) and PROCESSED or FAILED
+    local dst = dst_dir .. "/" .. tostring(cmd.id) .. ".json"
+    os.rename(path, dst)
+    if file_exists(INBOX) then
+        local inbox_raw = read_file(INBOX, true)
+        if inbox_raw and inbox_raw:find('"id"%s*:%s*"' .. tostring(cmd.id) .. '"') then os.remove(INBOX) end
+    end
+    if ok and handled then
+        processed_count = processed_count + 1
+        append_log("persistent processed id=" .. tostring(cmd.id) .. " message=" .. tostring(message))
+        write_status("processed", tostring(cmd.op) .. " " .. tostring(message))
+        if cmd.op == "start_render" then
+            request_bridge_close("render restarted; bridge released intentionally so Octane can continue rendering the updated scene")
+        end
+        return true, message
+    else
+        failed_count = failed_count + 1
+        local err = ok and message or handled
+        append_log("persistent failed id=" .. tostring(cmd.id) .. " error=" .. tostring(err))
+        write_status("failed", tostring(err))
+        return false, err
+    end
+end
+
+local function process_next_command()
+    local path, id = next_queue_file()
+    if not path then
+        write_status("idle", "no queued command")
+        return false, "no queued command"
+    end
+    return process_file(path, id)
+end
+
+local function drain_some(limit)
+    limit = limit or 3
+    local did = 0
+    for _ = 1, limit do
+        if close_requested then break end
+        local path, id = next_queue_file()
+        if not path then break end
+        process_file(path, id)
+        did = did + 1
+    end
+    if did == 0 then write_status("idle", "waiting for commands") end
+    return did
+end
+
+local function timer_tick()
+    if not running then return end
+    drain_some(2)
+end
+
+local function start_timer()
+    if not (octane and octane.timer and octane.timer.create) then
+        append_log("persistent timer API unavailable; manual button only")
+        return false
+    end
+    local attempts = {
+        function() return octane.timer.create{ interval=1.0, callback=timer_tick } end,
+        function() return octane.timer.create{ time=1.0, callback=timer_tick } end,
+        function() return octane.timer.create(1.0, timer_tick) end,
+        function() return octane.timer.create(timer_tick) end,
+    }
+    for i, fn in ipairs(attempts) do
+        local ok, timer_or_err = pcall(fn)
+        if ok and timer_or_err then
+            bridge_timer = timer_or_err
+            local started = false
+            local ok_start = pcall(function() bridge_timer:start() end)
+            if ok_start then started = true end
+            if not started then ok_start = pcall(function() octane.timer.start(bridge_timer) end); if ok_start then started = true end end
+            if started then
+                append_log("persistent timer started attempt=" .. tostring(i))
+                return true
+            end
+            -- Octane X's timer.create(interval, callback) returns a timer object
+            -- that can still fire during showWindow() even when explicit
+            -- timer:start()/octane.timer.start(timer) reject the object. Treat a
+            -- successful create as active; the runtime log confirms ticks by
+            -- subsequent command processing.
+            append_log("persistent timer created attempt=" .. tostring(i) .. "; explicit start unavailable, assuming active during showWindow")
+            return true
+        else
+            append_log("timer create attempt " .. tostring(i) .. " failed: " .. tostring(timer_or_err))
+        end
+    end
+    append_log("persistent timer not started; manual button only")
+    return false
+end
+
+append_log("persistent bridge starting")
+write_status("starting", "creating bridge window")
+
+local timer_started = start_timer()
+local process_button = octane.gui.create{ type=octane.gui.componentType.BUTTON, text="Process next", width=140, height=24, callback=function() process_next_command() end }
+local drain_button = octane.gui.create{ type=octane.gui.componentType.BUTTON, text="Drain queue", width=140, height=24, callback=function() drain_some(20) end }
+local close_button = octane.gui.create{ type=octane.gui.componentType.BUTTON, text="Stop bridge", width=140, height=24, callback=function()
+    request_bridge_close("bridge stopped by user")
+end }
+status_label = octane.gui.create{ type=octane.gui.componentType.LABEL, text="Hermes bridge starting", width=360, height=24 }
+count_label = octane.gui.create{ type=octane.gui.componentType.LABEL, text="processed=0 failed=0", width=360, height=24 }
+local mode_label = octane.gui.create{ type=octane.gui.componentType.LABEL, text=(timer_started and "Auto-poll timer active" or "Timer unavailable: use Process next / Drain queue"), width=360, height=24 }
+local group = octane.gui.create{ type=octane.gui.componentType.GROUP, children={ mode_label, status_label, count_label, process_button, drain_button, close_button }, rows=6, cols=1, padding={12}, border=false }
+local window = octane.gui.create{ type=octane.gui.componentType.WINDOW, width=420, height=220, children={group}, text="Hermes Octane MCP Bridge" }
+bridge_window = window
+write_status("running", timer_started and "persistent timer active" or "manual bridge window active")
+window:showWindow()
+running = false
+if bridge_timer then pcall(function() bridge_timer:stop() end); pcall(function() octane.timer.stop(bridge_timer) end) end
+if close_requested then
+    write_status("released", "render started; bridge intentionally exited so Octane can render the updated scene")
+    append_log("persistent bridge released after render start")
+else
+    write_status("closed", "bridge window closed")
+    append_log("persistent bridge closed")
+end
