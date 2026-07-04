@@ -1,0 +1,113 @@
+{
+  "slug": "photoreal-product-studio",
+  "title": "Photoreal Product Studio",
+  "category": "Photoreal/PBR rendering",
+  "purpose": "Demonstrate a high-quality product-rendering target scene with glass, metal, softboxes, pedestal, and cyclorama backdrop.",
+  "preview_note": "photoreal-preview.png is a generated target/reference render, not a verified Octane output. Re-render the OBJ/MTL scene in Octane X for native validation.",
+  "camera": {
+    "position": [
+      2.6,
+      -4.2,
+      2.0
+    ],
+    "target": [
+      0.05,
+      -0.35,
+      0.85
+    ],
+    "fov": 38
+  },
+  "lighting": {
+    "preset": "soft_studio",
+    "intent": "large softboxes left/right, dark studio, glossy reflections, shallow depth-of-field"
+  },
+  "materials": {
+    "mat_cyan_glass": {
+      "kind": "specular/glass",
+      "color": [
+        0.05,
+        0.75,
+        1.0
+      ],
+      "transmission": 0.7,
+      "roughness": 0.03,
+      "ior": 1.45
+    },
+    "mat_brushed_gold": {
+      "kind": "metallic",
+      "color": [
+        1.0,
+        0.62,
+        0.16
+      ],
+      "metallic": 1.0,
+      "roughness": 0.18
+    },
+    "mat_pedestal": {
+      "kind": "matte",
+      "color": [
+        0.12,
+        0.12,
+        0.13
+      ],
+      "roughness": 0.55
+    },
+    "mat_charcoal": {
+      "kind": "matte backdrop",
+      "color": [
+        0.025,
+        0.028,
+        0.035
+      ],
+      "roughness": 0.7
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/photoreal-product-studio/scene.obj",
+        "format": "obj",
+        "name": "photoreal-product-studio"
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          2.6,
+          -4.2,
+          2.0
+        ],
+        "target": [
+          0.05,
+          -0.35,
+          0.85
+        ],
+        "fov": 38
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 512,
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/photoreal-product-studio/octane-preview.png",
+        "width": 1280,
+        "height": 720
+      }
+    }
+  ]
+}

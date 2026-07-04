@@ -231,7 +231,7 @@ Reusable sample scenes live under `examples/recipes/`. Each recipe directory con
 - `README.md` — prompt, purpose, steps, and variations;
 - `scene.obj` — reusable geometry;
 - `scene.json` — camera and MCP command sequence metadata;
-- `preview.png` — deterministic lightweight preview render for quick review.
+- `preview.png` or `photoreal-preview.png` — preview/target render for quick review.
 
 Start with `docs/recipe-library.md` when exploring applications beyond the built-in bars/surface/avatar tools.
 

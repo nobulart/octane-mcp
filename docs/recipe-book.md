@@ -93,3 +93,22 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Add an MCP helper to queue/import/render frame sequences automatically.
 - Explore native Octane timeline or animation APIs once the bridge surface expands.
+
+## Photoreal product-studio target recipe
+
+- **Outcome:** success
+- **Recorded:** 2026-07-04 23:10 UTC
+- **Context:** Added a photoreal/PBR example recipe with OBJ/MTL scene assets and a target preview image for visual quality direction.
+
+### Steps
+- Generated product-studio scene geometry with cyclorama, pedestal, glass cube, gold sphere, and softbox panels.
+- Added scene.mtl and scene.json with PBR material/camera/lighting intent.
+- Included photoreal-preview.png as a target/reference image and documented that native Octane render verification is still required.
+
+### Signals / evidence
+- file reports photoreal-preview.png as a valid 1024x576 RGB PNG.
+- scene.obj and scene.mtl exist as ASCII assets.
+
+### Follow-ups
+- Re-render the scene in Octane X and add octane-preview.png after visual inspection.
+- Expand MCP material tools to support glass/transmission, IOR, metalness, and area lights directly.

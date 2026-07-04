@@ -21,6 +21,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Orbital Trajectories](../examples/recipes/physics-orbits/README.md) | Physics/simulation | `physics-orbits` | Show several trajectories around a central body to explain orbital state, phase, or simulation snapshots. |
 | [MCP Architecture Flow](../examples/recipes/architecture-flow/README.md) | Architecture/explanation | `architecture-flow` | Turn an architecture diagram into geometry: user, agent, queue, and Octane as spatial blocks connected by flow lines. |
 | [Hermes Avatar Guide](../examples/recipes/avatar-guide/README.md) | Agent communication | `avatar-guide` | Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually. |
+| [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
 
 ## Recommended agent loop
 
@@ -40,6 +41,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
+- **Photoreal:** product-studio scene with PBR material intent and target render.
 
 ## Animation pattern
 

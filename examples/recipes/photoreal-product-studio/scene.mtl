@@ -1,0 +1,26 @@
+# Material intent for Octane/PBR translation
+newmtl mat_charcoal
+Kd 0.025 0.028 0.035
+Ks 0.2 0.2 0.2
+Ns 80
+
+newmtl mat_pedestal
+Kd 0.12 0.12 0.13
+Ks 0.35 0.35 0.35
+Ns 120
+
+newmtl mat_cyan_glass
+Kd 0.05 0.75 1.0
+Ks 0.9 0.95 1.0
+Ns 500
+d 0.42
+
+newmtl mat_brushed_gold
+Kd 1.0 0.62 0.16
+Ks 1.0 0.84 0.42
+Ns 360
+
+newmtl mat_light_panel
+Kd 1.0 0.96 0.86
+Ks 0.0 0.0 0.0
+Ns 10
