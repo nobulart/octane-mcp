@@ -82,7 +82,7 @@ def enqueue_commands():
 
             if not Path(cmd_file).exists():
                 with open(file=path, mode="w") as fout:  
-                    json.dump({"cmd_id":"earth_cmd","payload":[{"op":op}]}, fout, indent=None))
+                    json.dump({"cmd_id":"earth_cmd","payload":[{"op":op}]}, fout, indent=None)
                 
             # Trigger processing through queue (will be picked up by bridge)
         except Exception as e: 
