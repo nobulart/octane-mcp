@@ -28,3 +28,5 @@ OctaneMCP/
 assets/
 renders/
 *.log
+octane_lua/config.generated.lua
+octane_lua/*.generated.lua

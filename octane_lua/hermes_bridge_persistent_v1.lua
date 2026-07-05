@@ -5,11 +5,13 @@
 -- for every command. If Octane's timer API signature differs, the window still
 -- provides a safe "Process next" button.
 
-local ROOT = "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+local ROOT = os.getenv("OCTANEX_MCP_WORKSPACE") or ((os.getenv("HOME") or "/tmp") .. "/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP")
 local QUEUE = ROOT .. "/queue"
 local INBOX = ROOT .. "/inbox.json"
+local PROCESSING = ROOT .. "/processing"
 local PROCESSED = ROOT .. "/processed"
 local FAILED = ROOT .. "/failed"
+local RESULTS = ROOT .. "/results"
 local STATUS = ROOT .. "/status.json"
 local LOG = ROOT .. "/bridge.log"
 local DEFAULT_PREVIEW = ROOT .. "/renders/preview.png"
@@ -100,6 +102,29 @@ local function write_status(state, extra)
     text = text .. "\n}\n"
     write_file(STATUS, text)
     update_label(state .. (extra and (": " .. tostring(extra)) or ""))
+end
+
+local function write_result(cmd, success, message, source_path, command_path, duration_ms)
+    local output_paths = "[]"
+    if cmd and cmd.op == "save_preview" then
+        local preview_path = cmd.path or DEFAULT_PREVIEW
+        output_paths = "[\"" .. json_escape(preview_path) .. "\"]"
+    end
+    local path = RESULTS .. "/" .. tostring(cmd and cmd.id or "unknown") .. ".json"
+    local text = "{\n" ..
+        "  \"schema_version\": \"1.0\",\n" ..
+        "  \"command_id\": \"" .. json_escape(cmd and cmd.id or "unknown") .. "\",\n" ..
+        "  \"op\": \"" .. json_escape(cmd and cmd.op or "unknown") .. "\",\n" ..
+        "  \"success\": " .. tostring(success == true) .. ",\n" ..
+        "  \"message\": \"" .. json_escape(message or "") .. "\",\n" ..
+        "  \"processed_at\": \"" .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. "\",\n" ..
+        "  \"duration_ms\": " .. tostring(math.floor((duration_ms or 0) + 0.5)) .. ",\n" ..
+        "  \"source_path\": \"" .. json_escape(source_path or "") .. "\",\n" ..
+        "  \"command_path\": \"" .. json_escape(command_path or "") .. "\",\n" ..
+        "  \"output_paths\": " .. output_paths .. "\n" ..
+        "}\n"
+    write_file(path, text)
+    return path
 end
 
 local function request_bridge_close(reason)
@@ -582,19 +607,27 @@ local function process_file(path, id)
     if not raw or raw == "" then return false, "empty command file" end
     local cmd = parse_command(raw)
     if not cmd.id or cmd.id == "unknown" then cmd.id = id or "unknown" end
+    local started = os.clock()
+    local active_path = path
+    if path ~= INBOX then
+        local processing_path = PROCESSING .. "/" .. tostring(cmd.id) .. ".json"
+        local moved_to_processing = os.rename(path, processing_path)
+        if moved_to_processing then active_path = processing_path end
+    end
     local ok, handled, message = pcall(function()
         local success, msg = handle_command(cmd)
         return success, msg
     end)
     local dst_dir = (ok and handled) and PROCESSED or FAILED
     local dst = dst_dir .. "/" .. tostring(cmd.id) .. ".json"
-    os.rename(path, dst)
+    os.rename(active_path, dst)
     if file_exists(INBOX) then
         local inbox_raw = read_file(INBOX, true)
         if inbox_raw and inbox_raw:find('"id"%s*:%s*"' .. tostring(cmd.id) .. '"') then os.remove(INBOX) end
     end
     if ok and handled then
         processed_count = processed_count + 1
+        write_result(cmd, true, message, path, dst, (os.clock() - started) * 1000)
         append_log("persistent processed id=" .. tostring(cmd.id) .. " message=" .. tostring(message))
         write_status("processed", tostring(cmd.op) .. " " .. tostring(message))
         if cmd.op == "start_render" then
@@ -604,6 +637,7 @@ local function process_file(path, id)
     else
         failed_count = failed_count + 1
         local err = ok and message or handled
+        write_result(cmd, false, err, path, dst, (os.clock() - started) * 1000)
         append_log("persistent failed id=" .. tostring(cmd.id) .. " error=" .. tostring(err))
         write_status("failed", tostring(err))
         return false, err

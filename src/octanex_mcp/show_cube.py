@@ -2,32 +2,21 @@
 """Queue a full pipeline scene to show a cube in Octane X."""
 from __future__ import annotations
 
-import json
-import time
-import uuid
-from pathlib import Path
-
-WS = Path.home() / "Library" / "Containers/com.otoy.rndrviewer/Data/OctaneMCP"
-QDIR = WS / "queue"
+from .bridge import Workspace, write_command
 
 
 def queue_file(op: str, payload: dict):
-    cid = f"{time.time_ns()}-{uuid.uuid4().hex[:8]}"
-    txt = json.dumps(
-        {"id": cid, "op": op, "payload": payload or {}}, indent=2
-    )
-    path = QDIR / f"{cid}.json"
-    path.write_text(txt)
-    print(f"QUEUED: {cid} -> {op}")
-    return cid
+    result = write_command(op, payload)
+    print(f"QUEUED: {result['command_id']} -> {op}")
+    return result["command_id"]
 
 
 if __name__ == "__main__":
-    ws = WS
+    workspace = Workspace()
+    workspace.ensure()
 
     # Build cube OBJ
-    assets_dir = ws / "assets"
-    assets_dir.mkdir(parents=True, exist_ok=True)
+    assets_dir = workspace.assets_dir
     s = 0.5
     verts = [
         (-s, -s, -s), (s, -s, -s), (s, s, -s), (-s, s, -s),

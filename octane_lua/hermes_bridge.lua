@@ -2,14 +2,14 @@
 --
 -- IMPORTANT: Octane X runs Lua on the UI/message thread. A persistent polling
 -- loop or os.execute sleep will freeze the app. This script processes exactly
--- one command from /Users/craig/OctaneMCP/inbox.json and exits.
+-- one command from the configured OctaneMCP inbox.json and exits.
 --
 -- Workflow:
 --   1. Hermes/MCP queues a command (also writes inbox.json).
 --   2. Run this script inside Octane X.
 --   3. The script mutates/acknowledges one command and returns control to UI.
 
-local ROOT = "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+local ROOT = os.getenv("OCTANEX_MCP_WORKSPACE") or ((os.getenv("HOME") or "/tmp") .. "/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP")
 local INBOX = ROOT .. "/inbox.json"
 local PROCESSED = ROOT .. "/processed"
 local FAILED = ROOT .. "/failed"

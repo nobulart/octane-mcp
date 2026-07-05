@@ -4,39 +4,24 @@ import json
 import os
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-DEFAULT_APP_PATH = Path("/Applications/Octane X.app")
-# Octane X is a sandboxed Mac App Store app. When its Lua runtime opens
-# /Users/craig/OctaneMCP, macOS redirects it into the app container. Hermes must
-# therefore write to the real container path for Octane to see inbox commands.
-DEFAULT_WORKSPACE = Path.home() / "Library" / "Containers" / "com.otoy.rndrviewer" / "Data" / "OctaneMCP"
+from .config import DEFAULT_APP_PATH, DEFAULT_WORKSPACE, OctaneConfig, resolve_config
+from .schema import ALLOWED_OPS, SCHEMA_VERSION, validate_command, validate_queue
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECIPE_BOOK_PATH = REPO_ROOT / "docs" / "recipe-book.md"
 
-ALLOWED_OPS = {
-    "ping",
-    "open_or_create_project",
-    "import_geometry",
-    "create_material",
-    "assign_material",
-    "set_camera",
-    "set_lighting",
-    "start_render",
-    "pause_render",
-    "save_preview",
-    "save_scene",
-    "scene_summary",
-    "build_concept",
-}
-
-
 @dataclass(frozen=True)
 class Workspace:
-    root: Path = DEFAULT_WORKSPACE
+    root: Path = field(default_factory=lambda: resolve_config().workspace)
+
+    @classmethod
+    def from_config(cls, config: OctaneConfig) -> "Workspace":
+        return cls(root=config.workspace)
 
     @property
     def queue_dir(self) -> Path:
@@ -47,8 +32,20 @@ class Workspace:
         return self.root / "processed"
 
     @property
+    def processing_dir(self) -> Path:
+        return self.root / "processing"
+
+    @property
     def failed_dir(self) -> Path:
         return self.root / "failed"
+
+    @property
+    def results_dir(self) -> Path:
+        return self.root / "results"
+
+    @property
+    def artifacts_dir(self) -> Path:
+        return self.root / "artifacts"
 
     @property
     def assets_dir(self) -> Path:
@@ -59,15 +56,32 @@ class Workspace:
         return self.root / "renders"
 
     @property
+    def scenes_dir(self) -> Path:
+        return self.root / "scenes"
+
+    @property
     def status_path(self) -> Path:
         return self.root / "status.json"
 
     def ensure(self) -> None:
-        for path in [self.root, self.queue_dir, self.processed_dir, self.failed_dir, self.assets_dir, self.renders_dir]:
+        for path in [
+            self.root,
+            self.queue_dir,
+            self.processing_dir,
+            self.processed_dir,
+            self.failed_dir,
+            self.results_dir,
+            self.artifacts_dir,
+            self.assets_dir,
+            self.renders_dir,
+            self.scenes_dir,
+        ]:
             path.mkdir(parents=True, exist_ok=True)
 
 
-def octane_app_status(app_path: Path = DEFAULT_APP_PATH) -> Dict[str, Any]:
+def octane_app_status(app_path: Optional[Path] = None, config: Optional[OctaneConfig] = None) -> Dict[str, Any]:
+    config = resolve_config() if config is None else config
+    app_path = config.app_path if app_path is None else app_path
     exe = app_path / "Contents" / "MacOS" / "Octane X"
     plist = app_path / "Contents" / "Info.plist"
     return {
@@ -76,7 +90,8 @@ def octane_app_status(app_path: Path = DEFAULT_APP_PATH) -> Dict[str, Any]:
         "executable": str(exe),
         "executable_exists": exe.exists(),
         "info_plist_exists": plist.exists(),
-        "workspace": str(DEFAULT_WORKSPACE),
+        "workspace": str(config.workspace),
+        "repo_root": str(config.repo_root),
     }
 
 
@@ -108,12 +123,16 @@ def write_command(op: str, payload: Optional[Dict[str, Any]] = None, workspace: 
     # queue order even when several commands are emitted in the same millisecond.
     command_id = f"{time.time_ns()}-{uuid.uuid4().hex[:8]}"
     command = {
+        "schema_version": SCHEMA_VERSION,
         "id": command_id,
         "op": op,
         "payload": payload or {},
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source": "octanex-mcp",
     }
+    validation = validate_command(command)
+    if not validation.ok:
+        raise ValueError("Invalid command payload: " + "; ".join(validation.errors))
     text = json.dumps(command, indent=2, default=_json_default)
     tmp_path = workspace.queue_dir / f".{command_id}.json.tmp"
     final_path = workspace.queue_dir / f"{command_id}.json"
@@ -134,6 +153,8 @@ def write_command(op: str, payload: Optional[Dict[str, Any]] = None, workspace: 
         "op": op,
         "path": str(final_path),
         "inbox_path": str(inbox_path),
+        "schema_version": SCHEMA_VERSION,
+        "validation": {"ok": validation.ok, "errors": validation.errors, "warnings": validation.warnings},
         "status": read_status(workspace),
     }
 
@@ -144,8 +165,11 @@ def list_commands(workspace: Workspace = Workspace()) -> Dict[str, Any]:
         return sorted(p.name for p in path.glob("*.json"))
     return {
         "queue": names(workspace.queue_dir),
+        "processing": names(workspace.processing_dir),
         "processed": names(workspace.processed_dir)[-20:],
         "failed": names(workspace.failed_dir)[-20:],
+        "results": names(workspace.results_dir)[-20:],
+        "validation": validate_queue(workspace),
         "status": read_status(workspace),
     }
 
@@ -220,7 +244,17 @@ def create_simple_obj(name: str = "mcp_cube", size: float = 1.0, workspace: Work
     obj = f"""# Generated by octanex-mcp\no {safe_name}\nusemtl default\nv {-s} {-s} {-s}\nv {s} {-s} {-s}\nv {s} {s} {-s}\nv {-s} {s} {-s}\nv {-s} {-s} {s}\nv {s} {-s} {s}\nv {s} {s} {s}\nv {-s} {s} {s}\nf 1 2 3 4\nf 5 8 7 6\nf 1 5 6 2\nf 2 6 7 3\nf 3 7 8 4\nf 5 1 4 8\n"""
     path = workspace.assets_dir / f"{safe_name}.obj"
     path.write_text(obj)
-    return {"path": str(path), "name": safe_name, "size": size}
+    return {
+        "path": str(path),
+        "name": safe_name,
+        "size": size,
+        "bounds": {
+            "min": [round(-s, 6), round(-s, 6), round(-s, 6)],
+            "max": [round(s, 6), round(s, 6), round(s, 6)],
+            "center": [0.0, 0.0, 0.0],
+            "radius": round((3.0 * s * s) ** 0.5, 6),
+        },
+    }
 
 
 def concept_to_commands(prompt: str) -> list[Dict[str, Any]]:

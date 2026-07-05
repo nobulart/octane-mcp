@@ -15,7 +15,11 @@ from .bridge import (
     record_recipe_entry,
     write_command,
 )
-from .visuals import create_avatar_face_obj, create_bar_chart_obj, create_surface_obj, scene_commands_for_asset
+from .config import doctor, initialize_environment, resolve_config
+from .review import review_preview
+from .schema import validate_command, validate_queue
+from .scene import queue_scene_plan, save_scene_manifest
+from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -61,6 +65,17 @@ def build_mcp() -> Any:
             signals=signals or [],
             follow_ups=follow_ups or [],
         ))
+
+    @mcp.tool()
+    def octane_validate_command(command: Dict[str, Any]) -> str:
+        """Validate one JSON command envelope before it is queued or replayed."""
+        result = validate_command(command)
+        return _json({"ok": result.ok, "errors": result.errors, "warnings": result.warnings})
+
+    @mcp.tool()
+    def octane_validate_queue() -> str:
+        """Validate all queued command JSON files in the current workspace."""
+        return _json(validate_queue(Workspace()))
 
     @mcp.tool()
     def octane_ping(message: str = "hello from Hermes") -> str:
@@ -122,6 +137,12 @@ def build_mcp() -> Any:
         return _json(write_command("save_preview", {"path": path, "width": width, "height": height}))
 
     @mcp.tool()
+    def octane_review_preview(path: Optional[str] = None) -> str:
+        """Review a saved PNG preview for blank/clipped/low-contrast output using image-level QA metrics."""
+        preview_path = path or str(Workspace().renders_dir / "preview.png")
+        return _json(review_preview(preview_path))
+
+    @mcp.tool()
     def octane_build_concept(prompt: str) -> str:
         """Queue a high-level concept build request plus deterministic starter scene commands."""
         results = []
@@ -130,6 +151,16 @@ def build_mcp() -> Any:
         for cmd in concept_to_commands(prompt):
             results.append(write_command(cmd["op"], cmd["payload"]))
         return _json({"queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
+    def octane_save_scene_manifest(scene_plan: Dict[str, Any]) -> str:
+        """Validate and save a semantic scene plan manifest without queueing commands."""
+        return _json(save_scene_manifest(scene_plan))
+
+    @mcp.tool()
+    def octane_build_scene(scene_plan: Dict[str, Any]) -> str:
+        """Build a semantic scene plan: save its manifest and queue validated Octane commands."""
+        return _json(queue_scene_plan(scene_plan))
 
     @mcp.tool()
     def octane_visualize_bars(values: list[float], name: str = "visual_bar_chart") -> str:
@@ -158,11 +189,20 @@ def build_mcp() -> Any:
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
 
     @mcp.tool()
+    def octane_visualize_scatter(points: list[list[float]], name: str = "visual_scatter_plot") -> str:
+        """Visualize xyz points as a 3D scatter plot in Octane."""
+        asset = create_scatter_obj(points, name=name)
+        material_name = f"{asset['name']}_orange_material"
+        commands = scene_commands_for_asset(asset, material_name=material_name, color=[1.0, 0.42, 0.12])
+        results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
+        return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
     def octane_show_avatar(name: str = "hermes_avatar_face") -> str:
         """Show Hermes' geometric avatar face as a scene guide in Octane."""
         asset = create_avatar_face_obj(name=name)
         commands = scene_commands_for_asset(asset, material_name=f"{asset['name']}_warm_light", color=[0.88, 0.95, 1.0])
-        commands[3] = {"op": "set_camera", "payload": {"position": [0, -4.5, 2.0], "target": [0, 0, 1.35], "fov": 38}}
+        commands[3] = {"op": "set_camera", "payload": camera_for_bounds(asset["bounds"], view="front", margin=1.15, fov=38)}
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
 
@@ -170,19 +210,52 @@ def build_mcp() -> Any:
 
 
 def self_test() -> Dict[str, Any]:
-    ws = Workspace()
+    config = resolve_config()
+    ws = Workspace.from_config(config)
     ws.ensure()
     cube = create_simple_obj("self_test_cube", 0.5, ws)
     ping = write_command("ping", {"message": "self-test"}, ws)
-    return {"ok": True, "app": octane_app_status(), "cube": cube, "ping": ping, "commands": list_commands(ws)}
+    return {"ok": True, "app": octane_app_status(config=config), "cube": cube, "ping": ping, "commands": list_commands(ws)}
+
+
+def _format_doctor(result: Dict[str, Any]) -> str:
+    lines = ["OctaneX MCP doctor", "", f"Overall: {'ok' if result.get('ok') else 'needs attention'}", ""]
+    config = result.get("config", {})
+    lines.extend([
+        f"Workspace: {config.get('workspace')}",
+        f"Repo root:  {config.get('repo_root')}",
+        f"Octane app: {config.get('app_path')}",
+        "",
+        "Checks:",
+    ])
+    for check in result.get("checks", []):
+        icon = "✓" if check.get("ok") else "✗"
+        detail = f" — {check['path']}" if check.get("path") else ""
+        message = f" ({check['message']})" if check.get("message") else ""
+        lines.append(f"  {icon} {check['name']}{detail}{message}")
+    next_steps = result.get("next_steps") or []
+    if next_steps:
+        lines.extend(["", "Next steps:"])
+        lines.extend(f"  - {step}" for step in next_steps)
+    return "\n".join(lines)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Octane X MCP server")
+    parser.add_argument("command", nargs="?", choices=["init", "doctor"], help="run a setup/diagnostic command instead of starting MCP stdio")
     parser.add_argument("--self-test", action="store_true", help="create workspace and queue a ping without starting MCP stdio")
+    parser.add_argument("--json", action="store_true", help="print machine-readable JSON for init/doctor output")
+    parser.add_argument("--no-create", action="store_true", help="doctor only: do not create missing workspace folders")
     args = parser.parse_args()
     if args.self_test:
         print(_json(self_test()))
+        return
+    if args.command == "init":
+        print(_json(initialize_environment()))
+        return
+    if args.command == "doctor":
+        result = doctor(create=not args.no_create)
+        print(_json(result) if args.json else _format_doctor(result))
         return
     build_mcp().run()
 

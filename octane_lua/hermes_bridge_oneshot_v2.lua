@@ -4,11 +4,13 @@
 -- Octane X from the Mac App Store is sandboxed. Hermes writes commands into
 -- the real container path below, which Octane Lua can read/write directly.
 
-local ROOT = "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+local ROOT = os.getenv("OCTANEX_MCP_WORKSPACE") or ((os.getenv("HOME") or "/tmp") .. "/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP")
 local QUEUE = ROOT .. "/queue"
 local INBOX = ROOT .. "/inbox.json"
+local PROCESSING = ROOT .. "/processing"
 local PROCESSED = ROOT .. "/processed"
 local FAILED = ROOT .. "/failed"
+local RESULTS = ROOT .. "/results"
 local STATUS = ROOT .. "/status.json"
 local LOG = ROOT .. "/bridge.log"
 local DEFAULT_PREVIEW = ROOT .. "/renders/preview.png"
@@ -82,6 +84,29 @@ local function write_status(state, extra)
     if extra then text = text .. ",\n  \"last_event\": \"" .. json_escape(extra) .. "\"" end
     text = text .. "\n}\n"
     write_file(STATUS, text)
+end
+
+local function write_result(cmd, success, message, source_path, command_path, duration_ms)
+    local output_paths = "[]"
+    if cmd and cmd.op == "save_preview" then
+        local preview_path = cmd.path or DEFAULT_PREVIEW
+        output_paths = "[\"" .. json_escape(preview_path) .. "\"]"
+    end
+    local path = RESULTS .. "/" .. tostring(cmd and cmd.id or "unknown") .. ".json"
+    local text = "{\n" ..
+        "  \"schema_version\": \"1.0\",\n" ..
+        "  \"command_id\": \"" .. json_escape(cmd and cmd.id or "unknown") .. "\",\n" ..
+        "  \"op\": \"" .. json_escape(cmd and cmd.op or "unknown") .. "\",\n" ..
+        "  \"success\": " .. tostring(success == true) .. ",\n" ..
+        "  \"message\": \"" .. json_escape(message or "") .. "\",\n" ..
+        "  \"processed_at\": \"" .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. "\",\n" ..
+        "  \"duration_ms\": " .. tostring(math.floor((duration_ms or 0) + 0.5)) .. ",\n" ..
+        "  \"source_path\": \"" .. json_escape(source_path or "") .. "\",\n" ..
+        "  \"command_path\": \"" .. json_escape(command_path or "") .. "\",\n" ..
+        "  \"output_paths\": " .. output_paths .. "\n" ..
+        "}\n"
+    write_file(path, text)
+    return path
 end
 
 local function extract_string(raw, key)
@@ -310,6 +335,11 @@ local function request_render_restart(samples, width, height)
 end
 
 local function latest_imported_geometry_fallback()
+    local graph = scene_graph()
+    if graph then
+        local ok, nodes = pcall(function() return graph:findNodes(octane.NT_GEO_MESH, true) end)
+        if ok and nodes and #nodes > 0 then return nodes[#nodes] end
+    end
     return find_item_by_name("octane_live_cube") or find_item_by_name("concept_anchor_cube") or find_item_by_name("hermes_mcp_cube")
 end
 
@@ -330,8 +360,12 @@ local function handle_import_geometry(cmd)
     if not ok then return true, msg end
     if not cmd.path then return false, "import_geometry missing path" end
     local name = cmd.name or basename(cmd.path)
-    local mesh, err = create_node(octane.NT_GEO_MESH, name, {500, 500})
-    if not mesh then return false, "create mesh failed: " .. tostring(err) end
+    local mesh = find_item_by_name(name)
+    if not mesh then
+        local err
+        mesh, err = create_node(octane.NT_GEO_MESH, name, {500, 500})
+        if not mesh then return false, "create mesh failed: " .. tostring(err) end
+    end
     local loaded, load_err = pcall(function() mesh:setAttribute(octane.A_FILENAME, cmd.path, true) end)
     if not loaded then return false, "mesh load failed: " .. tostring(load_err) end
     maybe_connect_geometry_to_rt(mesh)
@@ -344,16 +378,15 @@ local function handle_create_material(cmd)
     local ok, msg = ensure_octane()
     if not ok then return true, msg end
     local name = cmd.name or "mcp_material"
+    local existing = find_item_by_name(name)
+    if existing then return true, "material exists " .. tostring(name) end
     local matType = octane.NT_MAT_DIFFUSE
     if cmd.kind == "glossy" and octane.NT_MAT_GLOSSY then matType = octane.NT_MAT_GLOSSY end
     if cmd.kind == "specular" and octane.NT_MAT_SPECULAR then matType = octane.NT_MAT_SPECULAR end
     if cmd.kind == "metallic" and octane.NT_MAT_METALLIC then matType = octane.NT_MAT_METALLIC end
     local mat, err = create_node(matType, name, {650, 500})
     if not mat then return false, "create material failed: " .. tostring(err) end
-    if cmd.color then
-        local color = {cmd.color[1] or 0.8, cmd.color[2] or 0.8, cmd.color[3] or 0.8}
-        set_pin_value(mat, octane.P_DIFFUSE or "diffuse", color)
-    end
+    if cmd.color then set_pin_value(mat, octane.P_DIFFUSE or "diffuse", {cmd.color[1] or 0.8, cmd.color[2] or 0.8, cmd.color[3] or 0.8}) end
     return true, "created material " .. tostring(name)
 end
 
@@ -365,9 +398,7 @@ local function handle_assign_material(cmd)
     if not mesh then return false, "unknown object " .. tostring(cmd.object_name) end
     if not mat then return false, "unknown material " .. tostring(cmd.material_name) end
     local connected = connect_material_to_all_mesh_pins(mesh, mat)
-    -- Imported OBJ material pins come from the OBJ/MTL material names. Our
-    -- generated smoke-test OBJ uses `usemtl default`, so try that first.
-    for _, pin in ipairs({"default", "material", "Material", "m1", "mat", octane.P_MATERIAL}) do
+    for _, pin in ipairs({"default", "Material", "material", "m1", "mat", octane.P_MATERIAL}) do
         if pin then connected = connect_to(mesh, pin, mat) or connected end
     end
     if connected then
@@ -459,13 +490,22 @@ local function handle_save_preview(cmd)
         ok, err = attempt("saveImage2 table path/saveType " .. cname, function() return octane.render.saveImage2{ path=path, saveType=cvalue, type=cvalue, renderTargetNode=rt } end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage2 filename string " .. cname, function() return octane.render.saveImage2(path, cvalue) end)
+        ok, err = attempt("saveImage2 filename,props saveType " .. cname, function() return octane.render.saveImage2(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage3 filename string " .. cname, function() return octane.render.saveImage3(path, cvalue) end)
+        ok, err = attempt("saveImage2 filename,props imageSaveType " .. cname, function() return octane.render.saveImage2(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveRenderPass filename string " .. cname, function() return octane.render.saveRenderPass(path, cvalue) end)
+        ok, err = attempt("saveImage3 filename,props saveType " .. cname, function() return octane.render.saveImage3(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveImage3 filename,props imageSaveType " .. cname, function() return octane.render.saveImage3(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveRenderPass beauty,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
+        if ok then return true, "preview saved " .. tostring(path) end
+        last_err = err
+        ok, err = attempt("saveRenderPass beauty,path,props " .. cname, function() return octane.render.saveRenderPass(0, path, { saveType=cvalue, type=cvalue }) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
     end
@@ -474,25 +514,15 @@ end
 
 local function handle_command(cmd)
     append_log("v2 command " .. tostring(cmd.id) .. " op=" .. tostring(cmd.op))
-    if cmd.op == "ping" then
-        return true, "pong " .. tostring(cmd.message or "")
-    elseif cmd.op == "import_geometry" then
-        return handle_import_geometry(cmd)
-    elseif cmd.op == "create_material" then
-        return handle_create_material(cmd)
-    elseif cmd.op == "assign_material" then
-        return handle_assign_material(cmd)
-    elseif cmd.op == "set_camera" then
-        return handle_set_camera(cmd)
-    elseif cmd.op == "set_lighting" then
-        return handle_set_lighting(cmd)
-    elseif cmd.op == "start_render" then
-        return handle_start_render(cmd)
-    elseif cmd.op == "save_preview" then
-        return handle_save_preview(cmd)
-    else
-        return true, "acknowledged " .. tostring(cmd.op)
-    end
+    if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
+    if cmd.op == "import_geometry" then return handle_import_geometry(cmd) end
+    if cmd.op == "create_material" then return handle_create_material(cmd) end
+    if cmd.op == "assign_material" then return handle_assign_material(cmd) end
+    if cmd.op == "set_camera" then return handle_set_camera(cmd) end
+    if cmd.op == "set_lighting" then return handle_set_lighting(cmd) end
+    if cmd.op == "start_render" then return handle_start_render(cmd) end
+    if cmd.op == "save_preview" then return handle_save_preview(cmd) end
+    return true, "acknowledged " .. tostring(cmd.op)
 end
 
 local function processed_or_failed_exists(id)
@@ -512,24 +542,33 @@ end
 
 local function process_raw_command(raw, source_path, source_label)
     local cmd = parse_command(raw)
+    local started = os.clock()
+    local active_path = source_path
+    if source_path ~= INBOX then
+        local processing_path = PROCESSING .. "/" .. tostring(cmd.id) .. ".json"
+        local moved_to_processing = os.rename(source_path, processing_path)
+        if moved_to_processing then active_path = processing_path end
+    end
     local ok, handled, message = pcall(function()
         local success, msg = handle_command(cmd)
         return success, msg
     end)
     local dst_dir = (ok and handled) and PROCESSED or FAILED
     local dst = dst_dir .. "/" .. tostring(cmd.id) .. ".json"
-    local moved, move_err = os.rename(source_path, dst)
+    local moved, move_err = os.rename(active_path, dst)
     if source_path ~= INBOX and file_exists(INBOX) then
         local inbox_raw = read_file(INBOX)
         if inbox_raw and inbox_raw:find('"id"%s*:%s*"' .. tostring(cmd.id) .. '"') then os.remove(INBOX) end
     end
     if ok and handled then
+        write_result(cmd, true, message, source_path, dst, (os.clock() - started) * 1000)
         append_log("v2 processed " .. tostring(source_label) .. " id=" .. tostring(cmd.id) .. " moved=" .. tostring(moved) .. " err=" .. tostring(move_err) .. " message=" .. tostring(message))
         write_status("processed", tostring(cmd.op) .. " " .. tostring(message))
         print("Hermes bridge v2 processed " .. tostring(cmd.op) .. ": " .. tostring(message))
         return true
     else
         local err = ok and message or handled
+        write_result(cmd, false, err, source_path, dst, (os.clock() - started) * 1000)
         append_log("v2 failed " .. tostring(source_label) .. " id=" .. tostring(cmd.id) .. " error=" .. tostring(err))
         write_status("failed", tostring(err))
         print("Hermes bridge v2 failed: " .. tostring(err))

@@ -25,7 +25,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ### Steps
 - Queue the full scene from a high-level MCP visual tool such as `octane_visualize_bars` or `octane_visualize_surface`.
-- Run `/Users/craig/octanex-mcp/octane_lua/hermes_bridge_oneshot_v2.lua` inside Octane X.
+- Run the generated one-shot bridge reported by `octanex-mcp doctor`, for example `/path/to/octane-mcp/octane_lua/hermes_bridge_oneshot.generated.lua`, inside Octane X.
 - Check `octane_status()` for drained queue and processed command files.
 - Queue `octane_save_preview(...)` only after the scene mutation batch has processed.
 

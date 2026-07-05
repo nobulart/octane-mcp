@@ -48,10 +48,13 @@ Verified or implemented:
 - Hermes MCP config pattern for `mcp_servers.octanex`.
 - Octane X sandbox/container workspace path.
 - Ordered JSON command queue plus `inbox.json` compatibility fallback.
+- Versioned command schema, queue validation, `processing/` state, and per-command result JSON files.
 - One-shot Lua bridge that drains `queue/*.json` and exits.
 - Persistent Lua bridge window with manual `Process next` / `Drain queue` controls and timer fallback notes.
+- Parity tests keep one-shot and persistent scene-command handlers semantically aligned; they should differ only in scheduling/UI behavior.
 - Scene operations: import mesh, create material, assign material, set camera, set lighting, start/restart render, save preview.
 - Visual tools: bar chart, math surface, Hermes avatar face.
+- Generated visual assets include bounds metadata and use bounds-aware camera placement for more reliable framing.
 - Self-improving recipe book tools: agents can read and append successes, failures, partials, and pitfalls.
 
 Known constraints:
@@ -66,6 +69,8 @@ From this repo:
 
 ```bash
 uv sync
+PYTHONPATH= uv run octanex-mcp init
+PYTHONPATH= uv run octanex-mcp doctor
 PYTHONPATH= uv run octanex-mcp --self-test
 ```
 
@@ -75,10 +80,12 @@ Hermes config in `~/.hermes/config.yaml`:
 mcp_servers:
   octanex:
     command: "uv"
-    args: ["run", "--project", "/Users/craig/octanex-mcp", "octanex-mcp"]
+    args: ["run", "--project", "/path/to/octane-mcp", "octanex-mcp"]
     timeout: 180
     connect_timeout: 30
 ```
+
+For another checkout location, replace the `--project` path or set `OCTANEX_MCP_REPO` before running the MCP server.
 
 Restart Hermes or use `/reload-mcp` after config changes, then verify:
 
@@ -88,29 +95,65 @@ hermes mcp test octanex
 
 ## Workspace paths
 
-Hermes writes to the real Octane X sandbox container path:
+By default, Hermes writes to the real Octane X sandbox container path for the current macOS user:
 
 ```text
-/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/
+~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/
 ```
 
 Octane Lua may appear to use this path in scripts:
 
 ```text
-/Users/craig/OctaneMCP/
+~/OctaneMCP/
 ```
 
-For reliability, current scripts use the real container path directly.
+For reliability, generated scripts use the real container path directly. Override paths with environment variables when needed:
+
+```bash
+export OCTANEX_MCP_WORKSPACE="$HOME/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+export OCTANEX_MCP_REPO="/path/to/octane-mcp"
+export OCTANEX_APP_PATH="/Applications/Octane X.app"
+PYTHONPATH= uv run octanex-mcp init
+PYTHONPATH= uv run octanex-mcp doctor
+```
+
+`octanex-mcp init` creates the workspace folders, writes `octanex-mcp.config.json` in the workspace, writes `octane_lua/config.generated.lua`, and generates portable bridge copies with the resolved workspace path injected. See [`docs/octane-bridge.md`](docs/octane-bridge.md) for bridge lifecycle and parity rules.
+
+## Required Octane X Preferences setup
+
+Octane X must be told where to find the Octane MCP Lua bridge scripts. After running `octanex-mcp init`, open Octane X and set the Lua scripts directory:
+
+1. Open **Octane X**.
+2. Open **Preferences**.
+3. Find the **Scripts path** setting.
+4. Set **Scripts path** to this checkout's Lua script directory:
+
+```text
+/path/to/octane-mcp/octane_lua
+```
+
+For this repository checkout, that is the `octane_lua/` folder containing:
+
+```text
+hermes_bridge_oneshot.generated.lua
+hermes_bridge_persistent.generated.lua
+```
+
+If `OCTANEX_MCP_REPO` points somewhere else, use `$OCTANEX_MCP_REPO/octane_lua`. Restart Octane X after changing this preference if the scripts do not appear immediately.
 
 Important files:
 
 ```text
 .../OctaneMCP/inbox.json          latest command fallback
 .../OctaneMCP/queue/*.json        ordered command queue
+.../OctaneMCP/processing/*.json   command currently being handled
 .../OctaneMCP/processed/*.json    successful processed commands
 .../OctaneMCP/failed/*.json       failed command payloads
+.../OctaneMCP/results/*.json      per-command success/error/result metadata
+.../OctaneMCP/artifacts/          generated non-OBJ/preview artifacts
 .../OctaneMCP/assets/             generated OBJ assets
 .../OctaneMCP/renders/            preview/render outputs
+.../OctaneMCP/scenes/             saved semantic scene manifests
 .../OctaneMCP/status.json         bridge status/heartbeat
 .../OctaneMCP/bridge.log          bridge log
 ```
@@ -122,7 +165,7 @@ Important files:
 Open Octane X and run:
 
 ```text
-/Users/craig/octanex-mcp/octane_lua/hermes_bridge_oneshot_v2.lua
+/path/to/octane-mcp/octane_lua/hermes_bridge_oneshot.generated.lua
 ```
 
 This drains all ordered `queue/*.json` commands and exits so Octane's viewport/render loop can repaint. It also falls back to `inbox.json` for older single-command workflows.
@@ -132,7 +175,7 @@ This drains all ordered `queue/*.json` commands and exits so Octane's viewport/r
 Open Octane X and run:
 
 ```text
-/Users/craig/octanex-mcp/octane_lua/hermes_bridge_persistent_v1.lua
+/path/to/octane-mcp/octane_lua/hermes_bridge_persistent.generated.lua
 ```
 
 Leave the `Hermes Octane MCP Bridge` window open while using Hermes. If the timer mode is unavailable, use `Process next` for one command or `Drain queue` for a batch. Do **not** add sleep loops to Octane Lua; they run on the UI thread and can freeze Octane X.
@@ -146,6 +189,8 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | Tool | Purpose |
 | --- | --- |
 | `octane_status()` | App existence, queue, processed/failed files, bridge status. |
+| `octane_validate_command(command)` | Validate one JSON command envelope. |
+| `octane_validate_queue()` | Validate queued command files in the workspace. |
 | `octane_recipe_book(limit_chars=12000)` | Read local field notes for successes, failures, and pitfalls. |
 | `octane_record_recipe(title, outcome, context, steps, signals, follow_ups)` | Append a lesson to `docs/recipe-book.md`. |
 
@@ -162,6 +207,7 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_set_lighting(preset)` | Queue lighting preset. |
 | `octane_start_render(samples, width, height)` | Queue render restart and resolution update. |
 | `octane_save_preview(path, width, height)` | Queue preview save. |
+| `octane_review_preview(path)` | Review saved PNG previews for blank, clipped, or low-contrast output. |
 
 ### Higher-level visual tools
 
@@ -169,7 +215,10 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | --- | --- |
 | `octane_visualize_bars(values, name)` | Build a 3D bar chart OBJ and queue a full scene. |
 | `octane_visualize_surface(expression, name, x_min, x_max, y_min, y_max, steps)` | Build a restricted `z=f(x,y)` surface and queue a full scene. |
+| `octane_visualize_scatter(points, name)` | Build a 3D scatter plot OBJ from xyz triples and queue a full scene. |
 | `octane_show_avatar(name)` | Show Hermes' geometric avatar face. |
+| `octane_build_scene(scene_plan)` | Save a semantic scene manifest and queue validated scene commands. |
+| `octane_save_scene_manifest(scene_plan)` | Save a semantic scene manifest without queueing commands. |
 | `octane_build_concept(prompt)` | Deterministic MVP concept scaffold. |
 
 ## Workflow cards for agents
@@ -187,14 +236,14 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 2. In Octane X, run `hermes_bridge_oneshot_v2.lua`.
 3. Call `octane_start_render(samples=128)` if needed.
 4. Call `octane_save_preview()`.
-5. Verify the PNG exists before claiming success.
+5. Call `octane_review_preview()` and verify `ok=true` before claiming success.
 
 ### Card 3: Visualize data quickly
 
 1. Call `octane_visualize_bars(values=[3, 1, 4, 1, 5], name="pi_digits")`.
 2. Run/drain the Lua bridge in Octane X.
 3. Save a preview.
-4. If the framing/materials are poor, adjust the generator or camera and record the lesson.
+4. Call `octane_review_preview()`; if it reports blank/clipped/low-contrast output, adjust the generator or camera and record the lesson.
 
 ### Card 4: Visualize a math surface
 
@@ -227,7 +276,7 @@ Keep entries small and operational. A future local model should be able to copy 
 ## Development smoke tests
 
 ```bash
-cd /Users/craig/octanex-mcp
+cd /path/to/octane-mcp
 PYTHONPATH= uv run octanex-mcp --self-test
 PYTHONPATH= uv run python -m octanex_mcp.client_smoke
 PYTHONPATH= uv run python -m compileall src
