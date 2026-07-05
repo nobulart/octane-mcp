@@ -16,7 +16,7 @@ from .bridge import (
     write_command,
 )
 from .config import doctor, initialize_environment, resolve_config
-from .review import review_preview
+from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
@@ -146,6 +146,16 @@ def build_mcp() -> Any:
         """Review a saved PNG preview for blank/clipped/low-contrast output using image-level QA metrics."""
         preview_path = path or str(Workspace().renders_dir / "preview.png")
         return _json(review_preview(preview_path))
+
+    @mcp.tool()
+    def octane_suggest_camera_fix(preview_review: Dict[str, Any], asset_bounds: Dict[str, Any]) -> str:
+        """Suggest a camera patch from preview QA output and asset bounds."""
+        return _json(suggest_camera_fix(preview_review, asset_bounds))
+
+    @mcp.tool()
+    def octane_suggest_lighting_fix(preview_review: Dict[str, Any]) -> str:
+        """Suggest a lighting/render patch from preview QA output."""
+        return _json(suggest_lighting_fix(preview_review))
 
     @mcp.tool()
     def octane_build_concept(prompt: str) -> str:

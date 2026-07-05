@@ -126,6 +126,71 @@ def _edge_density(width: int, height: int, luminance: list[float]) -> float:
     return (edges / comparisons) * 100.0 if comparisons else 0.0
 
 
+def _diagnosis(
+    *,
+    issues: list[str],
+    mean: float,
+    contrast: float,
+    near_black: float,
+    near_white: float,
+    edge_density: float,
+) -> dict[str, Any]:
+    likely_causes: list[str] = []
+    recommended_actions: list[dict[str, Any]] = []
+    if "mostly near-black" in issues:
+        likely_causes.extend(["lighting too dim", "camera may be inside or behind geometry", "material may be too dark"])
+        recommended_actions.append({"action": "increase_lighting", "patch": {"lighting": {"preset": "brighter_studio"}}})
+        recommended_actions.append({"action": "increase_exposure", "patch": {"render": {"exposure_compensation": 1.0}}})
+    if "mostly near-white" in issues:
+        likely_causes.extend(["exposure too high", "environment too bright", "material/emission clipping highlights"])
+        recommended_actions.append({"action": "reduce_exposure", "patch": {"render": {"exposure_compensation": -1.0}}})
+    if "very low contrast" in issues:
+        likely_causes.extend(["flat lighting", "object blends into background", "camera framing has too little visible geometry"])
+        recommended_actions.append({"action": "increase_contrast", "patch": {"lighting": {"preset": "soft_studio", "key_fill_ratio": 2.0}}})
+    if "likely object too small" in issues:
+        likely_causes.extend(["camera is too far away", "asset scale is too small", "scene has excessive empty frame"])
+        recommended_actions.append({"action": "tighten_camera", "patch_hint": "move camera closer or reduce fov around asset bounds"})
+    severity = "ok"
+    if issues:
+        severity = "error" if near_black > 98.0 or near_white > 98.0 or contrast < 2.0 else "warning"
+    return {
+        "ok": not issues,
+        "severity": severity,
+        "issues": issues,
+        "metrics": {
+            "mean_brightness": _round3(mean),
+            "contrast": _round3(contrast),
+            "near_black_percent": _round3(near_black),
+            "near_white_percent": _round3(near_white),
+            "edge_density": _round3(edge_density),
+        },
+        "likely_causes": list(dict.fromkeys(likely_causes)),
+        "recommended_actions": recommended_actions,
+    }
+
+
+def suggest_camera_fix(preview_review: dict[str, Any], asset_bounds: dict[str, Any]) -> dict[str, Any]:
+    center = [float(value) for value in asset_bounds.get("center", [0.0, 0.0, 0.0])]
+    radius = max(float(asset_bounds.get("radius", 1.0)), 0.1)
+    issues = set(preview_review.get("issues", []))
+    fov = 36.0 if "likely object too small" in issues else 45.0
+    margin = 2.2 if "likely object clipped at frame edge" in issues else 1.45
+    distance = radius * margin
+    camera = {
+        "position": [_round3(center[0] + distance), _round3(center[1] - distance * 1.2), _round3(center[2] + distance * 0.8)],
+        "target": center,
+        "fov": fov,
+    }
+    return {"action": "adjust_camera", "reason": "improve object framing", "patch": {"camera": camera}}
+
+
+def suggest_lighting_fix(preview_review: dict[str, Any]) -> dict[str, Any]:
+    issues = set(preview_review.get("issues", []))
+    if "mostly near-white" in issues:
+        return {"action": "reduce_exposure", "reason": "preview is clipped", "patch": {"lighting": {"preset": "soft_studio"}, "render": {"exposure_compensation": -1.0}}}
+    return {"action": "increase_lighting", "reason": "preview is dark or low contrast", "patch": {"lighting": {"preset": "brighter_studio"}, "render": {"exposure_compensation": 1.0}}}
+
+
 def review_preview(path: str | Path | None = None) -> dict[str, Any]:
     preview_path = Path(path) if path is not None else Path("preview.png")
     result: dict[str, Any] = {
@@ -159,6 +224,7 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
     edge_density = _edge_density(width, height, luminance)
     likely_blank = contrast < 2.0 or near_black > 98.0
     likely_clipped = near_white > 98.0
+    likely_tiny = not likely_blank and not likely_clipped and edge_density < 2.0 and contrast >= 2.0
 
     result.update(
         {
@@ -170,11 +236,17 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
             "edge_density": _round3(edge_density),
             "likely_blank": likely_blank,
             "likely_clipped": likely_clipped,
+            "likely_object_too_small": likely_tiny,
         }
     )
     if likely_blank:
         result["issues"].append("mostly near-black" if near_black > 98.0 else "very low contrast")
     if likely_clipped:
         result["issues"].append("mostly near-white")
+    if likely_tiny:
+        result["issues"].append("likely object too small")
+    diagnosis = _diagnosis(issues=result["issues"], mean=mean, contrast=contrast, near_black=near_black, near_white=near_white, edge_density=edge_density)
+    result.update(diagnosis)
+    result["diagnosis"] = diagnosis
     result["ok"] = not result["issues"]
     return result

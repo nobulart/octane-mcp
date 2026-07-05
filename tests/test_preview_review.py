@@ -6,7 +6,7 @@ import unittest
 import zlib
 from pathlib import Path
 
-from octanex_mcp.review import review_preview
+from octanex_mcp.review import review_preview, suggest_camera_fix, suggest_lighting_fix
 
 
 def _chunk(kind: bytes, data: bytes) -> bytes:
@@ -46,6 +46,10 @@ class PreviewReviewTests(unittest.TestCase):
         self.assertTrue(result["likely_blank"])
         self.assertFalse(result["ok"])
         self.assertIn("mostly near-black", result["issues"])
+        self.assertEqual(result["severity"], "error")
+        self.assertIn("diagnosis", result)
+        self.assertIn("recommended_actions", result)
+        self.assertTrue(any(action["action"] == "increase_lighting" for action in result["recommended_actions"]))
 
     def test_white_clipped_png_is_flagged(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -59,6 +63,7 @@ class PreviewReviewTests(unittest.TestCase):
         self.assertTrue(result["likely_clipped"])
         self.assertFalse(result["ok"])
         self.assertIn("mostly near-white", result["issues"])
+        self.assertTrue(any(action["action"] == "reduce_exposure" for action in result["recommended_actions"]))
 
     def test_normal_contrast_png_passes_basic_qa(self) -> None:
         rows = [
@@ -77,6 +82,36 @@ class PreviewReviewTests(unittest.TestCase):
         self.assertGreater(result["edge_density"], 0.0)
         self.assertFalse(result["likely_blank"])
         self.assertFalse(result["likely_clipped"])
+        self.assertEqual(result["severity"], "ok")
+        self.assertEqual(result["recommended_actions"], [])
+
+    def test_low_detail_preview_suggests_tighter_camera(self) -> None:
+        rows = [[(40, 40, 40)] * 12 for _ in range(12)]
+        rows[5][5] = (140, 140, 140)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tiny.png"
+            write_rgb_png(path, rows)
+
+            result = review_preview(path)
+
+        self.assertFalse(result["ok"])
+        self.assertIn("likely object too small", result["issues"])
+        self.assertTrue(any(action["action"] == "tighten_camera" for action in result["recommended_actions"]))
+
+    def test_camera_and_lighting_fix_helpers_return_actionable_patches(self) -> None:
+        review = {
+            "issues": ["likely object too small", "mostly near-black"],
+            "mean_brightness": 2.0,
+            "edge_density": 0.2,
+        }
+        bounds = {"center": [0, 0, 0], "radius": 2.0}
+
+        camera = suggest_camera_fix(review, bounds)
+        lighting = suggest_lighting_fix(review)
+
+        self.assertEqual(camera["patch"]["camera"]["target"], [0, 0, 0])
+        self.assertLess(camera["patch"]["camera"]["fov"], 45)
+        self.assertEqual(lighting["patch"]["lighting"]["preset"], "brighter_studio")
 
 
 if __name__ == "__main__":

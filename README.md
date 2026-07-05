@@ -208,7 +208,9 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_set_lighting(preset)` | Queue lighting preset. |
 | `octane_start_render(samples, width, height)` | Queue render restart and resolution update. |
 | `octane_save_preview(path, width, height)` | Queue preview save. |
-| `octane_review_preview(path)` | Review saved PNG previews for blank, clipped, or low-contrast output. |
+| `octane_review_preview(path)` | Review saved PNG previews with metrics, diagnosis, likely causes, and recommended actions. |
+| `octane_suggest_camera_fix(preview_review, asset_bounds)` | Suggest a camera patch from preview QA and asset bounds. |
+| `octane_suggest_lighting_fix(preview_review)` | Suggest a lighting/render patch from preview QA. |
 
 ### Higher-level visual tools
 
