@@ -1,0 +1,145 @@
+{
+  "slug": "wave-interference-field",
+  "title": "Wave Interference Field",
+  "category": "Math/physics",
+  "purpose": "Show constructive and destructive interference from two point sources as a height field with source markers.",
+  "prompt": "Explain two-source wave interference as a rendered surface with highlighted emitters.",
+  "camera": {
+    "position": [
+      4.6,
+      -5.6,
+      3.6
+    ],
+    "target": [
+      0,
+      0,
+      0.0
+    ],
+    "fov": 42
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "cyan": {
+      "kind": "glossy",
+      "color": [
+        0.0706,
+        0.7725,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "gold": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.18
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/wave-interference-field/scene.obj",
+        "format": "obj",
+        "name": "wave-interference-field"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cyan",
+        "kind": "glossy",
+        "color": [
+          0.0706,
+          0.7725,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "gold",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7098,
+          0.2392
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.6,
+          -5.6,
+          3.6
+        ],
+        "target": [
+          0,
+          0,
+          0.0
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/wave-interference-field/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "Some teaching assets use OBJ line primitives for paths/arrows. If the Octane OBJ importer drops lines, convert those paths to thin cylinders/tubes before final native rendering.",
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "If native Octane output differs from preview.png, record the lesson in docs/recipe-book.md."
+  ]
+}

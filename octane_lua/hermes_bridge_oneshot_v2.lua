@@ -198,7 +198,7 @@ local function write_status(state, extra)
         "  \"status\": \"" .. json_escape(state or "ok") .. "\",\n" ..
         "  \"updated_at\": \"" .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. "\",\n" ..
         "  \"octane_available\": " .. tostring(octane ~= nil) .. ",\n" ..
-        "  \"octane_node_available\": " .. tostring(octane and octane.node ~= nil) .. ",\n" ..
+        "  \"octane_node_available\": " .. tostring(octane ~= nil and octane.node ~= nil) .. ",\n" ..
         "  \"root\": \"" .. json_escape(ROOT) .. "\""
     if extra then text = text .. ",\n  \"last_event\": \"" .. json_escape(extra) .. "\"" end
     text = text .. "\n}\n"
@@ -398,6 +398,29 @@ local function get_or_create_render_target()
     return node, nil
 end
 
+local function ensure_connected_node(node, pin, type_id, name, position)
+    if not node or not pin or not type_id then return nil end
+    local existing = connected_node(node, pin)
+    if existing then return existing end
+    local item = find_item_by_name(name)
+    if not item then item = create_node(type_id, name, position) end
+    if item then connect_to(node, pin, item) end
+    return item
+end
+
+local function ensure_render_target_defaults(rt)
+    if not rt then return false end
+    ensure_connected_node(rt, octane.P_KERNEL or "kernel", octane.NT_KERN_DIRECTLIGHTING, "Hermes Direct Lighting Kernel", {520, 160})
+    ensure_connected_node(rt, octane.P_ANIMATION or "animation", octane.NT_ANIMATION_SETTINGS, "Hermes Animation Settings", {520, 220})
+    ensure_connected_node(rt, octane.P_RENDER_LAYER or "renderLayer", octane.NT_RENDER_LAYER, "Hermes Render Layer", {520, 360})
+    ensure_connected_node(rt, octane.P_RENDER_PASSES or "renderPasses", octane.NT_RENDER_AOV_GROUP, "Hermes Render AOV Group", {520, 420})
+    ensure_connected_node(rt, octane.P_OUTPUT_AOVS or "compositeAovs", octane.NT_OUTPUT_AOV_GROUP, "Hermes Output AOV Group", {520, 480})
+    ensure_connected_node(rt, octane.P_IMAGER or "imager", octane.NT_IMAGER_CAMERA, "Hermes Imager", {520, 540})
+    ensure_connected_node(rt, octane.P_POST_PROCESSING or "postproc", octane.NT_POSTPROCESSING, "Hermes Post Processing", {520, 600})
+    ensure_film_settings(rt)
+    return true
+end
+
 local function activate_render_target(rt)
     if not rt then return false end
     local activated = false
@@ -423,10 +446,17 @@ local function request_render_restart(samples, width, height)
     if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
     local rt, rt_err = get_or_create_render_target()
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
+    ensure_render_target_defaults(rt)
     activate_render_target(rt)
     set_render_resolution(rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
     samples = samples or 64
-    local ok, result = try_render_call("restart()", function() return octane.render.restart() end)
+    -- On a clean Octane File > New scene, restart() alone may no-op until the
+    -- render API has been primed with a renderTargetNode. This call can raise
+    -- "render engine failure" after binding the target; the following restart
+    -- then starts the viewport renderer and makes saveImage available.
+    local ok, result = try_render_call("start{renderTargetNode=rt,maxRenderTime=2}", function() return octane.render.start{ renderTargetNode=rt, maxRenderTime=2 } end)
+    if ok then return true, "render start completed" end
+    ok, result = try_render_call("restart()", function() return octane.render.restart() end)
     if ok then return true, "render restart requested" end
     ok, result = try_render_call("start{renderTargetNode=rt,maxSamples=samples}", function() return octane.render.start{ renderTargetNode=rt, maxSamples=samples } end)
     if ok then return true, "render start requested" end
@@ -437,6 +467,49 @@ local function request_render_restart(samples, width, height)
     ok, result = try_render_call("continue()", function() return octane.render.continue() end)
     if ok then return true, "render continue requested" end
     return false, "render refresh failed; see bridge.log for attempted signatures"
+end
+
+local function render_stat_number(stats, key)
+    if type(stats) ~= "table" then return 0 end
+    return tonumber(stats[key]) or 0
+end
+
+local function sleep_seconds(seconds)
+    seconds = tonumber(seconds) or 0.25
+    if octane and octane.sleep then
+        local ok = pcall(function() octane.sleep(seconds) end)
+        if ok then return end
+    end
+    os.execute("sleep " .. tostring(seconds))
+end
+
+local function wait_for_render_ready(min_samples, timeout_seconds)
+    min_samples = tonumber(min_samples) or 16
+    timeout_seconds = tonumber(timeout_seconds) or 10
+    if not (octane and octane.render and octane.render.getRenderResultStatistics) then
+        return true, "render statistics unavailable; continuing"
+    end
+    local last = "no statistics yet"
+    local attempts = math.max(1, math.floor((timeout_seconds / 0.5) + 0.5))
+    for _ = 1, attempts do
+        local ok, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
+        if ok and type(stats) == "table" then
+            local beauty = render_stat_number(stats, "beautySamplesPerPixel")
+            local info = render_stat_number(stats, "infoSamplesPerPixel")
+            local pending = stats.hasPendingUpdates == true
+            local state = tostring(stats.renderState)
+            last = "beauty=" .. tostring(beauty) .. " info=" .. tostring(info) .. " pending=" .. tostring(pending) .. " state=" .. state
+            if (beauty >= min_samples or info >= min_samples) and not pending then
+                append_log("render ready for preview: " .. last)
+                return true, last
+            end
+        else
+            last = tostring(stats)
+        end
+        sleep_seconds(0.5)
+    end
+    append_log("render preview readiness timeout: " .. tostring(last))
+    return false, last
 end
 
 local function latest_imported_geometry_fallback()
@@ -567,6 +640,12 @@ local function handle_save_preview(cmd)
     set_render_resolution(rt, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
     os.execute("mkdir -p '" .. dirname(path):gsub("'", "'\\''") .. "'")
 
+    local refreshed, refresh_msg = request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
+    append_log("pre-save render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+    if not refreshed then return false, tostring(refresh_msg) end
+    local ready, ready_msg = wait_for_render_ready(cmd.min_samples or 16, cmd.timeout_seconds or 10)
+    append_log("pre-save render readiness ok=" .. tostring(ready) .. " msg=" .. tostring(ready_msg))
+
     local candidates = {}
     if octane.imageSaveType then
         if octane.imageSaveType.PNG8 ~= nil then table.insert(candidates, {"imageSaveType.PNG8", octane.imageSaveType.PNG8}) end
@@ -608,9 +687,6 @@ local function handle_save_preview(cmd)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
         ok, err = attempt("saveRenderPass beauty,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
-        if ok then return true, "preview saved " .. tostring(path) end
-        last_err = err
-        ok, err = attempt("saveRenderPass beauty,path,props " .. cname, function() return octane.render.saveRenderPass(0, path, { saveType=cvalue, type=cvalue }) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
     end

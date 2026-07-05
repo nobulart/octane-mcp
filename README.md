@@ -28,6 +28,11 @@ The recipe library starts with copyable visual targets, not just prose. The head
 | [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) | [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
 | Damped radial surface for mathematical explanation. | Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
 
+| Wave interference | Vision feedback loop |
+| --- | --- |
+| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) |
+| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. |
+
 ## What this is for
 
 Use this project when an agent needs to turn an explanation into a rendered scene:
@@ -207,7 +212,7 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_set_camera(position, target, fov)` | Queue camera placement. |
 | `octane_set_lighting(preset)` | Queue lighting preset. |
 | `octane_start_render(samples, width, height)` | Queue render restart and resolution update. |
-| `octane_save_preview(path, width, height)` | Queue preview save. |
+| `octane_save_preview(path, width, height, samples, min_samples, timeout_seconds)` | Queue render-ready PNG preview save. |
 | `octane_review_preview(path)` | Review saved PNG previews with metrics, diagnosis, likely causes, and recommended actions. |
 | `octane_suggest_camera_fix(preview_review, asset_bounds)` | Suggest a camera patch from preview QA and asset bounds. |
 | `octane_suggest_lighting_fix(preview_review)` | Suggest a lighting/render patch from preview QA. |
@@ -238,7 +243,7 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 1. Call `octane_create_test_cube(name="agent_cube", size=1.0)`.
 2. In Octane X, run `hermes_bridge_oneshot_v2.lua`.
 3. Call `octane_start_render(samples=128)` if needed.
-4. Call `octane_save_preview()`.
+4. Call `octane_save_preview()`; the bridge restarts rendering, waits for ready samples, then saves PNG.
 5. Call `octane_review_preview()` and verify `ok=true` before claiming success.
 
 ### Card 3: Visualize data quickly

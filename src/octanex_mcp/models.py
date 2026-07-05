@@ -192,6 +192,9 @@ class SavePreviewPayload(PayloadValidator):
         self.optional_safe_path(payload, "path", errors)
         self.optional_number_range(payload, "width", 1, MAX_RENDER_DIMENSION, errors)
         self.optional_number_range(payload, "height", 1, MAX_RENDER_DIMENSION, errors)
+        self.optional_number_range(payload, "samples", 1, 1_000_000, errors)
+        self.optional_number_range(payload, "min_samples", 0, 1_000_000, errors)
+        self.optional_number_range(payload, "timeout_seconds", 0, 600, errors)
 
 
 class SceneSummaryPayload(PayloadValidator):
@@ -279,7 +282,7 @@ def command_schema() -> dict[str, Any]:
             "set_lighting": {"fields": {"preset": {"type": "string", "required": False}}},
             "start_render": {"fields": {"samples": {"type": "number", "min": 1, "max": 1_000_000}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}}},
             "pause_render": {"fields": {}},
-            "save_preview": {"fields": {"path": {"type": "safe path", "required": False}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}}},
+            "save_preview": {"fields": {"path": {"type": "safe path", "required": False}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "samples": {"type": "number", "min": 1, "max": 1_000_000}, "min_samples": {"type": "number", "min": 0, "max": 1_000_000}, "timeout_seconds": {"type": "number", "min": 0, "max": 600}}},
             "save_scene": {"fields": {"path": {"type": "safe path", "required": False}}},
             "scene_summary": {"fields": {}},
             "build_concept": {"fields": {"prompt": {"type": "string", "required": True}}},

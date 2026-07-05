@@ -1,0 +1,14 @@
+# Minimal Hermes profile overlay/snippet for OctaneX MCP.
+# Copy into ~/.hermes/profiles/octanex/config.yaml or merge the mcp_servers
+# block into an existing profile. Replace the repo path before use.
+
+mcp_servers:
+  octanex:
+    command: "uv"
+    args:
+      - "run"
+      - "--project"
+      - "/ABSOLUTE/PATH/TO/octanex-mcp"
+      - "octanex-mcp"
+    timeout: 180
+    connect_timeout: 30

@@ -36,11 +36,27 @@ class LuaBridgeParityTests(unittest.TestCase):
             "handle_set_camera",
             "handle_set_lighting",
             "handle_start_render",
+            "render_stat_number",
+            "sleep_seconds",
+            "wait_for_render_ready",
+            "ensure_connected_node",
+            "ensure_render_target_defaults",
             "handle_save_preview",
             "handle_command",
         ]:
             with self.subTest(function=name):
                 self.assertEqual(lua_function_body(ONESHOT, name), lua_function_body(PERSISTENT, name))
+
+    def test_save_preview_waits_for_render_readiness_before_saving(self) -> None:
+        for path in [ONESHOT, PERSISTENT]:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                save_body = lua_function_body(path, "handle_save_preview")
+                self.assertIn("request_render_restart(cmd.samples or 64", save_body)
+                self.assertIn("wait_for_render_ready(cmd.min_samples or 16", save_body)
+                self.assertIn("pre-save render readiness ok=", save_body)
+                self.assertIn("octane.render.saveImage(path, cvalue)", save_body)
+                self.assertNotIn("saveRenderPass(0, path, {", save_body)
 
     def test_both_bridges_use_phase3_lifecycle_dirs_and_results(self) -> None:
         for path in [ONESHOT, PERSISTENT]:
@@ -55,7 +71,13 @@ class LuaBridgeParityTests(unittest.TestCase):
         for path in [ONESHOT, PERSISTENT]:
             with self.subTest(path=path.name):
                 text = path.read_text(encoding="utf-8")
-                self.assertIn('local JSON = dofile(BRIDGE_DIR .. "lib/json.lua")', text)
+                # Sandboxed macOS requires inlined JSON decoders in bridge scripts.
+                # Both patterns are valid: inline `local JSON = {}` or `dofile`-based.
+                has_json_loader = (
+                    'local JSON = dofile(BRIDGE_DIR .. "lib/json.lua")' in text
+                    or "local JSON = {}" in text
+                )
+                self.assertTrue(has_json_loader, f"{path.name} missing JSON decoder (expect dofile or inline)")
                 self.assertIn("local decoded, err = JSON.decode(raw)", text)
                 self.assertIn("payload = payload", text)
                 self.assertIn('"invalid JSON: " .. tostring(parse_err)', text)

@@ -384,7 +384,43 @@ def avatar_recipe() -> Recipe:
     return Recipe("avatar-guide", "Hermes Avatar Guide", "Agent communication", "Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually.", "Render Hermes as a non-human guide pointing at an object or idea.", ["octane_show_avatar", "octane_import_geometry"], ["Call octane_show_avatar for the standard avatar.", "Add target geometry and pointer/callout blocks.", "Use color states: cyan helpful, gold insight, amber warning, red error."], ["Add emotion-state variants.", "Use pointer geometry to highlight data points or errors."], mesh, {"base": PALETTE["base"], "navy": PALETTE["navy"], "cyan": PALETTE["cyan"], "gold": PALETTE["gold"], "violet": PALETTE["violet"]}, {"position": [0, -4.5, 2.0], "target": [0, 0, 1.2], "fov": 38})
 
 
-RECIPES = [bars_recipe(), surface_recipe(), vector_field_recipe(), network_recipe(), geospatial_recipe(), orbit_recipe(), architecture_recipe(), avatar_recipe()]
+def wave_interference_recipe() -> Recipe:
+    mesh = Mesh()
+    rows = []
+    sources = [(-1.35, -0.35), (1.35, 0.45)]
+    for iy in range(36):
+        y = -3 + 6 * iy / 35
+        row = []
+        for ix in range(36):
+            x = -3 + 6 * ix / 35
+            z = 0.0
+            for sx, sy in sources:
+                r = math.hypot(x - sx, y - sy)
+                z += math.cos(r * 4.2) / (1.0 + r * 0.7)
+            row.append((x, y, z * 0.55))
+        rows.append(row)
+    mesh.add_box((0, 0, -0.42), (6.8, 6.8, 0.05), "base")
+    mesh.add_surface(rows, "cyan")
+    for sx, sy in sources:
+        mesh.add_cylinder((sx, sy, 0.35), 0.15, 0.7, "gold", 24)
+    return Recipe("wave-interference-field", "Wave Interference Field", "Math/physics", "Show constructive and destructive interference from two point sources as a height field with source markers.", "Explain two-source wave interference as a rendered surface with highlighted emitters.", ["octane_visualize_surface", "octane_import_geometry", "octane_save_preview"], ["Generate a height field from two damped radial cosine sources.", "Import the scene and use the camera metadata from scene.json.", "Save and review a PNG preview; the ripple extrema should remain visible without clipping."], ["Animate phase offsets as frame sequences.", "Map amplitude sign to separate materials once per-face material assignment is richer."], mesh, {"base": PALETTE["base"], "cyan": PALETTE["cyan"], "gold": PALETTE["gold"]}, {"position": [4.6, -5.6, 3.6], "target": [0, 0, 0.0], "fov": 42})
+
+
+def vision_feedback_loop_recipe() -> Recipe:
+    mesh = Mesh()
+    xs = [-3.2, -1.05, 1.05, 3.2]
+    mats = ["cyan", "gold", "violet", "green"]
+    for i, x in enumerate(xs):
+        mesh.add_box((x, 0, 0.48), (1.0, 0.72, 0.82), mats[i])
+        mesh.add_box((x, 0, 1.02), (1.08, 0.8, 0.08), "white")
+    for a, b in zip(xs, xs[1:]):
+        mesh.add_box(((a + b) / 2, 0, 0.66), (abs(b - a) - 1.1, 0.10, 0.10), "white")
+    mesh.add_polyline([(3.2, 0.55, 0.95), (1.05, 1.35, 1.2), (-1.05, 1.35, 1.2), (-3.2, 0.55, 0.95)], "magenta")
+    mesh.add_box((0, 0, -0.06), (7.7, 2.5, 0.06), "base")
+    return Recipe("vision-feedback-loop", "Render/Vision Feedback Loop", "Agent workflow", "Represent the closed loop where an agent queues geometry, Octane saves a PNG, local vision reviews it, and the next scene patch is chosen.", "Show the OctaneX MCP visual feedback loop as spatial process blocks.", ["octane_build_scene", "octane_save_preview", "octane_review_preview", "octane_suggest_camera_fix"], ["Build or import scene geometry with the MCP tools.", "Run the bridge and call octane_save_preview so Octane writes a PNG.", "Call octane_review_preview and feed warnings into the next camera/material patch."], ["Use block color to show pass/fail state.", "Animate the magenta return path as a correction pulse in future frame-sequence examples."], mesh, {"base": PALETTE["base"], "cyan": PALETTE["cyan"], "gold": PALETTE["gold"], "violet": PALETTE["violet"], "green": PALETTE["green"], "white": PALETTE["white"], "magenta": PALETTE["magenta"]}, {"position": [3.6, -5.8, 3.0], "target": [0, 0, 0.65], "fov": 38})
+
+
+RECIPES = [bars_recipe(), surface_recipe(), vector_field_recipe(), network_recipe(), geospatial_recipe(), orbit_recipe(), architecture_recipe(), avatar_recipe(), wave_interference_recipe(), vision_feedback_loop_recipe()]
 
 
 def command_sequence(recipe: Recipe) -> list[dict[str, object]]:
@@ -527,6 +563,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
+- **Feedback loops:** render/vision review loop and corrective camera/material iteration.
 - **Photoreal:** product-studio scene with PBR material intent and target render.
 
 ## Animation pattern

@@ -137,9 +137,23 @@ def build_mcp() -> Any:
         return _json(write_command("start_render", {"samples": samples, "width": width, "height": height}))
 
     @mcp.tool()
-    def octane_save_preview(path: Optional[str] = None, width: int = 1280, height: int = 1280) -> str:
-        """Queue a preview image save command."""
-        return _json(write_command("save_preview", {"path": path, "width": width, "height": height}))
+    def octane_save_preview(
+        path: Optional[str] = None,
+        width: int = 1280,
+        height: int = 1280,
+        samples: int = 64,
+        min_samples: int = 16,
+        timeout_seconds: int = 10,
+    ) -> str:
+        """Queue a render-ready preview image save command."""
+        return _json(write_command("save_preview", {
+            "path": path,
+            "width": width,
+            "height": height,
+            "samples": samples,
+            "min_samples": min_samples,
+            "timeout_seconds": timeout_seconds,
+        }))
 
     @mcp.tool()
     def octane_review_preview(path: Optional[str] = None) -> str:

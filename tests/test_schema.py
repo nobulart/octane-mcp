@@ -75,6 +75,20 @@ class CommandSchemaTests(unittest.TestCase):
         self.assertIn("payload.width.out_of_range", codes)
         self.assertIn("payload.height.out_of_range", codes)
 
+    def test_save_preview_accepts_render_readiness_controls(self) -> None:
+        command = {
+            "schema_version": SCHEMA_VERSION,
+            "id": "cmd-preview-ready",
+            "op": "save_preview",
+            "payload": {"path": "renders/preview.png", "width": 960, "height": 960, "samples": 64, "min_samples": 16, "timeout_seconds": 10},
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+
+        result = validate_command(command)
+
+        self.assertTrue(result.ok, result.errors)
+
     def test_validate_command_rejects_unsafe_paths_colors_and_camera_ranges(self) -> None:
         commands = [
             ("import_geometry", {"path": "../escape.obj"}, "payload.path.unsafe"),
@@ -111,6 +125,8 @@ class CommandSchemaTests(unittest.TestCase):
         self.assertEqual(set(PAYLOAD_VALIDATORS), ALLOWED_OPS)
         self.assertIn("start_render", schema["operations"])
         self.assertEqual(schema["operations"]["start_render"]["fields"]["samples"]["min"], 1)
+        self.assertEqual(schema["operations"]["save_preview"]["fields"]["min_samples"]["min"], 0)
+        self.assertEqual(schema["operations"]["save_preview"]["fields"]["timeout_seconds"]["max"], 600)
         self.assertEqual(schema["operations"]["set_camera"]["fields"]["fov"]["max"], 120)
         self.assertIn("import_geometry", schema["examples"])
 

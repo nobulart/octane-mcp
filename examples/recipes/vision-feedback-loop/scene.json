@@ -1,0 +1,233 @@
+{
+  "slug": "vision-feedback-loop",
+  "title": "Render/Vision Feedback Loop",
+  "category": "Agent workflow",
+  "purpose": "Represent the closed loop where an agent queues geometry, Octane saves a PNG, local vision reviews it, and the next scene patch is chosen.",
+  "prompt": "Show the OctaneX MCP visual feedback loop as spatial process blocks.",
+  "camera": {
+    "position": [
+      3.6,
+      -5.8,
+      3.0
+    ],
+    "target": [
+      0,
+      0,
+      0.65
+    ],
+    "fov": 38
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "cyan": {
+      "kind": "glossy",
+      "color": [
+        0.0706,
+        0.7725,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "gold": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.18
+    },
+    "violet": {
+      "kind": "glossy",
+      "color": [
+        0.651,
+        0.4275,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "green": {
+      "kind": "glossy",
+      "color": [
+        0.2941,
+        0.8627,
+        0.549
+      ],
+      "roughness": 0.25
+    },
+    "white": {
+      "kind": "glossy",
+      "color": [
+        0.902,
+        0.9333,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "magenta": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.3098,
+        0.7451
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/vision-feedback-loop/scene.obj",
+        "format": "obj",
+        "name": "vision-feedback-loop"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cyan",
+        "kind": "glossy",
+        "color": [
+          0.0706,
+          0.7725,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "gold",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7098,
+          0.2392
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "violet",
+        "kind": "glossy",
+        "color": [
+          0.651,
+          0.4275,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "green",
+        "kind": "glossy",
+        "color": [
+          0.2941,
+          0.8627,
+          0.549
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "white",
+        "kind": "glossy",
+        "color": [
+          0.902,
+          0.9333,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "magenta",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.3098,
+          0.7451
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          3.6,
+          -5.8,
+          3.0
+        ],
+        "target": [
+          0,
+          0,
+          0.65
+        ],
+        "fov": 38
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/vision-feedback-loop/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "Some teaching assets use OBJ line primitives for paths/arrows. If the Octane OBJ importer drops lines, convert those paths to thin cylinders/tubes before final native rendering.",
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "If native Octane output differs from preview.png, record the lesson in docs/recipe-book.md."
+  ]
+}

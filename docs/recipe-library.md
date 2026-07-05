@@ -24,9 +24,9 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Orbital Trajectories](../examples/recipes/physics-orbits/README.md) | Physics/simulation | `physics-orbits` | Show several trajectories around a central body to explain orbital state, phase, or simulation snapshots. |
 | [MCP Architecture Flow](../examples/recipes/architecture-flow/README.md) | Architecture/explanation | `architecture-flow` | Turn an architecture diagram into geometry: user, agent, queue, and Octane as spatial blocks connected by flow lines. |
 | [Hermes Avatar Guide](../examples/recipes/avatar-guide/README.md) | Agent communication | `avatar-guide` | Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually. |
+| [Wave Interference Field](../examples/recipes/wave-interference-field/README.md) | Math/physics | `wave-interference-field` | Show constructive and destructive interference from two point sources as a height field with source markers. |
+| [Render/Vision Feedback Loop](../examples/recipes/vision-feedback-loop/README.md) | Agent workflow | `vision-feedback-loop` | Represent the closed loop where an agent queues geometry, Octane saves a PNG, local vision reviews it, and the next scene patch is chosen. |
 | [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
-| [Photoreal Earth in Space](../examples/recipes/photoreal-earth-space/README.md) | Photoreal/PBR space rendering | `photoreal-earth-space` | Set a quality target for planet rendering with oceans, continents, clouds, atmospheric rim glow, and space lighting. |
-| [Saturn and Moons in Space](../examples/recipes/saturn-moons-space/README.md) | Photoreal/PBR space rendering | `saturn-moons-space` | Set a quality target for Saturn rendering with oblate gas bands, layered rings, Cassini division, moons, and space lighting. |
 
 ## Recommended agent loop
 
@@ -46,7 +46,8 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
-- **Photoreal:** product-studio, Earth-in-space, and Saturn/moons scenes with PBR material intent and target renders.
+- **Feedback loops:** render/vision review loop and corrective camera/material iteration.
+- **Photoreal:** product-studio scene with PBR material intent and target render.
 
 ## Animation pattern
 
