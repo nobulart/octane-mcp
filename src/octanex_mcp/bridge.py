@@ -154,7 +154,7 @@ def write_command(op: str, payload: Optional[Dict[str, Any]] = None, workspace: 
         "path": str(final_path),
         "inbox_path": str(inbox_path),
         "schema_version": SCHEMA_VERSION,
-        "validation": {"ok": validation.ok, "errors": validation.errors, "warnings": validation.warnings},
+        "validation": {"ok": validation.ok, "errors": validation.errors, "warnings": validation.warnings, "error_details": validation.error_details},
         "status": read_status(workspace),
     }
 

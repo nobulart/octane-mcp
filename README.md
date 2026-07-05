@@ -48,7 +48,7 @@ Verified or implemented:
 - Hermes MCP config pattern for `mcp_servers.octanex`.
 - Octane X sandbox/container workspace path.
 - Ordered JSON command queue plus `inbox.json` compatibility fallback.
-- Versioned command schema, queue validation, `processing/` state, and per-command result JSON files.
+- Versioned typed command schema, structured validation error codes, queue validation, `processing/` state, and per-command result JSON files.
 - One-shot Lua bridge that drains `queue/*.json` and exits.
 - Persistent Lua bridge window with manual `Process next` / `Drain queue` controls and timer fallback notes.
 - Parity tests keep one-shot and persistent scene-command handlers semantically aligned; they should differ only in scheduling/UI behavior.
@@ -190,6 +190,7 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | --- | --- |
 | `octane_status()` | App existence, queue, processed/failed files, bridge status. |
 | `octane_validate_command(command)` | Validate one JSON command envelope. |
+| `octane_schema()` | Return supported command operations, limits, path rules, and examples. |
 | `octane_validate_queue()` | Validate queued command files in the workspace. |
 | `octane_recipe_book(limit_chars=12000)` | Read local field notes for successes, failures, and pitfalls. |
 | `octane_record_recipe(title, outcome, context, steps, signals, follow_ups)` | Append a lesson to `docs/recipe-book.md`. |

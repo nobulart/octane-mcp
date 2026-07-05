@@ -17,6 +17,8 @@ local DEFAULT_PREVIEW = ROOT .. "/renders/preview.png"
 local DEFAULT_WIDTH = 1280
 local DEFAULT_HEIGHT = 1280
 local LISTING = ROOT .. "/queue_listing.txt"
+local BRIDGE_DIR = (debug and debug.getinfo and debug.getinfo(1, "S").source:match("@?(.*[/\\])")) or ""
+local JSON = dofile(BRIDGE_DIR .. "lib/json.lua")
 
 local function append_log(message)
     local f = io.open(LOG, "a")
@@ -109,42 +111,28 @@ local function write_result(cmd, success, message, source_path, command_path, du
     return path
 end
 
-local function extract_string(raw, key)
-    return raw:match('"' .. key .. '"%s*:%s*"([^"]*)"')
-end
-
-local function extract_number(raw, key)
-    local value = raw:match('"' .. key .. '"%s*:%s*([%-%d%.]+)')
-    if value then return tonumber(value) end
-    return nil
-end
-
-local function extract_array(raw, key)
-    local body = raw:match('"' .. key .. '"%s*:%s*%[([^%]]+)%]')
-    if not body then return nil end
-    local values = {}
-    for number in body:gmatch('[%-%d%.]+') do table.insert(values, tonumber(number)) end
-    return values
-end
-
 local function parse_command(raw)
+    local decoded, err = JSON.decode(raw)
+    if not decoded then return nil, err end
+    local payload = decoded.payload or {}
     return {
-        id = extract_string(raw, "id") or "unknown",
-        op = extract_string(raw, "op") or "unknown",
-        path = extract_string(raw, "path"),
-        name = extract_string(raw, "name"),
-        kind = extract_string(raw, "kind"),
-        preset = extract_string(raw, "preset"),
-        message = extract_string(raw, "message"),
-        object_name = extract_string(raw, "object_name"),
-        material_name = extract_string(raw, "material_name"),
-        fov = extract_number(raw, "fov"),
-        samples = extract_number(raw, "samples"),
-        width = extract_number(raw, "width"),
-        height = extract_number(raw, "height"),
-        color = extract_array(raw, "color"),
-        position = extract_array(raw, "position"),
-        target = extract_array(raw, "target"),
+        id = decoded.id or "unknown",
+        op = decoded.op or "unknown",
+        payload = payload,
+        path = payload.path,
+        name = payload.name,
+        kind = payload.kind,
+        preset = payload.preset,
+        message = payload.message,
+        object_name = payload.object_name,
+        material_name = payload.material_name,
+        fov = payload.fov,
+        samples = payload.samples,
+        width = payload.width,
+        height = payload.height,
+        color = payload.color,
+        position = payload.position,
+        target = payload.target,
     }
 end
 
@@ -541,7 +529,8 @@ local function list_queue_files()
 end
 
 local function process_raw_command(raw, source_path, source_label)
-    local cmd = parse_command(raw)
+    local cmd, parse_err = parse_command(raw)
+    if not cmd then cmd = {id = basename(source_path):gsub("%.json$", ""), op = "invalid_json"} end
     local started = os.clock()
     local active_path = source_path
     if source_path ~= INBOX then
@@ -549,10 +538,15 @@ local function process_raw_command(raw, source_path, source_label)
         local moved_to_processing = os.rename(source_path, processing_path)
         if moved_to_processing then active_path = processing_path end
     end
-    local ok, handled, message = pcall(function()
-        local success, msg = handle_command(cmd)
-        return success, msg
-    end)
+    local ok, handled, message
+    if parse_err then
+        ok, handled, message = true, false, "invalid JSON: " .. tostring(parse_err)
+    else
+        ok, handled, message = pcall(function()
+            local success, msg = handle_command(cmd)
+            return success, msg
+        end)
+    end
     local dst_dir = (ok and handled) and PROCESSED or FAILED
     local dst = dst_dir .. "/" .. tostring(cmd.id) .. ".json"
     local moved, move_err = os.rename(active_path, dst)

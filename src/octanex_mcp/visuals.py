@@ -143,6 +143,44 @@ class ObjBuilder:
                 material=material,
             )
 
+    def add_cylinder(
+        self,
+        *,
+        center: tuple[float, float, float],
+        radius: float,
+        height: float,
+        segments: int = 32,
+        material: str = "default",
+    ) -> None:
+        cx, cy, cz = center
+        radius = max(float(radius), 1e-4)
+        half_h = max(float(height), 1e-4) / 2.0
+        segments = max(8, int(segments))
+        start = self.vertex_count + 1
+        self.lines.append(f"usemtl {material}")
+        points: list[tuple[float, float, float]] = []
+        for z in (cz - half_h, cz + half_h):
+            for i in range(segments):
+                angle = 2.0 * math.pi * i / segments
+                point = (cx + radius * math.cos(angle), cy + radius * math.sin(angle), z)
+                points.append(point)
+                self.lines.append(f"v {point[0]:.6f} {point[1]:.6f} {point[2]:.6f}")
+        bottom_center = start + segments * 2
+        top_center = bottom_center + 1
+        points.extend([(cx, cy, cz - half_h), (cx, cy, cz + half_h)])
+        self.lines.append(f"v {cx:.6f} {cy:.6f} {cz - half_h:.6f}")
+        self.lines.append(f"v {cx:.6f} {cy:.6f} {cz + half_h:.6f}")
+        self._record_points(points)
+        for i in range(segments):
+            a = start + i
+            b = start + ((i + 1) % segments)
+            c = start + segments + ((i + 1) % segments)
+            d = start + segments + i
+            self.lines.append(f"f {a} {b} {c} {d}")
+            self.lines.append(f"f {bottom_center} {b} {a}")
+            self.lines.append(f"f {top_center} {d} {c}")
+        self.vertex_count += segments * 2 + 2
+
 
 def _round6(value: float) -> float:
     rounded = round(float(value), 6)
@@ -365,6 +403,45 @@ def create_avatar_face_obj(
     path = workspace.assets_dir / f"{safe}.obj"
     path.write_text(b.text())
     return {"path": str(path), "name": safe, "kind": "avatar_face", "bounds": b.bounds()}
+
+
+def _vector3(value: Any, default: tuple[float, float, float]) -> tuple[float, float, float]:
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        return default
+    return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def create_primitive_obj(spec: dict[str, Any], *, scene_id: str = "scene", workspace: Workspace = Workspace()) -> dict[str, Any]:
+    """Compile a scene manifest primitive object spec to an OBJ asset."""
+    workspace.ensure()
+    kind = str(spec.get("type") or "box")
+    object_id = str(spec.get("id") or spec.get("name") or kind)
+    safe = _safe_name(f"{scene_id}_{object_id}")
+    transform = spec.get("transform") if isinstance(spec.get("transform"), dict) else {}
+    translate = _vector3(transform.get("translate"), (0.0, 0.0, 0.0))
+    scale = _vector3(transform.get("scale"), (1.0, 1.0, 1.0))
+    material = str(spec.get("material") or "default")
+    b = ObjBuilder(safe)
+
+    if kind == "box":
+        size = _vector3(spec.get("size"), (1.0, 1.0, 1.0))
+        b.add_box(center=translate, size=(size[0] * scale[0], size[1] * scale[1], size[2] * scale[2]), material=material)
+    elif kind == "sphere":
+        radius = float(spec.get("radius", 1.0))
+        b.add_ellipsoid(center=translate, radii=(radius * scale[0], radius * scale[1], radius * scale[2]), material=material)
+    elif kind == "ellipsoid":
+        radii = _vector3(spec.get("radii"), (1.0, 0.6, 0.4))
+        b.add_ellipsoid(center=translate, radii=(radii[0] * scale[0], radii[1] * scale[1], radii[2] * scale[2]), material=material)
+    elif kind == "cylinder":
+        radius = float(spec.get("radius", 0.5)) * max(abs(scale[0]), abs(scale[1]))
+        height = float(spec.get("height", 1.0)) * abs(scale[2])
+        b.add_cylinder(center=translate, radius=radius, height=height, material=material)
+    else:
+        raise ValueError(f"unsupported primitive type {kind!r}")
+
+    path = workspace.assets_dir / f"{safe}.obj"
+    path.write_text(b.text(), encoding="utf-8")
+    return {"path": str(path), "name": safe, "kind": kind, "format": "obj", "bounds": b.bounds()}
 
 
 def scene_commands_for_asset(asset: dict[str, Any], *, material_name: str, color: list[float]) -> list[dict[str, Any]]:

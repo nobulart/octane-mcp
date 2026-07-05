@@ -17,8 +17,8 @@ from .bridge import (
 )
 from .config import doctor, initialize_environment, resolve_config
 from .review import review_preview
-from .schema import validate_command, validate_queue
-from .scene import queue_scene_plan, save_scene_manifest
+from .schema import command_schema, validate_command, validate_queue
+from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 
 try:
@@ -70,7 +70,12 @@ def build_mcp() -> Any:
     def octane_validate_command(command: Dict[str, Any]) -> str:
         """Validate one JSON command envelope before it is queued or replayed."""
         result = validate_command(command)
-        return _json({"ok": result.ok, "errors": result.errors, "warnings": result.warnings})
+        return _json({"ok": result.ok, "errors": result.errors, "warnings": result.warnings, "error_details": result.error_details})
+
+    @mcp.tool()
+    def octane_schema() -> str:
+        """Return the supported command schema, operation list, limits, and examples."""
+        return _json(command_schema())
 
     @mcp.tool()
     def octane_validate_queue() -> str:
@@ -161,6 +166,31 @@ def build_mcp() -> Any:
     def octane_build_scene(scene_plan: Dict[str, Any]) -> str:
         """Build a semantic scene plan: save its manifest and queue validated Octane commands."""
         return _json(queue_scene_plan(scene_plan))
+
+    @mcp.tool()
+    def octane_load_scene_manifest(scene_id: str) -> str:
+        """Load a saved semantic scene manifest by scene_id."""
+        return _json(load_scene_manifest(scene_id))
+
+    @mcp.tool()
+    def octane_add_object(scene_id: str, object_spec: Dict[str, Any]) -> str:
+        """Add one object to a saved scene manifest and resave it."""
+        return _json(add_scene_object(scene_id, object_spec))
+
+    @mcp.tool()
+    def octane_update_object(scene_id: str, object_id: str, changes: Dict[str, Any]) -> str:
+        """Update one object in a saved scene manifest and resave it."""
+        return _json(update_scene_object(scene_id, object_id, changes))
+
+    @mcp.tool()
+    def octane_remove_object(scene_id: str, object_id: str) -> str:
+        """Remove one object from a saved scene manifest and resave it."""
+        return _json(remove_scene_object(scene_id, object_id))
+
+    @mcp.tool()
+    def octane_requeue_scene(scene_id: str) -> str:
+        """Load a saved scene manifest and queue its validated commands again."""
+        return _json(requeue_scene(scene_id))
 
     @mcp.tool()
     def octane_visualize_bars(values: list[float], name: str = "visual_bar_chart") -> str:

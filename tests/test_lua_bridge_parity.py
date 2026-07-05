@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -45,6 +50,63 @@ class LuaBridgeParityTests(unittest.TestCase):
                 self.assertIn('local RESULTS = ROOT .. "/results"', text)
                 self.assertIn("write_result(cmd, true", text)
                 self.assertIn("write_result(cmd, false", text)
+
+    def test_both_bridges_decode_json_payloads_without_regex_extractors(self) -> None:
+        for path in [ONESHOT, PERSISTENT]:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn('local JSON = dofile(BRIDGE_DIR .. "lib/json.lua")', text)
+                self.assertIn("local decoded, err = JSON.decode(raw)", text)
+                self.assertIn("payload = payload", text)
+                self.assertIn('"invalid JSON: " .. tostring(parse_err)', text)
+                self.assertNotIn("extract_string", text)
+                self.assertNotIn("extract_number", text)
+                self.assertNotIn("extract_array", text)
+
+    def test_lua_json_decoder_supports_nested_command_payload_shapes(self) -> None:
+        text = (ROOT / "octane_lua" / "lib" / "json.lua").read_text(encoding="utf-8")
+        self.assertIn("function json.decode(text)", text)
+        self.assertIn("json.null = {}", text)
+        self.assertIn("if value ~= json.null then obj[key] = value end", text)
+        self.assertIn("local function parse_object", text)
+        self.assertIn("local function parse_array", text)
+        self.assertIn("local function parse_string", text)
+
+    def test_oneshot_bridge_processes_payload_json_and_fails_invalid_json(self) -> None:
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua executable not available")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            for name in ["queue", "processing", "processed", "failed", "results", "renders"]:
+                (workspace / name).mkdir(parents=True)
+
+            valid = {
+                "schema_version": "1.0",
+                "id": "valid-ping",
+                "op": "ping",
+                "payload": {"message": "from payload", "nested": {"translate": [1, 2, 3]}},
+                "created_at": "2026-01-01T00:00:00Z",
+                "source": "octanex-mcp",
+            }
+            (workspace / "queue" / "valid-ping.json").write_text(json.dumps(valid), encoding="utf-8")
+            (workspace / "queue" / "bad-json.json").write_text("{", encoding="utf-8")
+
+            env = os.environ.copy()
+            env["OCTANEX_MCP_WORKSPACE"] = str(workspace)
+            proc = subprocess.run([lua, str(ONESHOT)], cwd=ROOT, env=env, text=True, capture_output=True, timeout=30)
+
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertTrue((workspace / "processed" / "valid-ping.json").exists())
+            self.assertTrue((workspace / "failed" / "bad-json.json").exists())
+
+            valid_result = json.loads((workspace / "results" / "valid-ping.json").read_text(encoding="utf-8"))
+            bad_result = json.loads((workspace / "results" / "bad-json.json").read_text(encoding="utf-8"))
+            self.assertTrue(valid_result["success"])
+            self.assertIn("pong from payload", valid_result["message"])
+            self.assertFalse(bad_result["success"])
+            self.assertIn("invalid JSON", bad_result["message"])
 
 
 if __name__ == "__main__":

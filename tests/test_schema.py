@@ -7,7 +7,8 @@ from pathlib import Path
 
 from octanex_mcp.bridge import Workspace, list_commands, write_command
 from octanex_mcp.config import OctaneConfig, doctor, initialize_environment
-from octanex_mcp.schema import SCHEMA_VERSION, validate_command, validate_queue
+from octanex_mcp.models import ALLOWED_OPS, PAYLOAD_VALIDATORS
+from octanex_mcp.schema import SCHEMA_VERSION, command_schema, validate_command, validate_queue
 
 
 class CommandSchemaTests(unittest.TestCase):
@@ -55,6 +56,63 @@ class CommandSchemaTests(unittest.TestCase):
         result = validate_command(command)
 
         self.assertTrue(result.ok, result.errors)
+
+    def test_validate_command_returns_structured_error_codes_for_range_failures(self) -> None:
+        command = {
+            "schema_version": SCHEMA_VERSION,
+            "id": "cmd-ranges",
+            "op": "start_render",
+            "payload": {"samples": 0, "width": 99999, "height": -1},
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+
+        result = validate_command(command)
+
+        self.assertFalse(result.ok)
+        codes = {error["code"] for error in result.error_details}
+        self.assertIn("payload.samples.out_of_range", codes)
+        self.assertIn("payload.width.out_of_range", codes)
+        self.assertIn("payload.height.out_of_range", codes)
+
+    def test_validate_command_rejects_unsafe_paths_colors_and_camera_ranges(self) -> None:
+        commands = [
+            ("import_geometry", {"path": "../escape.obj"}, "payload.path.unsafe"),
+            ("save_preview", {"path": "renders/../escape.png"}, "payload.path.unsafe"),
+            (
+                "create_material",
+                {"name": "bad", "color": [1.2, 0, 0], "roughness": -0.1, "metallic": 1.5},
+                "payload.color.out_of_range",
+            ),
+            ("set_camera", {"position": [1, 2, 3], "target": [0, 0, 0], "fov": 121}, "payload.fov.out_of_range"),
+        ]
+
+        for op, payload, expected_code in commands:
+            with self.subTest(op=op):
+                command = {
+                    "schema_version": SCHEMA_VERSION,
+                    "id": f"cmd-{op}",
+                    "op": op,
+                    "payload": payload,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "source": "octanex-mcp",
+                }
+
+                result = validate_command(command)
+
+                self.assertFalse(result.ok)
+                self.assertIn(expected_code, {error["code"] for error in result.error_details})
+
+    def test_command_schema_lists_operations_examples_and_limits(self) -> None:
+        schema = command_schema()
+
+        self.assertEqual(schema["schema_version"], SCHEMA_VERSION)
+        self.assertEqual(set(schema["operations"]), ALLOWED_OPS)
+        self.assertEqual(set(PAYLOAD_VALIDATORS), ALLOWED_OPS)
+        self.assertIn("start_render", schema["operations"])
+        self.assertEqual(schema["operations"]["start_render"]["fields"]["samples"]["min"], 1)
+        self.assertEqual(schema["operations"]["set_camera"]["fields"]["fov"]["max"], 120)
+        self.assertIn("import_geometry", schema["examples"])
 
     def test_validate_queue_reports_invalid_json_and_invalid_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

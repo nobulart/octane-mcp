@@ -7,6 +7,8 @@ OctaneX MCP has two supported Octane-side bridge modes:
 
 The modes should differ only in scheduling and UI behavior. Scene command semantics must stay aligned.
 
+Both bridges decode command files with the shared `octane_lua/lib/json.lua` decoder. Keep payload parsing JSON-based; do not reintroduce regex/string extraction for command fields. Invalid JSON should move to `failed/` and write a failed result record with an `invalid JSON` message.
+
 ## Octane X Scripts path preference
 
 Octane X only shows/runs Lua scripts from the directory configured in its Preferences. After `octanex-mcp init` generates the portable bridge copies, set Octane X's **Preferences → Scripts path** to this repository's Lua script directory:
@@ -58,4 +60,4 @@ Each processed command should write one `results/<command_id>.json` file with su
 
 ## Current duplication boundary
 
-The bridge scripts still contain some duplicated Lua because Octane X runs user-selected scripts directly and this keeps the runnable files self-contained. The parity tests are the guardrail against semantic drift until the Lua runtime is split further into `octane_lua/lib/*.lua` modules.
+The bridge scripts still contain some duplicated Lua because Octane X runs user-selected scripts directly and this keeps the runnable files mostly self-contained. The shared JSON decoder is the first extracted runtime module; parity tests are the guardrail against semantic drift while more helpers move into `octane_lua/lib/*.lua` modules.

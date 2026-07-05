@@ -26,7 +26,7 @@ Required envelope fields:
 | `schema_version` | Current schema version, currently `1.0`. |
 | `id` | Unique command id; also used for command/result filenames. |
 | `op` | Allowlisted command operation. |
-| `payload` | Operation-specific shallow object. |
+| `payload` | Operation-specific object. Nested metadata is preserved by the Lua bridge. |
 | `created_at` | UTC ISO timestamp ending in `Z`. |
 | `source` | Producer marker, normally `octanex-mcp`. |
 
@@ -65,6 +65,7 @@ After Lua handles a command, it writes:
 Python validates commands before writing them. Agents can also call:
 
 - `octane_validate_command(command)` — validate one command envelope.
+- `octane_schema()` — return supported operations, field limits, path rules, and examples.
 - `octane_validate_queue()` — validate all queued command JSON files.
 
 CLI/automation can inspect validation through `octane_status()`, whose `commands.validation` field reports queue validity.
@@ -77,6 +78,8 @@ The validator is intentionally lightweight and dependency-free. It checks:
 - required envelope fields;
 - required payload fields for core operations;
 - common scalar/vector field types;
-- shallow JSON structure.
+- stable structured error codes in `error_details`;
+- render/camera/material ranges;
+- generated path traversal safety.
 
 It does not yet validate every Octane API-specific semantic constraint. Those should be added incrementally as command payloads stabilize.
