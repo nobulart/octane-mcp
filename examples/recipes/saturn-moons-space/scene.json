@@ -1,0 +1,183 @@
+{
+  "slug": "saturn-moons-space",
+  "title": "Saturn and Moons in Space",
+  "category": "Photoreal/PBR space rendering",
+  "purpose": "Demonstrate a high-quality Saturn target with oblate banded planet geometry, layered rings, Cassini division cue, moons, and cinematic space lighting.",
+  "preview_note": "photoreal-preview.png is a generated target/reference render, not a verified native Octane output. Re-render scene.obj/scene.mtl in Octane X for native validation.",
+  "camera": {
+    "position": [
+      0.35,
+      -4.4,
+      1.25
+    ],
+    "target": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "fov": 36
+  },
+  "lighting": {
+    "preset": "space_sun",
+    "intent": "hard sunlight from upper-left/front, black star field background, ring shadows and subtle rim lighting"
+  },
+  "materials": {
+    "mat_saturn_sand": {
+      "kind": "matte gas band",
+      "color": [
+        0.76,
+        0.57,
+        0.33
+      ],
+      "roughness": 0.62
+    },
+    "mat_saturn_cream": {
+      "kind": "matte bright gas band",
+      "color": [
+        0.95,
+        0.82,
+        0.56
+      ],
+      "roughness": 0.58
+    },
+    "mat_saturn_gold": {
+      "kind": "warm gas band",
+      "color": [
+        0.85,
+        0.61,
+        0.26
+      ],
+      "roughness": 0.55
+    },
+    "mat_saturn_taupe": {
+      "kind": "dark gas band",
+      "color": [
+        0.52,
+        0.39,
+        0.25
+      ],
+      "roughness": 0.66
+    },
+    "mat_ring_inner": {
+      "kind": "translucent dusty ice ring",
+      "color": [
+        0.82,
+        0.72,
+        0.54
+      ],
+      "opacity": 0.78,
+      "roughness": 0.32
+    },
+    "mat_ring_middle": {
+      "kind": "translucent dusty ice ring",
+      "color": [
+        0.69,
+        0.61,
+        0.5
+      ],
+      "opacity": 0.7,
+      "roughness": 0.38
+    },
+    "mat_ring_outer": {
+      "kind": "faint outer ring",
+      "color": [
+        0.56,
+        0.52,
+        0.47
+      ],
+      "opacity": 0.58,
+      "roughness": 0.44
+    },
+    "mat_cassini_gap": {
+      "kind": "dark Cassini division cue",
+      "color": [
+        0.015,
+        0.012,
+        0.01
+      ],
+      "opacity": 0.3
+    },
+    "mat_titan": {
+      "kind": "large hazy moon",
+      "color": [
+        0.72,
+        0.5,
+        0.26
+      ],
+      "roughness": 0.74
+    },
+    "mat_icy_moon": {
+      "kind": "icy moon",
+      "color": [
+        0.74,
+        0.8,
+        0.88
+      ],
+      "roughness": 0.42
+    },
+    "mat_gray_moon": {
+      "kind": "rocky moon",
+      "color": [
+        0.43,
+        0.42,
+        0.4
+      ],
+      "roughness": 0.7
+    }
+  },
+  "quality_checklist": [
+    "Target/reference image shows a recognizable Saturn with tilted rings, Cassini division, moons, and black space background.",
+    "Native Octane output must be saved as octane-preview.png before claiming native photoreal success.",
+    "Saturn should read as slightly oblate with subtle horizontal color bands, not a perfect flat-colored sphere.",
+    "Rings should be thin, layered, and partially translucent with a visible dark division cue.",
+    "Moons should remain small scale references and not compete with the planet/rings silhouette."
+  ],
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/saturn-moons-space/scene.obj",
+        "format": "obj",
+        "name": "saturn-moons-space"
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          0.35,
+          -4.4,
+          1.25
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.05
+        ],
+        "fov": 36
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "space_sun"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 768,
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/saturn-moons-space/octane-preview.png",
+        "width": 1280,
+        "height": 720
+      }
+    }
+  ]
+}

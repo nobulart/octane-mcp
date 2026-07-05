@@ -152,3 +152,22 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Re-render the scene in Octane X and add octane-preview.png after visual inspection.
 - Replace procedural continent/cloud masks with real Earth texture maps or Octane texture nodes when bridge support exists.
+
+## Saturn and moons space target recipe
+
+- **Outcome:** success
+- **Recorded:** 2026-07-05 00:24 UTC
+- **Context:** Added a photoreal/PBR space-rendering recipe with procedural Saturn, rings, Cassini division cue, moons, and a target preview image.
+
+### Steps
+- Generated oblate Saturn geometry with horizontal gas-band materials, layered tilted ring annuli, and several moon spheres.
+- Added scene.mtl and scene.json with camera, space-lighting intent, PBR material notes, commands, and quality checklist.
+- Included photoreal-preview.png as a target/reference image and documented that native Octane render verification is still required.
+
+### Signals / evidence
+- file reports photoreal-preview.png as a valid 1024x576 RGB PNG.
+- scene.obj, scene.mtl, scene.json, and README.md exist under examples/recipes/saturn-moons-space.
+
+### Follow-ups
+- Re-render the scene in Octane X and add octane-preview.png after visual inspection.
+- Replace procedural bands/rings with real Saturn textures, procedural noise nodes, and ring shadow tuning when bridge support exists.

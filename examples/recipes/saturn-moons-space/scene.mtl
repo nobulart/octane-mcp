@@ -1,0 +1,59 @@
+# Material intent for Octane/PBR translation
+newmtl mat_saturn_sand
+Kd 0.760 0.570 0.330
+Ks 0.20 0.16 0.10
+Ns 100
+
+newmtl mat_saturn_cream
+Kd 0.950 0.820 0.560
+Ks 0.22 0.18 0.12
+Ns 120
+
+newmtl mat_saturn_gold
+Kd 0.850 0.610 0.260
+Ks 0.28 0.20 0.12
+Ns 140
+
+newmtl mat_saturn_taupe
+Kd 0.520 0.390 0.250
+Ks 0.16 0.12 0.08
+Ns 80
+
+newmtl mat_ring_inner
+Kd 0.820 0.720 0.540
+Ks 0.38 0.34 0.28
+Ns 180
+d 0.78
+
+newmtl mat_ring_middle
+Kd 0.690 0.610 0.500
+Ks 0.30 0.28 0.24
+Ns 140
+d 0.70
+
+newmtl mat_ring_outer
+Kd 0.560 0.520 0.470
+Ks 0.22 0.22 0.20
+Ns 100
+d 0.58
+
+newmtl mat_cassini_gap
+Kd 0.015 0.012 0.010
+Ks 0.00 0.00 0.00
+Ns 5
+d 0.30
+
+newmtl mat_titan
+Kd 0.720 0.500 0.260
+Ks 0.18 0.14 0.08
+Ns 80
+
+newmtl mat_icy_moon
+Kd 0.740 0.800 0.880
+Ks 0.30 0.34 0.40
+Ns 160
+
+newmtl mat_gray_moon
+Kd 0.430 0.420 0.400
+Ks 0.16 0.16 0.15
+Ns 70

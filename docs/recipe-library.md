@@ -26,6 +26,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Hermes Avatar Guide](../examples/recipes/avatar-guide/README.md) | Agent communication | `avatar-guide` | Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually. |
 | [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
 | [Photoreal Earth in Space](../examples/recipes/photoreal-earth-space/README.md) | Photoreal/PBR space rendering | `photoreal-earth-space` | Set a quality target for planet rendering with oceans, continents, clouds, atmospheric rim glow, and space lighting. |
+| [Saturn and Moons in Space](../examples/recipes/saturn-moons-space/README.md) | Photoreal/PBR space rendering | `saturn-moons-space` | Set a quality target for Saturn rendering with oblate gas bands, layered rings, Cassini division, moons, and space lighting. |
 
 ## Recommended agent loop
 
@@ -45,7 +46,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Physics:** orbital trajectories.
 - **Systems:** MCP architecture flow.
 - **Agent communication:** Hermes avatar guide.
-- **Photoreal:** product-studio and Earth-in-space scenes with PBR material intent and target renders.
+- **Photoreal:** product-studio, Earth-in-space, and Saturn/moons scenes with PBR material intent and target renders.
 
 ## Animation pattern
 

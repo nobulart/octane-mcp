@@ -18,15 +18,15 @@ The recipe library starts with copyable visual targets, not just prose. The head
 
 ### More recipe previews
 
-| Photoreal Earth | Data bars | Math surface |
+| Photoreal Earth | Saturn and moons | Data bars |
 | --- | --- | --- |
-| [![Photoreal Earth in space](examples/recipes/photoreal-earth-space/photoreal-preview.png)](examples/recipes/photoreal-earth-space/) | [![3D KPI bar chart](examples/recipes/data-bars/preview.png)](examples/recipes/data-bars/) | [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) |
-| Space rendering target with clouds, atmosphere, and sunlight. | Fast generated chart geometry for numeric comparisons. | Damped radial surface for mathematical explanation. |
+| [![Photoreal Earth in space](examples/recipes/photoreal-earth-space/photoreal-preview.png)](examples/recipes/photoreal-earth-space/) | [![Saturn and moons in space](examples/recipes/saturn-moons-space/photoreal-preview.png)](examples/recipes/saturn-moons-space/) | [![3D KPI bar chart](examples/recipes/data-bars/preview.png)](examples/recipes/data-bars/) |
+| Space rendering target with clouds, atmosphere, and sunlight. | Ringed-planet target with moons, bands, and Cassini division. | Fast generated chart geometry for numeric comparisons. |
 
-| Architecture flow | Animated orbit reveal |
-| --- | --- |
-| [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
-| Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
+| Math surface | Architecture flow | Animated orbit reveal |
+| --- | --- | --- |
+| [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) | [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
+| Damped radial surface for mathematical explanation. | Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
 
 ## What this is for
 
