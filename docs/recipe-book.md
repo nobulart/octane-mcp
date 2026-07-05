@@ -171,3 +171,28 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Re-render the scene in Octane X and add octane-preview.png after visual inspection.
 - Replace procedural bands/rings with real Saturn textures, procedural noise nodes, and ring shadow tuning when bridge support exists.
+
+## Test scene rendered successfully with cube + bars + surface
+
+- **Outcome:** success
+- **Recorded:** 2026-07-05 21:10 UTC
+- **Context:** Generated 3 geometries (test cube, bar chart, sin(r)/max(r,0.25) surface) to sandbox path and queued full scene commands.
+
+### Steps
+- Generated test cube OBJ (0.8 size) and bar chart OBJ (5 values) via visual tools
+- Created wave surface OBJ from math expression with bounds metadata
+- All assets written to workspace/assets/ in sandbox container
+- Queued full scene: import_geometry, create_material, assign_material, set_camera, set_lighting, start_render
+- Bounds-aware camera computed position=[9.21, -11.01, 8.05] for surface (iso view)
+- Fixed syntax error: unmatched ) in octane_earth.py line 85
+
+### Signals / evidence
+- 3 OBJ files in assets/ directory (agent_cube.obj, wave_surface.obj, test_scene_bars.obj)
+- 27 queue files, 136 processed files
+- workspace status.json shows bridge_seen=true, octane_available=true
+- One-shot bridge exists as generated file
+
+### Follow-ups
+- Run the generated one-shot bridge inside Octane X viewport to process queued commands end-to-end
+- Save a preview PNG after render to verify visual output
+- Verify the preview with octane_review_preview() for blank/clipped/low-contrast issues
