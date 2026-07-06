@@ -345,3 +345,24 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Add ingestion helpers that accept real OCR JSON, layout-parser boxes, saliency maps, or attention tensors and emit these recipe shapes.
 - Add text-label integration for human-readable token/page labels once label generation becomes a first-class tool.
+
+## On-demand bridge management via AppleScript
+
+- **Outcome:** partial
+- **Recorded:** 2026-07-06 13:55 UTC
+- **Context:** Manual launch of `hermes_bridge_persistent.generated.lua` is a UX bottleneck. Hermes should be able to detect bridge state and attempt to run one-shot or persistent bridge scripts on demand.
+
+### Steps
+- Added bridge process/status helpers that report Octane X PID, generated script paths, script readiness, status.json contents, and heartbeat age.
+- Added AppleScript-backed helpers to attempt running `hermes_bridge_oneshot.generated.lua` or `hermes_bridge_persistent.generated.lua` from Octane X's Scripts menu.
+- Added MCP tools and CLI commands for status, one-shot, and persistent bridge control.
+- Verified the already-open persistent bridge can process a queued ping and write result metadata.
+
+### Signals / evidence
+- `octanex-mcp bridge-status --json` reported Octane X running, both generated scripts present, and persistent bridge status `idle`.
+- A queued ping returned a successful bridge result: `pong bridge-management-smoke`.
+- Direct AppleScript menu launch currently returns a structured failure because the generated script name was not found in the exposed Scripts menu; this is reported rather than hidden.
+
+### Follow-ups
+- Confirm the exact Octane X menu hierarchy/script display names, or add a lower-level GUI/menu probe once Accessibility permission is reliable.
+- Consider an in-bridge file-trigger/watchdog action so Hermes can request `drain queue` without depending on macOS menu traversal.

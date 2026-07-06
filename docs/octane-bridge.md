@@ -123,3 +123,28 @@ Use Octane X's configured Scripts menu to run one of the generated bridge files:
 
 For agent workflows, queue commands from MCP, ask the user to run the one-shot script inside Octane X, then inspect `processed/`, `failed/`, `results/`, `status.json`, and any saved preview before reporting success.
 
+## On-demand bridge management from Hermes
+
+The MCP server includes macOS helpers for reducing manual bridge work:
+
+```bash
+PYTHONPATH= uv run octanex-mcp bridge-status --json
+PYTHONPATH= uv run octanex-mcp run-oneshot --dry-run --json
+PYTHONPATH= uv run octanex-mcp run-oneshot --json
+PYTHONPATH= uv run octanex-mcp start-persistent --json
+```
+
+Equivalent MCP tools:
+
+- `octane_bridge_process_status()`
+- `octane_run_oneshot_bridge(dry_run=false, timeout_seconds=15)`
+- `octane_start_persistent_bridge(dry_run=false, timeout_seconds=15)`
+
+These helpers open Octane X if needed and use AppleScript/System Events to click a matching generated bridge script in Octane X's Scripts menu. They return the generated AppleScript, stdout/stderr, current bridge status, and next-step guidance on failure.
+
+Known limitations:
+
+- macOS may require Accessibility permission for the calling app/terminal before `osascript` can inspect menus.
+- If Octane X's Scripts menu does not expose the generated file names, the helper reports a structured failure instead of pretending the bridge ran.
+- If the persistent bridge is already open, queued commands can still process through that window/timer even when menu automation is unavailable.
+

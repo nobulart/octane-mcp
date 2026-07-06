@@ -15,6 +15,7 @@ from .bridge import (
     record_recipe_entry,
     write_command,
 )
+from .bridge_control import octane_process_status, run_bridge_script
 from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
@@ -42,6 +43,26 @@ def build_mcp() -> Any:
     def octane_status() -> str:
         """Return Octane X app, bridge heartbeat, and command queue status."""
         return _json({"app": octane_app_status(), "commands": list_commands()})
+
+    @mcp.tool()
+    def octane_bridge_process_status() -> str:
+        """Return Octane X process state, generated bridge paths, and bridge heartbeat age."""
+        return _json(octane_process_status())
+
+    @mcp.tool()
+    def octane_run_bridge(mode: str = "oneshot", dry_run: bool = False, timeout_seconds: int = 15) -> str:
+        """Run a generated Octane bridge script from the Scripts menu via AppleScript."""
+        return _json(run_bridge_script(mode, dry_run=dry_run, timeout_seconds=timeout_seconds))
+
+    @mcp.tool()
+    def octane_run_oneshot_bridge(dry_run: bool = False, timeout_seconds: int = 15) -> str:
+        """Run hermes_bridge_oneshot.generated.lua via AppleScript for batch queue draining."""
+        return _json(run_bridge_script("oneshot", dry_run=dry_run, timeout_seconds=timeout_seconds))
+
+    @mcp.tool()
+    def octane_start_persistent_bridge(dry_run: bool = False, timeout_seconds: int = 15) -> str:
+        """Run hermes_bridge_persistent.generated.lua via AppleScript to open/manage the persistent bridge."""
+        return _json(run_bridge_script("persistent", dry_run=dry_run, timeout_seconds=timeout_seconds))
 
     @mcp.tool()
     def octane_recipe_book(limit_chars: int = 12000) -> str:
@@ -317,10 +338,12 @@ def _format_doctor(result: Dict[str, Any]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Octane X MCP server")
-    parser.add_argument("command", nargs="?", choices=["init", "doctor"], help="run a setup/diagnostic command instead of starting MCP stdio")
+    parser.add_argument("command", nargs="?", choices=["init", "doctor", "bridge-status", "run-oneshot", "start-persistent"], help="run a setup/diagnostic/bridge command instead of starting MCP stdio")
     parser.add_argument("--self-test", action="store_true", help="create workspace and queue a ping without starting MCP stdio")
-    parser.add_argument("--json", action="store_true", help="print machine-readable JSON for init/doctor output")
+    parser.add_argument("--json", action="store_true", help="print machine-readable JSON for init/doctor/bridge output")
     parser.add_argument("--no-create", action="store_true", help="doctor only: do not create missing workspace folders")
+    parser.add_argument("--dry-run", action="store_true", help="bridge commands only: generate AppleScript without running it")
+    parser.add_argument("--timeout", type=int, default=15, help="bridge AppleScript timeout in seconds")
     args = parser.parse_args()
     if args.self_test:
         print(_json(self_test()))
@@ -331,6 +354,15 @@ def main() -> None:
     if args.command == "doctor":
         result = doctor(create=not args.no_create)
         print(_json(result) if args.json else _format_doctor(result))
+        return
+    if args.command == "bridge-status":
+        print(_json(octane_process_status()))
+        return
+    if args.command == "run-oneshot":
+        print(_json(run_bridge_script("oneshot", dry_run=args.dry_run, timeout_seconds=args.timeout)))
+        return
+    if args.command == "start-persistent":
+        print(_json(run_bridge_script("persistent", dry_run=args.dry_run, timeout_seconds=args.timeout)))
         return
     build_mcp().run()
 

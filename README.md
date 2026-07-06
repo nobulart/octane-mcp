@@ -56,6 +56,7 @@ Verified or implemented:
 - Versioned typed command schema, structured validation error codes, queue validation, `processing/` state, and per-command result JSON files.
 - One-shot Lua bridge that drains `queue/*.json` and exits.
 - Persistent Lua bridge window with manual `Process next` / `Drain queue` controls and timer fallback notes.
+- On-demand bridge control helpers: status checks plus AppleScript-backed one-shot/persistent script launch attempts for macOS workflows.
 - Parity tests keep one-shot and persistent scene-command handlers semantically aligned; they should differ only in scheduling/UI behavior.
 - Scene operations: import mesh, create material, assign material, set camera, set lighting, start/restart render, save preview.
 - Visual tools: bar chart, math surface, Hermes avatar face.
@@ -194,6 +195,9 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | Tool | Purpose |
 | --- | --- |
 | `octane_status()` | App existence, queue, processed/failed files, bridge status. |
+| `octane_bridge_process_status()` | Octane process state, generated bridge paths, script readiness, and bridge heartbeat age. |
+| `octane_run_oneshot_bridge(dry_run, timeout_seconds)` | Try to run `hermes_bridge_oneshot.generated.lua` from Octane X's Scripts menu via AppleScript. |
+| `octane_start_persistent_bridge(dry_run, timeout_seconds)` | Try to run `hermes_bridge_persistent.generated.lua` from Octane X's Scripts menu via AppleScript. |
 | `octane_validate_command(command)` | Validate one JSON command envelope. |
 | `octane_schema()` | Return supported command operations, limits, path rules, and examples. |
 | `octane_validate_queue()` | Validate queued command files in the workspace. |
