@@ -1,0 +1,6 @@
+{
+  "status": "native_candidate_saved_but_not_final",
+  "summary": "The loop was exercised: bridge processed recipe commands, sandbox PNG saving succeeded, glm-ocr reviewed reference/candidate, and the review identified the native candidate as missing visible content.",
+  "not_final_reason": "octane-preview.png is a saved native candidate but it is a flat blue frame, not an acceptable final multi-vase render.",
+  "next_iteration": "Patch render-target/geometry visibility and camera framing, then re-render."
+}

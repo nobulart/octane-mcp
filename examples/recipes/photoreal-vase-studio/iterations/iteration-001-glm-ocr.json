@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "reference": {
+    "image": "examples/recipes/photoreal-vase-studio/photoreal-preview.png",
+    "model": "glm-ocr",
+    "returncode": 0,
+    "ok": true,
+    "stdout": "```json\n{\n\"visible_objects\":[\"vase1\", \"vase2\", \"vase3\", \"vase4\"],\n\"materials\":[\"glass\", \"ceramic\", \"ceramic\", \"glass\"],\n\"lighting\":{\"light\": \"natural\"},\n\"camera_perspective\":=\"top\",\n\"mismatch_risks\": \"\"\n}\n```\n\"",
+    "stderr": ""
+  },
+  "candidate": {
+    "image": "examples/recipes/photoreal-vase-studio/octane-preview.png",
+    "model": "glm-ocr",
+    "returncode": 0,
+    "ok": true,
+    "stdout": "```json\n{\n\"visible_objects\": \"\",\n\"materials\": \"\",\n\"lighting\": \"\",\n\"camera_perspective\": \"\"\n}\n```",
+    "stderr": ""
+  }
+}

@@ -153,6 +153,26 @@ def _apply_overrides(commands: list[dict[str, Any]], overrides: Mapping[str, Any
     return updated
 
 
+def _rewrite_preview_outputs(commands: list[dict[str, Any]], *, slug: str, workspace: Workspace) -> list[dict[str, Any]]:
+    """Save native previews inside the Octane sandbox so Octane can write them reliably."""
+
+    updated = copy.deepcopy(commands)
+    workspace.ensure()
+    for command in updated:
+        if command.get("op") != "save_preview":
+            continue
+        payload = command.setdefault("payload", {})
+        if not isinstance(payload, dict):
+            continue
+        original_path = str(payload.get("path") or "").strip()
+        filename = Path(original_path).name or f"{slug}-octane-preview.png"
+        if not filename.lower().endswith(".png"):
+            filename = f"{filename}.png"
+        payload["bundle_path"] = original_path
+        payload["path"] = str((workspace.renders_dir / filename).resolve())
+    return updated
+
+
 def _validate_recipe_command(command: Mapping[str, Any], idx: int) -> None:
     envelope = {
         "schema_version": SCHEMA_VERSION,
@@ -172,6 +192,7 @@ def queue_recipe(slug: str, overrides: Mapping[str, Any] | None = None, *, works
 
     recipe = load_recipe(slug, recipes_root)
     commands = _apply_overrides(recipe["commands"], overrides)
+    commands = _rewrite_preview_outputs(commands, slug=recipe["slug"], workspace=workspace)
     queued = []
     for idx, command in enumerate(commands):
         _validate_recipe_command(command, idx)

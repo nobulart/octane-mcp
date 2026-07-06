@@ -1,0 +1,38 @@
+{
+  "iteration": 1,
+  "reference": "examples/recipes/photoreal-vase-studio/photoreal-preview.png",
+  "candidate": "examples/recipes/photoreal-vase-studio/octane-preview.png",
+  "model": "ollama:glm-ocr",
+  "bridge_result_metadata": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/results/1783355880222711000-e3b26ae7.json",
+  "glm_ocr_review": "examples/recipes/photoreal-vase-studio/iterations/iteration-001-glm-ocr.json",
+  "native_preview_review": {
+    "ok": false,
+    "issues": [
+      "likely object too small / effectively blank blue candidate"
+    ],
+    "observed": "Native save now works when writing into the OctaneMCP/renders sandbox, but the candidate preview is a flat blue frame with no visible vase geometry."
+  },
+  "observed_gaps": [
+    "reference shows five distinct vases on a stone pedestal; candidate has no visible objects",
+    "reference has warm studio backdrop and softbox reflections; candidate is a flat blue render pass/frame",
+    "candidate needs camera/render-target/geometry visibility debugging before material-level matching"
+  ],
+  "patch_plan": {
+    "bridge": [
+      "save previews to the Octane sandbox renders directory, then bundle/copy the final PNG into the recipe directory"
+    ],
+    "geometry": [
+      "verify imported OBJ is connected to the active render target and visible to the active camera"
+    ],
+    "camera": [
+      "tighten camera/framing around OBJ bounds after geometry is visible"
+    ],
+    "lighting": [
+      "defer softbox/material tuning until candidate contains visible vases"
+    ],
+    "materials": [
+      "defer glass/ceramic/metal tuning until render visibility is fixed"
+    ]
+  },
+  "status": "needs_visibility_patch_before_next_iteration"
+}

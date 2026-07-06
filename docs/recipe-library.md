@@ -31,6 +31,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Document OCR Layout Inspection](../examples/recipes/document-ocr-layout/README.md) | Document AI/OCR | `document-ocr-layout` | Represent OCR/document-layout output as raised boxes for text lines, tables, images, and uncertain detections. |
 | [Transformer Attention Map](../examples/recipes/transformer-attention-map/README.md) | LLM interpretability | `transformer-attention-map` | Visualize an attention matrix as raised cells, with token rails and a highlighted focus region for interpretability discussions. |
 | [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
+| [Photoreal Multi-Vase Studio](../examples/recipes/photoreal-vase-studio/README.md) | Photoreal/PBR rendering | `photoreal-vase-studio` | Stage several vases with visibly different silhouettes, colours, textures, and material intent for product visualization. |
 | [Photoreal Earth in Space](../examples/recipes/photoreal-earth-space/README.md) | Photoreal/PBR space rendering | `photoreal-earth-space` | Set a quality target for Earth, cloud shells, atmosphere rim glow, and space lighting. |
 | [Saturn and Moons in Space](../examples/recipes/saturn-moons-space/README.md) | Photoreal/PBR space rendering | `saturn-moons-space` | Set a quality target for Saturn bands, rings, Cassini division cues, moons, and space lighting. |
 
@@ -56,7 +57,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Annotation/text:** block-letter labels, backing plates, and callouts as OBJ geometry.
 - **Image processing/vision:** scalar heatmaps, segmentation masks, and OCR/document layouts as raised tile geometry.
 - **LLM interpretability:** attention/saliency matrices as token-aligned heightfields.
-- **Photoreal:** product-studio, Earth, and Saturn scenes with PBR material/lighting intent and target renders.
+- **Photoreal:** product-studio, multi-vase studio, Earth, and Saturn scenes with PBR material/lighting intent and target renders.
 
 ## Recipe registry tools
 
@@ -70,6 +71,10 @@ The MCP server can now inspect and queue checked-in recipes directly:
 | `octane_validate_recipe_library()` | Validate that recipe directories include required files, previews, metadata, and valid command payloads. |
 
 Recipe registry tools only prove that commands were queued. Native Octane success still requires bridge result metadata plus a saved preview review.
+
+## Visual iteration protocol
+
+For target-matching recipes, especially photoreal references, use [`visual-iteration-protocol.md`](visual-iteration-protocol.md): render a native Octane candidate, review reference and candidate with local `glm-ocr`, patch one bounded scene dimension, re-render, and bundle the final native render plus iteration records with the recipe.
 
 ## Animation pattern
 

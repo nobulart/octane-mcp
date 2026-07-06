@@ -366,3 +366,44 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Confirm the exact Octane X menu hierarchy/script display names, or add a lower-level GUI/menu probe once Accessibility permission is reliable.
 - Consider an in-bridge file-trigger/watchdog action so Hermes can request `drain queue` without depending on macOS menu traversal.
+
+## Photoreal multi-vase studio recipe
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 14:05 UTC
+- **Context:** User requested a photorealistic studio visualization recipe showing several vases with different colour, texture, and material.
+
+### Steps
+- Added `examples/recipes/photoreal-vase-studio/` with lathe-generated vase geometry, pedestal/cyclorama/softbox proxy geometry, MTL material hints, and recipe metadata.
+- Included five material targets: smoky glass, glossy cobalt ceramic, ribbed terracotta clay, pearlescent white porcelain, and dark brushed metal.
+- Added an AI-generated `photoreal-preview.png` as a target/reference image, clearly marked as not native Octane proof.
+- Added registry tests that assert material variety, preview review, required assets, pitfalls, and quality checklist coverage.
+
+### Signals / evidence
+- Recipe validates through the registry and queues into isolated workspaces.
+- `review_preview()` reports the target preview as non-blank/usable.
+- Visual inspection confirms the preview reads as a studio product shot with several distinct vases.
+
+### Follow-ups
+- Promote material intent into native Octane material commands after transmission/IOR/clearcoat/texture-map payloads are added.
+- Run the recipe through Octane X and save `octane-preview.png` for native verification.
+
+## Iterative Octane visual review protocol
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 14:15 UTC
+- **Context:** User observed that the generated OBJ approximates the multi-vase reference but is not close enough. OctaneX MCP should treat this as an iterative render/review/patch workflow, using cheap local `glm-ocr` visual analysis and native Octane previews.
+
+### Steps
+- Added `docs/visual-iteration-protocol.md` as the general target-matching loop: reference → candidate → native render → local visual review → bounded patch → repeat.
+- Confirmed local Ollama has `glm-ocr:latest`; a quick probe produced image-level notes for the vase reference.
+- Added `scripts/glm_ocr_visual_review.py` for local reference/candidate visual review with `ollama run glm-ocr`.
+- Added `visual_iteration_protocol` and `final_bundle` metadata to the vase recipe.
+
+### Signals / evidence
+- Protocol explicitly requires native `octane-preview.png` plus result metadata before `native_octane_verified=true`.
+- Final iterated native render, iteration JSON records, candidate PNGs, and reproduction assets are specified as part of the recipe bundle.
+
+### Follow-ups
+- Implement an MCP orchestration tool that queues a recipe, waits for bridge result metadata, runs `glm-ocr`, emits a patch plan, and stores each iteration in `examples/recipes/<slug>/iterations/`.
+- Add native material/light commands so visual patch plans can alter glass, clearcoat, anisotropy, textures, and HDRI/softbox controls instead of only OBJ geometry.

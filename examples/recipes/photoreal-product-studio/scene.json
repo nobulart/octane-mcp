@@ -125,5 +125,93 @@
         "height": 720
       }
     }
-  ]
+  ],
+  "target_preview": "photoreal-preview.png",
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/photoreal-product-studio/photoreal-preview.png",
+    "candidate_image": "examples/recipes/photoreal-product-studio/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "object count and semantic content",
+      "composition, framing, and camera perspective",
+      "material/color readability and contrast",
+      "lighting, shadows, and background clarity",
+      "task-specific labels, legends, or focal details"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata for queued commands",
+      "native Octane candidate preview at octane-preview.png",
+      "glm-ocr reference and candidate review notes",
+      "one bounded patch plan per iteration",
+      "final native Octane render bundled as octane-preview.png",
+      "iteration review/patch records under iterations/"
+    ],
+    "stop_conditions": [
+      "candidate content and major silhouettes match the reference or stated recipe intent",
+      "task-critical colors/materials/labels are visually distinguishable",
+      "camera/framing and lighting are close enough for the task",
+      "remaining gaps require bridge schema or native material capability work"
+    ],
+    "baseline_sweep": {
+      "enabled": true,
+      "purpose": "Rapidly disambiguate scene orientation/camera framing before fine visual matching.",
+      "camera_or_scene_variants": [
+        {
+          "name": "front",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "left_three_quarter",
+          "azimuth_degrees": -35,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "right_three_quarter",
+          "azimuth_degrees": 35,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "top_oblique",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 45
+        }
+      ],
+      "visual_grammar_axes": [
+        "orientation",
+        "camera_distance",
+        "focal_length",
+        "lighting_direction",
+        "material/readability contrast"
+      ],
+      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/photoreal-product-studio/octane-preview.png",
+    "iteration_dir": "examples/recipes/photoreal-product-studio/iterations",
+    "final_review": "examples/recipes/photoreal-product-studio/iterations/final-review.json",
+    "result_metadata_pattern": "workspace/results/<command_id>.json copied or summarized into iterations/",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "photoreal-preview.png",
+      "octane-preview.png",
+      "iterations/*.json",
+      "iterations/*.png",
+      "assets/*"
+    ],
+    "status": "pending_native_octane_iteration",
+    "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
+  }
 }
