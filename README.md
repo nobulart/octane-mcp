@@ -199,6 +199,10 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_validate_queue()` | Validate queued command files in the workspace. |
 | `octane_recipe_book(limit_chars=12000)` | Read local field notes for successes, failures, and pitfalls. |
 | `octane_record_recipe(title, outcome, context, steps, signals, follow_ups)` | Append a lesson to `docs/recipe-book.md`. |
+| `octane_recipe_index()` | List checked-in recipe examples with normalized metadata and preview/native verification status. |
+| `octane_load_recipe(slug)` | Load a recipe's command sequence and resolved asset paths by slug. |
+| `octane_queue_recipe(slug, overrides=None)` | Queue a checked-in recipe command sequence by slug. |
+| `octane_validate_recipe_library()` | Validate checked-in recipe files, metadata, previews, and command payloads. |
 
 ### Low-level scene commands
 

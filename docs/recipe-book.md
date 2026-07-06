@@ -196,3 +196,152 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Run the generated one-shot bridge inside Octane X viewport to process queued commands end-to-end
 - Save a preview PNG after render to verify visual output
 - Verify the preview with octane_review_preview() for blank/clipped/low-contrast issues
+
+## Text rendering and annotation labels via generated geometry
+
+- **Outcome:** partial
+- **Recorded:** 2026-07-06 12:44 UTC
+- **Context:** Roadmap review identified text and labels as high-leverage for making OctaneX MCP useful as an explanatory canvas, but native Octane text nodes are not exposed by the current command DSL.
+
+### Steps
+- Start with Python-side generated geometry rather than relying on native Octane text nodes.
+- For short labels, generate vector/mesh glyph outlines or simple block-letter primitives as OBJ, then import them like any other scene object.
+- For diagrams, pair each label object with an annotation record in the scene manifest: text, target object id, anchor point, semantic role, contrast target, and camera-facing/billboard intent.
+- Use high-contrast matte/emissive material hints and keep labels slightly in front of the target surface to avoid z-fighting.
+- Add labels only after the base scene camera is known; generated text should include bounds so `camera_for_bounds` can frame both object and annotations.
+
+### Signals / evidence
+- Current scene manifest v2 preserves `annotations` but does not compile them into geometry.
+- Current primitive support is limited to `box`, `sphere`, `ellipsoid`, and `cylinder`; there is no `text_label_placeholder` compiler yet.
+- README and roadmap already warn that OBJ line primitives may be dropped by native import, so text strokes should become thin mesh/tube geometry, not OBJ `l` records.
+
+### Follow-ups
+- Add a `text_label_placeholder` object type that creates a contrast backing plate plus simple generated glyph mesh or block-letter OBJ.
+- Consider an optional Pillow/fonttools path under a `vision` or `text` extra for converting font outlines to mesh, while keeping a stdlib fallback for block letters.
+- Add a recipe-library example for “annotated concept diagram” with labels, arrows, and callouts, then promote it into a first-class `octane_add_label` or `octane_build_annotated_scene` tool.
+
+## Image processing to Octane geometry: relief maps, masks, and color tiles
+
+- **Outcome:** partial
+- **Recorded:** 2026-07-06 12:44 UTC
+- **Context:** Image-processing applications are a natural next domain for the visual canvas: turn pixels, masks, heatmaps, OCR regions, or segmentation outputs into inspectable 3D geometry.
+
+### Steps
+- In Python, load an input image or matrix and downsample it to a bounded grid before geometry generation.
+- Convert luminance or scalar values to a height field OBJ for relief maps, heatmaps, spectrograms, microscopy tiles, elevation rasters, or model-attention maps.
+- Convert masks/segmentation classes into colored tile groups or raised contour bands with material names per class.
+- Store original image path, sampling size, value range, color map, and class legend in asset metadata or scene manifest provenance.
+- Queue as a normal mesh scene with bounds-aware camera, then save/review a preview to catch flat/overexposed or too-dense geometry.
+
+### Signals / evidence
+- `create_surface_obj` already proves the stdlib mesh path for height fields.
+- `review_preview` can already detect blank, clipped, low-contrast, and tiny-object outputs for generated previews.
+- No image-loading optional extra exists in `pyproject.toml`; current extras are `science`, `fields`, and `geo` only.
+
+### Follow-ups
+- Add an optional `vision = ["pillow"]` extra and keep a stdlib path for JSON/CSV numeric grids.
+- Implement `octane_visualize_image_heightfield(path_or_grid, max_size=128, colormap="viridis")` returning OBJ, metadata, bounds, and recommended camera.
+- Add recipes for segmentation-mask inspection, document/OCR layout review, spectrogram relief, and image-difference heatmap before building a large API surface.
+
+## Recipe registry gap before recipe promotion
+
+- **Outcome:** pitfall
+- **Recorded:** 2026-07-06 12:44 UTC
+- **Context:** The roadmap calls for `octane_recipe_index`, `octane_load_recipe`, and `octane_queue_recipe`, but the current recipe library is still docs/filesystem-first.
+
+### Steps
+- Treat checked-in recipe directories as examples, not callable tools, until a registry module validates their metadata and command lists.
+- When adding new recipe directories, keep `README.md`, `scene.obj`, `scene.mtl`, `scene.json`, and preview/target image files together.
+- Include a stable `slug`, domain, input assumptions, command list, known pitfalls, and native-Octane verification status in `scene.json`.
+- Do not claim a recipe is natively rendered unless `octane-preview.png` exists and `octane_review_preview` passes or records the known failure.
+
+### Signals / evidence
+- README lists recipe-book read/write tools, but no `octane_recipe_index`, `octane_load_recipe`, or `octane_queue_recipe` MCP tools are registered in `server.py` yet.
+- `docs/recipe-library.md` lists 13 recipe directories, while its table currently omits the Earth and Saturn photoreal examples.
+- Existing tests cover schema, bridge parity, preview review, scene plans, scatter, bounds camera, and config, but not recipe metadata validation.
+
+### Follow-ups
+- Create `src/octanex_mcp/recipes.py` with registry/index/load/queue helpers and tests for every checked-in recipe directory.
+- Update `docs/recipe-library.md` table/coverage map to include all current recipe directories.
+- Promote the first three callable patterns after registry support: product studio, annotated architecture flow, and image heightfield/segmentation review.
+
+## Recipe registry implemented for checked-in examples
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 12:44 UTC
+- **Context:** Converted the recipe library from docs/filesystem-only examples into agent-callable registry helpers and MCP tools.
+
+### Steps
+- Added `src/octanex_mcp/recipes.py` with index, load, queue, and validation helpers.
+- Registered `octane_recipe_index`, `octane_load_recipe`, `octane_queue_recipe`, and `octane_validate_recipe_library` in the MCP server.
+- Resolved repo-relative command asset paths before queueing so imported recipe geometry uses absolute local paths.
+- Updated README, agent quickstart, and recipe-library docs with registry tool usage.
+
+### Signals / evidence
+- `PYTHONPATH= uv run python -m unittest tests.test_recipes -v` passed.
+- Registry found 13 checked-in recipes and validated every recipe directory.
+- Visual inspection confirmed representative recipe previews are non-blank: data-bars, photoreal product studio, Earth, and Saturn.
+
+### Follow-ups
+- Add a recipe-library example for text/annotations and one for image heightfields, then validate them through the registry.
+- Promote useful generators into dedicated first-class tools after their recipes stabilize.
+
+## Preview QA foreground-size heuristic after visual inspection
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 12:44 UTC
+- **Context:** Visual inspection showed data-bars and product-studio previews were clearly recognizable, but the edge-density-only QA heuristic flagged them as `likely object too small` because they have large smooth subjects and dark backgrounds.
+
+### Steps
+- Added foreground pixel and foreground bounding-box metrics based on luminance deviation from the median background.
+- Changed `likely object too small` to require both low edge density and a small foreground bounding box.
+- Kept the tiny-object synthetic fixture failing while adding a large-smooth-subject regression fixture.
+
+### Signals / evidence
+- `PYTHONPATH= uv run python -m unittest tests.test_preview_review -v` passed.
+- `review_preview` now returns `ok=true` for representative recipe previews: data-bars, product studio, Earth, and Saturn.
+- Visual inspection confirmed those representative previews are non-blank and recognizable.
+
+### Follow-ups
+- Add a future `octane_compare_previews(before, after)` tool that can use foreground metrics alongside brightness/contrast/edge density.
+
+## Text labels and image heightfield recipe examples
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 13:18 UTC
+- **Context:** The roadmap called for new recipe-book entries around text rendering and image-processing applications. The recipe registry now includes concrete checked-in examples for both.
+
+### Recipes added
+- `annotated-text-labels`: block-letter label meshes, dark backing plates, and callout stems attached to three scene objects. This avoids depending on unavailable native Octane text-node commands.
+- `image-heightfield-mask`: a synthetic scalar/image grid converted to raised tile geometry, with heat colors and a highlighted segmentation/mask region.
+
+### Signals / evidence
+- `recipe_index()` reports 15 recipes after adding these two examples.
+- `validate_recipe_library()` reports all 15 checked recipes valid.
+- `review_preview()` returns `ok=true` for both new previews.
+- Visual inspection confirmed `AGENT`, `QUEUE`, and `RENDER` are readable in the text-label preview, and the image recipe is recognizable as a heatmap/heightfield with a raised mask and legend.
+
+### Follow-ups
+- Add a proper font-outline/text mesh generator once optional font tooling is introduced.
+- Add optional Pillow-backed image ingestion so real images, masks, OCR boxes, or model saliency maps can produce this geometry directly instead of using a synthetic stdlib grid.
+- Add on-demand AppleScript management for the persistent Octane bridge so recipe queueing can start/stop bridge processing without manual Lua launch.
+
+## OCR layout and attention-map recipe examples
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 13:35 UTC
+- **Context:** After adding basic text and image-heightfield recipes, the next useful coverage gap was semantic AI output: document-layout/OCR overlays and model interpretability matrices.
+
+### Recipes added
+- `document-ocr-layout`: a page plane with raised text-line boxes, table grid overlays, image regions, and an uncertainty marker.
+- `transformer-attention-map`: an attention matrix rendered as token-aligned raised cells with diagonal structure and a highlighted focus region.
+
+### Signals / evidence
+- `recipe_index()` reports 17 checked-in recipes after adding these examples.
+- `validate_recipe_library()` reports all 17 recipes valid.
+- `review_preview()` returns `ok=true` for both new previews.
+- Visual inspection confirmed the OCR recipe reads as a document-layout overlay and the attention recipe reads as a matrix/heatmap with token rails.
+
+### Follow-ups
+- Add ingestion helpers that accept real OCR JSON, layout-parser boxes, saliency maps, or attention tensors and emit these recipe shapes.
+- Add text-label integration for human-readable token/page labels once label generation becomes a first-class tool.

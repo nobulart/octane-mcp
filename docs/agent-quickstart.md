@@ -143,9 +143,10 @@ Before starting a new visual task, read:
 
 ```text
 octane_recipe_book(limit_chars=12000)
+octane_recipe_index()
 ```
 
-Prefer recipes over improvisation when a recipe matches the task.
+Prefer recipes over improvisation when a recipe matches the task. Use `octane_load_recipe(slug)` to inspect commands and `octane_queue_recipe(slug, overrides={...})` to queue a checked-in recipe; then run the Octane bridge and verify result/preview evidence before claiming native render success.
 
 ## Example scene library
 

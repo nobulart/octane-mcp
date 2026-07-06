@@ -14,10 +14,10 @@ Both bridges decode command files with the shared `octane_lua/lib/json.lua` deco
 Octane X only shows/runs Lua scripts from the directory configured in its Preferences. After `octanex-mcp init` generates the portable bridge copies, set Octane X's **Preferences → Scripts path** to this repository's Lua script directory:
 
 ```text
-/path/to/octane-mcp/octane_lua
+/Users/craig/octanex-mcp/octane_lua
 ```
 
-That directory should contain the generated bridge entrypoints:
+That directory contains the generated bridge entrypoints:
 
 ```text
 hermes_bridge_oneshot.generated.lua
@@ -56,8 +56,70 @@ Both bridges now use the same command lifecycle directories:
 queue/ -> processing/ -> processed/ or failed/ -> results/
 ```
 
-Each processed command should write one `results/<command_id>.json` file with success/error metadata. Agents should inspect `results/`, `failed/`, and `bridge.log` before claiming a render or scene operation succeeded.
+Each processed command writes one `results/<command_id>.json` file with success/error metadata. Agents should inspect `results/`, `failed/`, and `bridge.log` before claiming a render or scene operation succeeded.
 
 ## Current duplication boundary
 
 The bridge scripts still contain some duplicated Lua because Octane X runs user-selected scripts directly and this keeps the runnable files mostly self-contained. The shared JSON decoder is the first extracted runtime module; parity tests are the guardrail against semantic drift while more helpers move into `octane_lua/lib/*.lua` modules.
+
+## Workspace and generated files
+
+By default, the Python MCP server writes commands to the real Octane X sandbox container path:
+
+```text
+~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/
+```
+
+`octanex-mcp init` creates the workspace directories, writes the JSON/Lua config files, and generates portable bridge entrypoints with the resolved workspace path injected.
+
+Important generated files:
+
+```text
+~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/octanex-mcp.config.json
+/path/to/repo/octane_lua/config.generated.lua
+/path/to/repo/octane_lua/hermes_bridge_oneshot.generated.lua
+/path/to/repo/octane_lua/hermes_bridge_persistent.generated.lua
+```
+
+Runtime state lives under the workspace:
+
+```text
+queue/*.json        queued commands
+processing/*.json   command currently being handled
+processed/*.json    successful processed commands
+failed/*.json       failed command payloads
+results/*.json      per-command result metadata
+renders/*.png       preview/render outputs
+status.json         bridge heartbeat/state
+bridge.log          bridge diagnostics
+```
+
+## Environment variables
+
+The supported configuration variables are:
+
+| Variable | Purpose |
+| --- | --- |
+| `OCTANEX_MCP_WORKSPACE` | Override the command queue workspace visible to Octane Lua. |
+| `OCTANEX_MCP_REPO` | Override the repository root used to locate/generate Lua bridge scripts. |
+| `OCTANEX_APP_PATH` | Override the Octane X `.app` bundle path. |
+| `OCTANE_APP_PATH` | Legacy alias used only as the default for `OCTANEX_APP_PATH`. |
+
+After changing path variables, rerun:
+
+```bash
+PYTHONPATH= uv run octanex-mcp init
+PYTHONPATH= uv run octanex-mcp doctor
+```
+
+## Running the bridge
+
+Use Octane X's configured Scripts menu to run one of the generated bridge files:
+
+| Mode | Script | Usage |
+| --- | --- | --- |
+| One-shot | `hermes_bridge_oneshot.generated.lua` | Preferred batch path. Drains queued commands and exits so Octane can repaint/render. |
+| Persistent | `hermes_bridge_persistent.generated.lua` | Opens a small bridge window for manual `Process next` / `Drain queue` use. |
+
+For agent workflows, queue commands from MCP, ask the user to run the one-shot script inside Octane X, then inspect `processed/`, `failed/`, `results/`, `status.json`, and any saved preview before reporting success.
+

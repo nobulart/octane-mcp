@@ -1,0 +1,239 @@
+{
+  "slug": "document-ocr-layout",
+  "title": "Document OCR Layout Inspection",
+  "category": "Document AI/OCR",
+  "purpose": "Represent OCR/document-layout output as raised boxes for text lines, tables, images, and uncertain detections.",
+  "prompt": "Visualize a document parser result with text regions, table cells, image regions, and a highlighted low-confidence area.",
+  "camera": {
+    "position": [
+      4.0,
+      -6.2,
+      5.2
+    ],
+    "target": [
+      0,
+      0,
+      0.25
+    ],
+    "fov": 42
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "paper": {
+      "kind": "glossy",
+      "color": [
+        0.9333,
+        0.9255,
+        0.8784
+      ],
+      "roughness": 0.25
+    },
+    "ink": {
+      "kind": "glossy",
+      "color": [
+        0.0784,
+        0.098,
+        0.1647
+      ],
+      "roughness": 0.25
+    },
+    "ocr_text": {
+      "kind": "glossy",
+      "color": [
+        0.2078,
+        0.4588,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "ocr_table": {
+      "kind": "glossy",
+      "color": [
+        0.2941,
+        0.8627,
+        0.549
+      ],
+      "roughness": 0.25
+    },
+    "ocr_image": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.25
+    },
+    "ocr_warning": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.2667,
+        0.3765
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/document-ocr-layout/scene.obj",
+        "format": "obj",
+        "name": "document-ocr-layout"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "paper",
+        "kind": "glossy",
+        "color": [
+          0.9333,
+          0.9255,
+          0.8784
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "ink",
+        "kind": "glossy",
+        "color": [
+          0.0784,
+          0.098,
+          0.1647
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "ocr_text",
+        "kind": "glossy",
+        "color": [
+          0.2078,
+          0.4588,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "ocr_table",
+        "kind": "glossy",
+        "color": [
+          0.2941,
+          0.8627,
+          0.549
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "ocr_image",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7098,
+          0.2392
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "ocr_warning",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.2667,
+          0.3765
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.0,
+          -6.2,
+          5.2
+        ],
+        "target": [
+          0,
+          0,
+          0.25
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/document-ocr-layout/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "This recipe compiles semantic analysis artifacts to OBJ geometry. Native Octane success requires bridge result metadata plus an inspected octane-preview.png.",
+  "known_pitfalls": [
+    "OCR coordinate systems often use top-left origins; normalize axes before generating geometry.",
+    "Thin boxes can z-fight with the page plane; keep raised overlays above the paper surface.",
+    "Too many text boxes can clutter the scene; group or downsample rows for previews."
+  ],
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "Native Octane output must be saved as octane-preview.png before claiming native render success."
+  ],
+  "native_octane_verified": false
+}

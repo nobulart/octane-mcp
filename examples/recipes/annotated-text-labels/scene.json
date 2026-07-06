@@ -1,0 +1,261 @@
+{
+  "slug": "annotated-text-labels",
+  "title": "Annotated Text Labels",
+  "category": "Annotation/text rendering",
+  "purpose": "Demonstrate labels, backing plates, and callouts as generated OBJ geometry rather than native Octane text nodes.",
+  "prompt": "Render an explanatory scene with readable AGENT, QUEUE, and RENDER labels attached to geometry.",
+  "camera": {
+    "position": [
+      2.7,
+      -5.7,
+      2.9
+    ],
+    "target": [
+      0,
+      0,
+      0.82
+    ],
+    "fov": 34
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "cyan": {
+      "kind": "glossy",
+      "color": [
+        0.0706,
+        0.7725,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "gold": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.18
+    },
+    "violet": {
+      "kind": "glossy",
+      "color": [
+        0.651,
+        0.4275,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "green": {
+      "kind": "glossy",
+      "color": [
+        0.2941,
+        0.8627,
+        0.549
+      ],
+      "roughness": 0.25
+    },
+    "white": {
+      "kind": "glossy",
+      "color": [
+        0.902,
+        0.9333,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "label_plate": {
+      "kind": "glossy",
+      "color": [
+        0.0706,
+        0.098,
+        0.1882
+      ],
+      "roughness": 0.25
+    },
+    "label_text": {
+      "kind": "glossy",
+      "color": [
+        0.9608,
+        0.9725,
+        1.0
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/annotated-text-labels/scene.obj",
+        "format": "obj",
+        "name": "annotated-text-labels"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cyan",
+        "kind": "glossy",
+        "color": [
+          0.0706,
+          0.7725,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "gold",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7098,
+          0.2392
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "violet",
+        "kind": "glossy",
+        "color": [
+          0.651,
+          0.4275,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "green",
+        "kind": "glossy",
+        "color": [
+          0.2941,
+          0.8627,
+          0.549
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "white",
+        "kind": "glossy",
+        "color": [
+          0.902,
+          0.9333,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "label_plate",
+        "kind": "glossy",
+        "color": [
+          0.0706,
+          0.098,
+          0.1882
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "label_text",
+        "kind": "glossy",
+        "color": [
+          0.9608,
+          0.9725,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          2.7,
+          -5.7,
+          2.9
+        ],
+        "target": [
+          0,
+          0,
+          0.82
+        ],
+        "fov": 34
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/annotated-text-labels/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "Generated text and image-processing meshes are OBJ geometry. If final Octane import drops line/callout details or makes labels hard to read, convert strokes to thicker box/tube geometry and record the result.",
+  "known_pitfalls": [
+    "Small text can become unreadable at thumbnail size; use backing plates and short words.",
+    "Native Octane text nodes are not part of the current command DSL, so this recipe uses mesh geometry.",
+    "Avoid OBJ line-only glyphs; use boxes/tubes so labels survive import."
+  ],
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "Native Octane output must be saved as octane-preview.png before claiming native render success."
+  ],
+  "native_octane_verified": false
+}

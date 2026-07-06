@@ -1,0 +1,35 @@
+# Generated material hints for OctaneX MCP recipe assets
+newmtl base
+Kd 0.1373 0.1765 0.2941
+Ks 0.2873 0.3265 0.4441
+Ns 224
+
+newmtl paper
+Kd 0.9333 0.9255 0.8784
+Ks 1.0000 1.0000 1.0000
+Ns 375
+
+newmtl ink
+Kd 0.0784 0.0980 0.1647
+Ks 0.2284 0.2480 0.3147
+Ns 375
+
+newmtl ocr_text
+Kd 0.2078 0.4588 1.0000
+Ks 0.3578 0.6088 1.0000
+Ns 375
+
+newmtl ocr_table
+Kd 0.2941 0.8627 0.5490
+Ks 0.4441 1.0000 0.6990
+Ns 375
+
+newmtl ocr_image
+Kd 1.0000 0.7098 0.2392
+Ks 1.0000 0.8598 0.3892
+Ns 375
+
+newmtl ocr_warning
+Kd 1.0000 0.2667 0.3765
+Ks 1.0000 0.4167 0.5265
+Ns 375

@@ -1,0 +1,217 @@
+{
+  "slug": "transformer-attention-map",
+  "title": "Transformer Attention Map",
+  "category": "LLM interpretability",
+  "purpose": "Visualize an attention matrix as raised cells, with token rails and a highlighted focus region for interpretability discussions.",
+  "prompt": "Render a transformer attention head as a 3D matrix, showing diagonal attention and one strong cross-token focus area.",
+  "camera": {
+    "position": [
+      4.8,
+      -6.2,
+      3.7
+    ],
+    "target": [
+      -0.25,
+      -0.25,
+      0.45
+    ],
+    "fov": 42
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "token": {
+      "kind": "glossy",
+      "color": [
+        0.902,
+        0.9333,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "attn_low": {
+      "kind": "glossy",
+      "color": [
+        0.0941,
+        0.2902,
+        0.6667
+      ],
+      "roughness": 0.25
+    },
+    "attn_mid": {
+      "kind": "glossy",
+      "color": [
+        0.0706,
+        0.7725,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "attn_high": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7098,
+        0.2392
+      ],
+      "roughness": 0.25
+    },
+    "attn_peak": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.2667,
+        0.3765
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/transformer-attention-map/scene.obj",
+        "format": "obj",
+        "name": "transformer-attention-map"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "token",
+        "kind": "glossy",
+        "color": [
+          0.902,
+          0.9333,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "attn_low",
+        "kind": "glossy",
+        "color": [
+          0.0941,
+          0.2902,
+          0.6667
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "attn_mid",
+        "kind": "glossy",
+        "color": [
+          0.0706,
+          0.7725,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "attn_high",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7098,
+          0.2392
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "attn_peak",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.2667,
+          0.3765
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.8,
+          -6.2,
+          3.7
+        ],
+        "target": [
+          -0.25,
+          -0.25,
+          0.45
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/transformer-attention-map/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "This recipe compiles semantic analysis artifacts to OBJ geometry. Native Octane success requires bridge result metadata plus an inspected octane-preview.png.",
+  "known_pitfalls": [
+    "Attention matrices get dense quickly; aggregate tokens or heads before rendering large models.",
+    "Height and color together can exaggerate small numeric differences; document normalization.",
+    "Token labels are symbolic rails for now; combine with text-label geometry when exact readable labels are needed."
+  ],
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "Native Octane output must be saved as octane-preview.png before claiming native render success."
+  ],
+  "native_octane_verified": false
+}

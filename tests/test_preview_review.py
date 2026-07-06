@@ -98,6 +98,21 @@ class PreviewReviewTests(unittest.TestCase):
         self.assertIn("likely object too small", result["issues"])
         self.assertTrue(any(action["action"] == "tighten_camera" for action in result["recommended_actions"]))
 
+    def test_large_smooth_subject_is_not_mistaken_for_tiny_object(self) -> None:
+        rows = [[(14, 18, 34)] * 24 for _ in range(16)]
+        for y in range(4, 12):
+            for x in range(5, 19):
+                rows[y][x] = (42 + x * 4, 120, 180)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "large-smooth-subject.png"
+            write_rgb_png(path, rows)
+
+            result = review_preview(path)
+
+        self.assertTrue(result["ok"], result["issues"])
+        self.assertNotIn("likely object too small", result["issues"])
+        self.assertGreater(result["foreground_bbox_area_percent"], 20.0)
+
     def test_camera_and_lighting_fix_helpers_return_actionable_patches(self) -> None:
         review = {
             "issues": ["likely object too small", "mostly near-black"],

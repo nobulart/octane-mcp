@@ -16,6 +16,7 @@ from .bridge import (
     write_command,
 )
 from .config import doctor, initialize_environment, resolve_config
+from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
@@ -65,6 +66,26 @@ def build_mcp() -> Any:
             signals=signals or [],
             follow_ups=follow_ups or [],
         ))
+
+    @mcp.tool()
+    def octane_recipe_index() -> str:
+        """List checked-in example recipes with normalized metadata and preview/native verification status."""
+        return _json(recipe_index())
+
+    @mcp.tool()
+    def octane_load_recipe(slug: str) -> str:
+        """Load a checked-in recipe by slug, including command sequence and resolved asset paths."""
+        return _json(load_recipe(slug))
+
+    @mcp.tool()
+    def octane_queue_recipe(slug: str, overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue a checked-in recipe command sequence by slug, with optional per-op payload overrides."""
+        return _json(queue_recipe(slug, overrides=overrides or {}))
+
+    @mcp.tool()
+    def octane_validate_recipe_library() -> str:
+        """Validate checked-in recipe metadata, required files, previews, and command payloads."""
+        return _json(validate_recipe_library())
 
     @mcp.tool()
     def octane_validate_command(command: Dict[str, Any]) -> str:

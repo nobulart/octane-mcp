@@ -1,0 +1,239 @@
+{
+  "slug": "image-heightfield-mask",
+  "title": "Image Heightfield and Mask Inspection",
+  "category": "Image processing/vision",
+  "purpose": "Turn a small image, heatmap, or segmentation mask into raised tile geometry for visual QA in Octane.",
+  "prompt": "Visualize model attention or segmentation output as a 3D heatfield with raised mask regions.",
+  "camera": {
+    "position": [
+      4.9,
+      -6.0,
+      4.0
+    ],
+    "target": [
+      0,
+      0,
+      0.55
+    ],
+    "fov": 44
+  },
+  "materials": {
+    "base": {
+      "kind": "diffuse",
+      "color": [
+        0.1373,
+        0.1765,
+        0.2941
+      ],
+      "roughness": 0.55
+    },
+    "white": {
+      "kind": "glossy",
+      "color": [
+        0.902,
+        0.9333,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "heat_low": {
+      "kind": "glossy",
+      "color": [
+        0.098,
+        0.3333,
+        0.7059
+      ],
+      "roughness": 0.25
+    },
+    "heat_mid": {
+      "kind": "glossy",
+      "color": [
+        0.102,
+        0.7843,
+        1.0
+      ],
+      "roughness": 0.25
+    },
+    "heat_high": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.7294,
+        0.2431
+      ],
+      "roughness": 0.25
+    },
+    "heat_hot": {
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.2941,
+        0.3608
+      ],
+      "roughness": 0.25
+    },
+    "mask": {
+      "kind": "glossy",
+      "color": [
+        0.2745,
+        0.9216,
+        0.5882
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/image-heightfield-mask/scene.obj",
+        "format": "obj",
+        "name": "image-heightfield-mask"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base",
+        "kind": "diffuse",
+        "color": [
+          0.1373,
+          0.1765,
+          0.2941
+        ],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "white",
+        "kind": "glossy",
+        "color": [
+          0.902,
+          0.9333,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "heat_low",
+        "kind": "glossy",
+        "color": [
+          0.098,
+          0.3333,
+          0.7059
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "heat_mid",
+        "kind": "glossy",
+        "color": [
+          0.102,
+          0.7843,
+          1.0
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "heat_high",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.7294,
+          0.2431
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "heat_hot",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.2941,
+          0.3608
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mask",
+        "kind": "glossy",
+        "color": [
+          0.2745,
+          0.9216,
+          0.5882
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.9,
+          -6.0,
+          4.0
+        ],
+        "target": [
+          0,
+          0,
+          0.55
+        ],
+        "fov": 44
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "start_render",
+      "payload": {
+        "samples": 128,
+        "width": 1280,
+        "height": 1280
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/image-heightfield-mask/octane-preview.png",
+        "width": 1280,
+        "height": 1280
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
+  "native_render_note": "Generated text and image-processing meshes are OBJ geometry. If final Octane import drops line/callout details or makes labels hard to read, convert strokes to thicker box/tube geometry and record the result.",
+  "known_pitfalls": [
+    "Dense images can generate too many OBJ faces; downsample aggressively before queueing.",
+    "Color maps can hide magnitude errors; keep a legend and value range in metadata.",
+    "Native Octane preview should be checked for clipping because tall hot/mask regions can dominate framing."
+  ],
+  "quality_checklist": [
+    "Preview is non-blank and the central idea is recognizable at thumbnail size.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the entire subject with margin.",
+    "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
+    "Native Octane output must be saved as octane-preview.png before claiming native render success."
+  ],
+  "native_octane_verified": false
+}

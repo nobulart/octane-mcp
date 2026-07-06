@@ -126,6 +126,33 @@ def _edge_density(width: int, height: int, luminance: list[float]) -> float:
     return (edges / comparisons) * 100.0 if comparisons else 0.0
 
 
+def _foreground_metrics(width: int, height: int, luminance: list[float], contrast: float) -> dict[str, float]:
+    if not luminance or width <= 0 or height <= 0:
+        return {"foreground_pixel_percent": 0.0, "foreground_bbox_area_percent": 0.0}
+    sorted_luma = sorted(luminance)
+    background = sorted_luma[len(sorted_luma) // 2]
+    threshold = max(12.0, contrast * 0.35)
+    xs: list[int] = []
+    ys: list[int] = []
+    foreground_count = 0
+    for idx, value in enumerate(luminance):
+        if abs(value - background) >= threshold:
+            foreground_count += 1
+            ys.append(idx // width)
+            xs.append(idx % width)
+    foreground_pixel_percent = foreground_count / len(luminance) * 100.0
+    if not xs or not ys:
+        bbox_area_percent = 0.0
+    else:
+        bbox_width = max(xs) - min(xs) + 1
+        bbox_height = max(ys) - min(ys) + 1
+        bbox_area_percent = bbox_width * bbox_height / (width * height) * 100.0
+    return {
+        "foreground_pixel_percent": _round3(foreground_pixel_percent),
+        "foreground_bbox_area_percent": _round3(bbox_area_percent),
+    }
+
+
 def _diagnosis(
     *,
     issues: list[str],
@@ -222,9 +249,16 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
     near_black = sum(value <= 8 for value in luminance) / count * 100.0
     near_white = sum(value >= 247 for value in luminance) / count * 100.0
     edge_density = _edge_density(width, height, luminance)
+    foreground = _foreground_metrics(width, height, luminance, contrast)
     likely_blank = contrast < 2.0 or near_black > 98.0
     likely_clipped = near_white > 98.0
-    likely_tiny = not likely_blank and not likely_clipped and edge_density < 2.0 and contrast >= 2.0
+    likely_tiny = (
+        not likely_blank
+        and not likely_clipped
+        and edge_density < 2.0
+        and contrast >= 2.0
+        and foreground["foreground_bbox_area_percent"] < 12.0
+    )
 
     result.update(
         {
@@ -234,6 +268,7 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
             "near_black_percent": _round3(near_black),
             "near_white_percent": _round3(near_white),
             "edge_density": _round3(edge_density),
+            **foreground,
             "likely_blank": likely_blank,
             "likely_clipped": likely_clipped,
             "likely_object_too_small": likely_tiny,
