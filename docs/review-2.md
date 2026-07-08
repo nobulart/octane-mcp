@@ -15,7 +15,7 @@ The repo (`github.com/nobulart/octane-mcp`) implements a **local MCP server** (M
 - Self-improvement hooks (`octane_record_recipe`).
 - Examples already working: photoreal product studio, Earth/Saturn scenes, 3D bar charts, math surfaces (limited safe expressions), test geometry, avatar placement, render + preview review loops.
 
-**Current limitations** (well-documented in README + REVIEW.md):
+**Current limitations** (well-documented in README + [review.md](review.md)):
 - Early/beta (today’s commit).
 - Manual bridge triggering (one-shot preferred for reliability).
 - Limited visual primitives and grammars.
@@ -31,7 +31,7 @@ The core idea — **agent + high-fidelity renderer as a persistent, reviewable v
 #### 1. Short-term Polish & Reliability (Next 1–3 months)
 These would make it production-usable quickly:
 
-- **Robust schema & validation**: Move to Pydantic-style typed commands + versioning (already suggested in REVIEW.md). Add stable scene/object IDs for incremental editing.
+- **Robust schema & validation**: Move to Pydantic-style typed commands + versioning (already suggested in [review.md](review.md)). Add stable scene/object IDs for incremental editing.
 - **Better preview QA**: Python-side image analysis (brightness, edge detection, clipping detection) so Hermes can autonomously detect and fix bad renders.
 - **Auto-framing & camera intelligence**: Use asset bounds metadata to intelligently place/animate cameras.
 - **Unified bridge logic** + improved material/group handling.

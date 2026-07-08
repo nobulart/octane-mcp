@@ -9,7 +9,10 @@ octane_lua/             Lua bridge: *_v2/_v1 templates (source of truth)
   lib/*.lua             extracted shared Lua (reference-only; entrypoints inline)
 scripts/                OBJ / example generators + glm_ocr_review
 examples/recipes/       copy-paste scene libraries (obj/json/png + README)
-docs/                   command-schema, recipe-book, octane-bridge, etc.
+docs/                   command-schema, recipe-book, octane-bridge, roadmap,
+                        idea, plan, review, review-2, octanex-apple-test-report,
+                        recipe-library, visual-grammar, visual-iteration-protocol,
+                        agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan
 hermes/                 Hermes skill + profile snippet
 tests/                  parity + schema tests
 ```
