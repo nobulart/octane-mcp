@@ -33,6 +33,8 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Photoreal Product Studio](../examples/recipes/photoreal-product-studio/README.md) | Photoreal/PBR rendering | `photoreal-product-studio` | Set a quality target for glass, metal, softbox lighting, camera, and native-render validation. |
 | [Photoreal Multi-Vase Studio](../examples/recipes/photoreal-vase-studio/README.md) | Photoreal/PBR rendering | `photoreal-vase-studio` | Stage several vases with visibly different silhouettes, colours, textures, and material intent for product visualization. |
 | [Photoreal Earth in Space](../examples/recipes/photoreal-earth-space/README.md) | Photoreal/PBR space rendering | `photoreal-earth-space` | Set a quality target for Earth, cloud shells, atmosphere rim glow, and space lighting. |
+| [Earth and Moon — Orbital Space](../examples/recipes/earth-moon-space/README.md) | Photoreal/PBR space rendering | `earth-moon-space` | Similar to photoreal-earth-space but with explicit Earth-Moon system and orbital positioning. |
+| [Helicoid Spiral](../examples/recipes/helicoid-spiral/README.md) | Mathematics/geometry | `helicoid-spiral` | Render a helicoid spiral surface to explain rotational translation and parametric curves. |
 | [Saturn and Moons in Space](../examples/recipes/saturn-moons-space/README.md) | Photoreal/PBR space rendering | `saturn-moons-space` | Set a quality target for Saturn bands, rings, Cassini division cues, moons, and space lighting. |
 
 ## Recommended agent loop

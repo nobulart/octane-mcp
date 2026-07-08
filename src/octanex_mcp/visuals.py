@@ -143,6 +143,109 @@ class ObjBuilder:
                 material=material,
             )
 
+    def add_cone(
+        self,
+        *,
+        center: tuple[float, float, float],
+        radius: float,
+        height: float,
+        segments: int = 24,
+        cap: bool = True,
+        material: str = "default",
+    ) -> None:
+        cx, cy, cz = center
+        radius = max(float(radius), 1e-4)
+        half_h = max(float(height), 1e-4) / 2.0
+        segments = max(4, int(segments))
+        start = self.vertex_count + 1
+        self.lines.append(f"usemtl {material}")
+        points: list[tuple[float, float, float]] = []
+        # Rim vertices (bottom)
+        for i in range(segments):
+            angle = 2.0 * math.pi * i / segments
+            point = (cx + radius * math.cos(angle), cy + radius * math.sin(angle), cz - half_h)
+            points.append(point)
+            self.lines.append(f"v {point[0]:.6f} {point[1]:.6f} {point[2]:.6f}")
+        # Apex
+        apex = start + segments
+        point = (cx, cy, cz + half_h)
+        points.append(point)
+        self.lines.append(f"v {point[0]:.6f} {point[1]:.6f} {point[2]:.6f}")
+        self._record_points(points)
+        # Side faces
+        for i in range(segments):
+            a = start + i
+            b = start + ((i + 1) % segments)
+            self.lines.append(f"f {a} {apex} {b}")
+        # Bottom cap (fan)
+        for i in range(segments):
+            c = start
+            d = start + ((i + 1) % segments)
+            self.lines.append(f"f {c} {d} {start + segments}")
+        self.vertex_count += segments + 1
+
+    def add_arrow(
+        self,
+        *,
+        start_point: tuple[float, float, float],
+        end_point: tuple[float, float, float],
+        shaft_radius: float = 0.05,
+        head_radius: float = 0.15,
+        head_height: float = 0.3,
+        segments: int = 12,
+        material: str = "default",
+    ) -> None:
+        sx, sy, sz = start_point
+        ex, ey, ez = end_point
+        dx = ex - sx
+        dy = ey - sy
+        dz = ez - sz
+        length = math.sqrt(dx * dx + dy * dy + dz * dz) or 1e-4
+        nx, ny, nz = dx / length, dy / length, dz / length
+        shaft_r = max(float(shaft_radius), 1e-4)
+        head_r = max(float(head_radius), shaft_r * 1.2)
+        h_head = min(float(head_height), length * 0.5)
+        segments = max(4, int(segments))
+        start_v = self.vertex_count + 1
+        self.lines.append(f"usemtl {material}")
+        points: list[tuple[float, float, float]] = []
+
+        def local_xyz(ix, iy, iz) -> tuple[float, float, float]:
+            return (sx + ix * nx + iy * nx + iz, sy + ix * ny + iy * ny + iz, sz + ix * nz + iy * nz)
+
+        # Shaft vertices
+        for i in range(segments):
+            angle = 2.0 * math.pi * i / segments
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
+            perp_x = -ny * sin_a + nz * cos_a
+            perp_y = nx * sin_a
+            perp_z = -nz * sin_a + ny * cos_a
+            for z_off in (0.0, length - h_head):
+                vx = sx + nx * z_off + perp_x * shaft_r
+                vy = sy + ny * z_off + perp_y * shaft_r
+                vz = sz + nz * z_off + perp_z * shaft_r
+                points.append((vx, vy, vz))
+                self.lines.append(f"v {vx:.6f} {vy:.6f} {vz:.6f}")
+        shaft_end = start_v + segments
+        # Shaft side faces
+        for i in range(segments):
+            a = start_v + i
+            b = start_v + ((i + 1) % segments)
+            c = shaft_end + ((i + 1) % segments)
+            d = shaft_end + i
+            self.lines.append(f"f {a} {b} {c} {d}")
+        # Add apex
+        apex = shaft_end + segments
+        points.append((ex, ey, ez))
+        self.lines.append(f"v {ex:.6f} {ey:.6f} {ez:.6f}")
+        self._record_points(points)
+        for i in range(segments):
+            a = shaft_end + i
+            b = shaft_end + ((i + 1) % segments)
+            self.lines.append(f"f {a} {b} {apex}")
+        self.vertex_count += segments * 2 + 1
+
     def add_cylinder(
         self,
         *,

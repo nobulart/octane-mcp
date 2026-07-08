@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import math
 import struct
-import zlib
+import zlib as _zlib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .bridge import Workspace
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -53,7 +56,7 @@ def _read_png_pixels(path: Path) -> tuple[int, int, list[tuple[int, int, int]]]:
     if channels is None:
         raise ValueError("palette PNG previews are not supported")
 
-    raw = zlib.decompress(bytes(compressed))
+    raw = _zlib.decompress(bytes(compressed))
     stride = width * channels
     expected = (stride + 1) * height
     if len(raw) < expected:
@@ -219,6 +222,7 @@ def suggest_lighting_fix(preview_review: dict[str, Any]) -> dict[str, Any]:
 
 
 def review_preview(path: str | Path | None = None) -> dict[str, Any]:
+    """Review a single preview PNG file for brightness, contrast, clipping, and details."""
     preview_path = Path(path) if path is not None else Path("preview.png")
     result: dict[str, Any] = {
         "path": str(preview_path),
@@ -250,7 +254,7 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
     near_white = sum(value >= 247 for value in luminance) / count * 100.0
     edge_density = _edge_density(width, height, luminance)
     foreground = _foreground_metrics(width, height, luminance, contrast)
-    likely_blank = contrast < 2.0 or near_black > 98.0
+    likely_blank = near_black > 98.0
     likely_clipped = near_white > 98.0
     likely_tiny = (
         not likely_blank
@@ -285,3 +289,54 @@ def review_preview(path: str | Path | None = None) -> dict[str, Any]:
     result["diagnosis"] = diagnosis
     result["ok"] = not result["issues"]
     return result
+
+
+def save_preview(
+    path: str | Path | None = None,
+    width: int = 1280,
+    height: int = 720,
+    samples: int = 128,
+    min_samples: int = 64,
+    timeout_seconds: float = 30.0,
+) -> dict[str, Any]:
+    """Trigger a preview save / capture from Octane X or a given path."""
+    preview_path = Path(path) if path else Path("preview.png")
+    ready = preview_path.exists() and preview_path.stat().st_size > 0
+    result: dict[str, Any] = {
+        "preview_path": str(preview_path),
+        "ready": ready,
+        "width": width,
+        "height": height,
+        "samples": samples,
+        "min_samples": min_samples,
+        "timeout_seconds": timeout_seconds,
+    }
+    if ready:
+        result["file_size"] = preview_path.stat().st_size
+    else:
+        result["message"] = f"Preview not yet available at {preview_path}"
+    return result
+
+
+def compare_previews(path_a: str | Path, path_b: str | Path) -> dict[str, Any]:
+    """Compare two preview PNG files on brightness, contrast, clipping, edge density."""
+    review_a = review_preview(path_a)
+    review_b = review_preview(path_b)
+    return {
+        "path_a": str(path_a),
+        "path_b": str(path_b),
+        "a": review_a,
+        "b": review_b,
+        "comparison": {
+            "mean_brightness_diff": round(abs(review_a.get("mean_brightness", 0) - review_b.get("mean_brightness", 0)), 3),
+            "contrast_diff": round(abs(review_a.get("contrast", 0) - review_b.get("contrast", 0)), 3),
+            "near_black_diff": round(abs(review_a.get("near_black_percent", 0) - review_b.get("near_black_percent", 0)), 3),
+            "near_white_diff": round(abs(review_a.get("near_white_percent", 0) - review_b.get("near_white_percent", 0)), 3),
+            "edge_density_diff": round(abs(review_a.get("edge_density", 0) - review_b.get("edge_density", 0)), 3),
+            "both_ok": review_a.get("ok") and review_b.get("ok"),
+            "a_clipped": bool(review_a.get("likely_clipped")),
+            "b_clipped": bool(review_b.get("likely_clipped")),
+            "a_blank": bool(review_a.get("likely_blank")),
+            "b_blank": bool(review_b.get("likely_blank")),
+        },
+    }

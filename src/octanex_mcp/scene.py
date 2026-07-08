@@ -4,16 +4,40 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
+# Keep bridge import separate to avoid circular import
+# Workspace and write_command are used at module level
+# octane_patch_scene is loaded lazily via __getattr__
 from .bridge import Workspace, write_command
 from .schema import SCHEMA_VERSION, validate_command
 from .visuals import create_primitive_obj
+
+if TYPE_CHECKING:
+    from .bridge import octane_patch_scene as octane_patch_scene
 
 
 def _safe_id(value: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9_.:-]+", "_", str(value).strip())
     return safe.strip("_") or "scene"
+
+
+# Provide octane_patch_scene via lazy access
+_octane_patch_scene = None
+
+
+def _get_octane_patch_scene():
+    global _octane_patch_scene
+    if _octane_patch_scene is None:
+        from .bridge import octane_patch_scene as _ops
+        _octane_patch_scene = _ops
+    return _octane_patch_scene
+
+
+def __getattr__(name: str) -> Any:
+    if name == "octane_patch_scene":
+        return _get_octane_patch_scene()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def namespaced(scene_id: str, object_id: str) -> str:
@@ -93,7 +117,11 @@ def build_scene_commands(plan: Mapping[str, Any], workspace: Workspace = Workspa
 
     camera = scene.get("camera") or {}
     if camera:
-        commands.append({"op": "set_camera", "payload": dict(camera)})
+        cmd_payload = dict(camera)
+        # Ensure target is present for set_camera validation
+        if "target" not in cmd_payload:
+            cmd_payload["target"] = [0.0, 0.0, 0.0]
+        commands.append({"op": "set_camera", "payload": cmd_payload})
     lighting = scene.get("lighting") or {}
     if lighting:
         commands.append({"op": "set_lighting", "payload": dict(lighting)})
@@ -146,7 +174,12 @@ def _save_loaded_scene(scene: Mapping[str, Any], workspace: Workspace) -> dict[s
 
 
 def add_scene_object(scene_id: str, object_spec: Mapping[str, Any], workspace: Workspace = Workspace()) -> dict[str, Any]:
-    loaded = load_scene_manifest(scene_id, workspace)
+    try:
+        loaded = load_scene_manifest(scene_id, workspace)
+    except FileNotFoundError:
+        loaded = {"scene": {"scene_id": scene_id, "objects": [], "materials": []}}
+        loaded["scene"].setdefault("objects", [])
+        loaded["scene"].setdefault("materials", [])
     scene = loaded["scene"]
     obj = dict(object_spec)
     object_id = str(obj.get("id") or obj.get("name") or "object")

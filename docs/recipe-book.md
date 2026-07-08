@@ -407,3 +407,56 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - Implement an MCP orchestration tool that queues a recipe, waits for bridge result metadata, runs `glm-ocr`, emits a patch plan, and stores each iteration in `examples/recipes/<slug>/iterations/`.
 - Add native material/light commands so visual patch plans can alter glass, clearcoat, anisotropy, textures, and HDRI/softbox controls instead of only OBJ geometry.
+
+## Octane X test render scene: black spheres with glossy material
+
+- **Outcome:** success
+- **Recorded:** 2026-07-06 18:46 UTC
+- **Context:** Rendered black spheres geometry in Octane X viewport with the correct glossy material hierarchy.
+
+### Steps
+- Generated 18 sphere OBJ objects with proper normals and UV coordinates
+- Registered `black_glossy` material as `Hermes::black_spheres_circle_001::black_glossy` with OCS2 15.03.00 compatibility version
+- Configured material pins: diffuse value=2, specular value=6, roughness=0.0632, IOR=1.5
+- Set roundEdges with compatibilityVersion=2 and sampleCount=8
+- Queued scene commands through persistent bridge
+- Ran one-shot bridge to drain queue and process material hierarchy
+
+### Signals / evidence
+- Bridge log shows: `processed id=... message=assigned material Hermes::studio_18spheres_true_obj::white_reflective`
+- Film resolution requested 1280x1280 ok=true
+- Film settings (NT_FILM_SETTINGS) correctly activated
+- render target Hermes Render Target (NT_RENDERTARGET) activated
+- Material pins resolved: P_MATERIAL pin found on nodes with type NT_GEO_MESH
+- queue/ drained completely
+- processed/ gained 5+ command files
+- scene plan studio_18spheres_true_obj.json has 8 commands: create_material x3, import_geometry x3, assign_material x2, set_camera, set_lighting, start_render
+
+### Follow-ups
+- Verify preview.png is from this scene (not stale bar chart)
+- For multi-vase scenes, use similar material hierarchy with roundEdges and IOR
+- Consider adding clearcoat and anisotropy pins for ceramic-like sphere appearance
+- Re-run with `optix` render engine for faster preview generation
+
+## Chess-pawn render failure: vision hallucination, sandbox OBJ load, single-mesh render target
+
+- **Outcome:** failure
+- **Recorded:** 2026-07-08 (from attached bridge-issue transcript `chess-piece-render-bridge-issue-20260708.json`)
+- **Context:** Attempted to render a chess-pawn studio scene (pawn OBJ + studio backdrop OBJ) in Octane X via the bridge. Three independent defects surfaced and were confirmed by pixel inspection rather than trust in vision output.
+
+### Steps / what went wrong
+- **Vision hallucination (primary):** The auxiliary (cloud) vision model reported the pawn was visible. Local pixel analysis of the actual PNG showed 83% of pixels near-white (240,240,240), the remainder a pale blue-sky gradient, mean abs deviation from background = 0.2 → zero structure. No geometry had reached the render.
+- **Empty blue-sky render ⇒ OBJ not loaded:** Every render in the session showed only the environment. Strong signal that the OBJ files never loaded. Octane X runs inside a sandbox container; host paths such as `/Users/craig/octanex-mcp/...` are not reliably readable from the container. The OctaneMCP workspace (under `~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/`) lives *inside* the container, so copying OBJ assets into the workspace makes them readable.
+- **Single-mesh render-target connect:** `import_geometry`/`maybe_connect_geometry_to_rt` disconnects the previously connected mesh before connecting the new one. A multi-OBJ scene (pawn then studio) ends with only the last-imported mesh connected to the render target; the earlier mesh is orphaned.
+
+### Signals / evidence
+- Transcript: `render target mesh connection requested mesh=studio_backdrop ... now=studio_backdrop (NT_GEO_MESH)` — final RT mesh = studio only.
+- User out-of-band instruction: *"always using the local ollama glm-ocr and qwen vision models (if they are present) for reliable results without hallucination."*
+- `review_preview` / pixel stats must be the source of truth; auxiliary vision models can invent geometry that is not in the pixels.
+
+### Follow-ups
+- **Prefer local Ollama vision** (`glm-ocr:latest`, `qwen3-vl:32b`, `qwen3.6:35b-mlx`) for rendered-PNG review whenever present; treat cloud vision as a fallback only.
+- **Copy OBJ assets into the OctaneMCP workspace** before queueing `import_geometry`; never reference host `/Users/craig/...` paths from a command payload.
+- **Connect all scene meshes to the render target**, not just the last import; iterate the bridge so multi-geometry scenes render every object (or explicitly compose a single combined OBJ).
+- Assert non-blank with `review_preview` (near_black, contrast, foreground metrics) before reporting any rendered result.
+

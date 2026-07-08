@@ -485,6 +485,11 @@ local function request_render_restart(samples, width, height)
     activate_render_target(rt)
     set_render_resolution(rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
     samples = samples or 64
+    -- Pause any in-flight render before (re)starting. Otherwise a prior op
+    -- (e.g. set_lighting) may still be rendering and the subsequent restart
+    -- raises "Can't start a new render before finishing the previous render",
+    -- which left blank/white previews in practice.
+    pcall(function() octane.render.pause() end)
     -- On a clean Octane File > New scene, restart() alone may no-op until the
     -- render API has been primed with a renderTargetNode. This call can raise
     -- "render engine failure" after binding the target; the following restart
