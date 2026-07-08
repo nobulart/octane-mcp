@@ -25,6 +25,15 @@ dist/
 
 # Local Octane/generated runtime artifacts if copied into repo
 OctaneMCP/
+
+# Local Hermes desktop-app session exports and attachments
+.hermes/
+
+# Staging scratch for OBJ/log generation (not source)
+OctaneMCP_staging/
+
+# Session scratch notes at repo root
+NOTES-*.md
 assets/
 renders/
 *.log
