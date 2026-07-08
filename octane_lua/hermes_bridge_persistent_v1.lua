@@ -545,21 +545,23 @@ local function request_render_restart(samples, width, height)
     -- is still "in progress").
     pcall(function() if octane.render.stop then octane.render.stop() end end)
     pcall(function() octane.render.pause() end)
-    -- On a clean Octane File > New scene, restart() alone may no-op until the
-    -- render API has been primed with a renderTargetNode. This call can raise
-    -- "render engine failure" after binding the target; the following restart
-    -- then starts the viewport renderer and makes saveImage available.
+    -- Render the MAIN viewport (octane.render.start() with no args), NOT
+    -- octane.render.start{renderTargetNode=rt}. saveImage() captures the main
+    -- viewport buffer, so only the main-viewport render populates what saveImage
+    -- can grab. Using start{rt} leaves the main viewport empty -> saveImage
+    -- returns r1=false and writes nothing. Confirmed: the 19:06-20:34 working
+    -- runs used main-viewport start; the regression appeared only after
+    -- switching to start{rt}. The geometry is connected to our RT for the node
+    -- graph, but the actual pixels we save come from the main viewport.
     -- NOTE: maxSamples is NOT a recognized key for octane.render.start on this
     -- Octane build, so it is intentionally NOT used; the render is instead
     -- bounded by wait_for_render_ready() polling the sample count to min_samples
     -- (with a wall-clock timeout), then the frame is grabbed. This avoids an
     -- unbounded render that would block every subsequent restart.
-    local ok, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode=rt } end)
-    if ok then return true, "render start requested (unbounded; bounded by wait_for_render_ready)" end
+    local ok, result = try_render_call("start()", function() return octane.render.start() end)
+    if ok then return true, "render start requested (main viewport; bounded by wait_for_render_ready)" end
     ok, result = try_render_call("restart()", function() return octane.render.restart() end)
     if ok then return true, "render restart requested" end
-    ok, result = try_render_call("start({renderTargetNode=rt})", function() return octane.render.start({ renderTargetNode=rt }) end)
-    if ok then return true, "render start requested" end
     ok, result = try_render_call("continue()", function() return octane.render.continue() end)
     if ok then return true, "render continue requested" end
     return false, "render refresh failed; see bridge.log for attempted signatures"
