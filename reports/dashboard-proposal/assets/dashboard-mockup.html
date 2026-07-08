@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>OctaneX Agentic Canvas — Interactive Mockup</title>
+<style>
+  :root{
+    --bg:#05070a; --panel:rgba(12,19,24,.86); --panel-brd:#243441;
+    --txt:#eaf2f6; --muted:#8aa0ad; --dim:#5b6b78;
+    --acc:#35e0d8; --acc2:#2fd4ff; --ok:#5bd0a0; --warn:#ffb347; --err:#ff7a8a;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
+  #stage{position:fixed;inset:0;background:
+      radial-gradient(60% 50% at 50% 42%, #1d4a5e55, transparent 70%),
+      linear-gradient(135deg,#0e2030,#0a0f15 60%,#1a2230);
+  }
+  /* simulated render subject */
+  #subject{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.55}
+  #subject svg{width:62%;height:62%}
+  /* HUD layers */
+  .hud{position:absolute;z-index:5;transition:opacity .35s, transform .35s}
+  .hidden{opacity:0 !important;pointer-events:none;transform:translateY(8px)}
+  /* intent pill TL */
+  #intent{top:34px;left:34px;display:flex;align-items:center;gap:10px;background:var(--panel);
+    border:1px solid var(--panel-brd);border-radius:22px;padding:9px 16px;font-size:14px;backdrop-filter:blur(8px)}
+  #intent .dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 10px var(--acc)}
+  #intent b{font-weight:600}
+  #intent span{color:var(--muted);font-weight:400}
+  /* status pill TR */
+  #status{top:34px;right:34px;display:flex;align-items:center;gap:10px;background:var(--panel);
+    border:1px solid var(--panel-brd);border-radius:22px;padding:9px 16px;font-size:13px;backdrop-filter:blur(8px)}
+  #status .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  #status kbd{color:var(--dim);font-size:12px;border:1px solid var(--panel-brd);border-radius:6px;padding:1px 6px}
+  /* context chip BL */
+  #ctx{bottom:118px;left:34px;background:var(--panel);border:1px solid var(--panel-brd);border-radius:12px;
+    padding:10px 14px;width:184px;backdrop-filter:blur(8px)}
+  #ctx .lbl{color:var(--dim);font-size:10px;letter-spacing:.12em}
+  #ctx .name{font-size:14px;font-weight:600;margin:3px 0}
+  #ctx .meta{color:var(--acc);font-size:11px}
+  /* command bar (the one persistent control) */
+  #bar{bottom:36px;left:50%;transform:translateX(-50%);width:min(620px,70vw);display:flex;align-items:center;
+    background:rgba(16,24,32,.94);border:1px solid var(--panel-brd);border-radius:30px;padding:8px 8px 8px 22px;
+    box-shadow:0 8px 40px #0008, 0 0 0 1px #35e0d855;backdrop-filter:blur(10px)}
+  #bar .ph{color:var(--muted);font-size:14px;flex:1}
+  #bar .ph b{color:var(--txt);font-weight:500}
+  #bar .kbd{color:var(--dim);font-size:12px;border:1px solid var(--panel-brd);border-radius:6px;padding:2px 7px;margin-right:10px}
+  #bar button{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#03141a;border:none;border-radius:22px;
+    padding:10px 22px;font-weight:700;font-size:13px;cursor:pointer}
+  /* inspector drawer (reveal on ⌘I) */
+  #inspector{top:0;right:0;height:100%;width:340px;background:rgba(10,15,21,.96);border-left:1px solid var(--panel-brd);
+    padding:24px;backdrop-filter:blur(14px);transform:translateX(0);transition:transform .3s}
+  #inspector h3{margin:0 0 4px;font-size:15px}
+  #inspector .sub{color:var(--muted);font-size:12px;margin-bottom:18px}
+  .ctrl{margin:14px 0}
+  .ctrl label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .ctrl input[type=range]{width:100%;accent-color:var(--acc)}
+  .chip{display:inline-block;font-size:12px;padding:7px 12px;border-radius:10px;border:1px solid var(--panel-brd);
+    background:#0e161d;color:var(--txt);margin:4px 4px 0 0;cursor:pointer}
+  .chip:hover{border-color:var(--acc)}
+  .chip.acc{border-color:var(--acc);color:var(--acc)}
+  .verdict{margin-top:18px;padding:12px;border-radius:10px;background:#0e1a14;border:1px solid #1f3b2f;font-size:12.5px}
+  .verdict .ok{color:var(--ok);font-weight:600}
+  /* palette overlay (⌘K) */
+  #palette{inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;
+    background:rgba(3,5,8,.55);backdrop-filter:blur(3px)}
+  #palette .box{width:min(560px,80vw);background:rgba(13,20,26,.98);border:1px solid var(--panel-brd);border-radius:14px;
+    padding:10px;box-shadow:0 20px 60px #000a}
+  #palette input{width:100%;background:transparent;border:none;color:var(--txt);font-size:15px;padding:10px;outline:none;font-family:var(--font)}
+  #palette .row{display:flex;justify-content:space-between;padding:11px 12px;border-radius:9px;font-size:13.5px;cursor:pointer}
+  #palette .row:hover,#palette .row.sel{background:#15212b}
+  #palette .row .k{color:var(--dim);font-size:11px}
+  #hint{position:absolute;bottom:108px;left:50%;transform:translateX(-50%);color:var(--dim);font-size:12px;
+    background:var(--panel);border:1px solid var(--panel-brd);border-radius:8px;padding:6px 12px;z-index:6}
+  kbd{font-family:var(--font)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="subject">
+    <!-- decorative faux-render subject -->
+    <svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">
+      <defs><radialGradient id="s" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#3aa0b8"/><stop offset="1" stop-color="#0c2230"/></radialGradient></defs>
+      <path d="M20,200 C80,120 120,160 160,90 C200,30 240,140 280,80 C320,30 360,120 380,90 L380,250 L20,250 Z" fill="url(#s)" opacity=".9"/>
+      <ellipse cx="200" cy="250" rx="180" ry="22" fill="#06202c" opacity=".7"/>
+    </svg>
+  </div>
+
+  <!-- HUD -->
+  <div id="intent" class="hud"><span class="dot"></span><div><b>Intent</b> · <span id="intent-txt">visualize Titan atmosphere scan</span></div></div>
+  <div id="status" class="hud"><span class="dot"></span><div>Render ready · <span id="spp">128</span> spp</div><kbd>⌘K</kbd></div>
+  <div id="ctx" class="hud"><div class="lbl">SCENE</div><div class="name" id="ctx-name">atmosphere_007</div><div class="meta" id="ctx-meta">● 3 objects · 2 lights</div></div>
+
+  <div id="hint" class="hud">Press <kbd>⌘K</kbd> palette · <kbd>⌘I</kbd> inspector · <kbd>~</kbd> clutter-free toggle</div>
+
+  <!-- command bar -->
+  <div id="bar" class="hud">
+    <div class="ph"><b>“</b><span id="bar-ph">show me the orbital decay as a timeline…</span><b>”</b></div>
+    <span class="kbd">⌘K</span>
+    <button onclick="build()">Build</button>
+  </div>
+
+  <!-- inspector -->
+  <div id="inspector" class="hud hidden">
+    <h3>Inspector — <span id="ins-name">atmosphere_007</span></h3>
+    <div class="sub">Reveal-on-demand · maps to live scene manifest</div>
+    <div class="ctrl"><label>Camera distance <span id="v-cam">7.2</span></label><input id="cam" type="range" min="3" max="14" step="0.1" value="7.2" oninput="document.getElementById('v-cam').textContent=this.value"></div>
+    <div class="ctrl"><label>Camera FOV <span id="v-fov">45°</span></label><input id="fov" type="range" min="20" max="80" step="1" value="45" oninput="document.getElementById('v-fov').textContent=this.value+'°'"></div>
+    <div class="ctrl"><label>Key light intensity <span id="v-lit">10.0</span></label><input id="lit" type="range" min="0" max="30" step="0.5" value="10" oninput="document.getElementById('v-lit').textContent=this.value"></div>
+    <div class="ctrl"><label>Material transmission <span id="v-tr">0.35</span></label><input id="tr" type="range" min="0" max="1" step="0.01" value="0.35" oninput="document.getElementById('v-tr').textContent=this.value"></div>
+    <div style="margin-top:14px"><span style="color:var(--muted);font-size:12px">Suggested patches</span><br/>
+      <span class="chip acc" onclick="applyPatch('tighten camera')">Tighten camera</span>
+      <span class="chip" onclick="applyPatch('lift key light')">Lift key light</span>
+      <span class="chip" onclick="applyPatch('increase glass transmission')">More transmission</span>
+    </div>
+    <div class="verdict" id="verdict"><span class="ok">● OK</span> — framing clear, contrast adequate. <span style="color:var(--muted)">octane_review_preview()</span></div>
+  </div>
+
+  <!-- palette -->
+  <div id="palette" class="hud hidden">
+    <div class="box">
+      <input id="pal-input" placeholder="Describe what you want to see…" autofocus/>
+      <div class="row sel"><span>📊 Visualize data as 3D bar chart</span><span class="k">octane_visualize_bars</span></div>
+      <div class="row"><span>🌊 Math surface z=f(x,y)</span><span class="k">octane_visualize_surface</span></div>
+      <div class="row"><span>🪐 Photoreal planet + atmosphere</span><span class="k">recipe: saturn-moons</span></div>
+      <div class="row"><span>🧭 Build semantic scene plan</span><span class="k">octane_build_scene</span></div>
+      <div class="row"><span>🤖 Show Hermes avatar guide</span><span class="k">octane_show_avatar</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggle(id){const e=document.getElementById(id);e.classList.toggle('hidden');}
+  function show(id){document.getElementById(id).classList.remove('hidden');}
+  function hide(id){document.getElementById(id).classList.add('hidden');}
+  function build(){document.getElementById('spp').textContent='—';document.getElementById('status').querySelector('div').firstChild.textContent='Rendering… ';
+    setTimeout(()=>{document.getElementById('spp').textContent='128';document.getElementById('status').querySelector('div').firstChild.textContent='Render ready · ';},900);}
+  function applyPatch(t){const v=document.getElementById('verdict');v.innerHTML='<span style="color:var(--warn)">● PATCHED</span> — '+t+'. Re-queueing scene…';setTimeout(()=>{v.innerHTML='<span class="ok">● OK</span> — framing clear, contrast adequate.';},1100);}
+  document.addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase();
+    if((e.metaKey||e.ctrlKey)&&k==='k'){e.preventDefault();const p=document.getElementById('palette');p.classList.toggle('hidden');if(!p.classList.contains('hidden'))document.getElementById('pal-input').focus();}
+    if((e.metaKey||e.ctrlKey)&&k==='i'){e.preventDefault();toggle('inspector');}
+    if(k==='`'||e.key==='~'){e.preventDefault();['intent','status','ctx','bar','hint'].forEach(toggle);}
+    if(k==='escape'){hide('palette');hide('inspector');}
+  });
+  // palette type → bar
+  document.getElementById('pal-input').addEventListener('input',function(){
+    document.getElementById('bar-ph').textContent=this.value||'show me the orbital decay as a timeline…';
+    document.getElementById('intent-txt').textContent=this.value||'visualize Titan atmosphere scan';
+  });
+</script>
+</body>
+</html>

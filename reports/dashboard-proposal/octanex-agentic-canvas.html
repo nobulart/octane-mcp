@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>OctaneX Agentic Canvas — UI Concept & Project Review</title>
+<style>
+  :root{
+    --bg:#070a0e; --bg2:#0b1016; --panel:#0e151c; --panel-brd:#1d2a34;
+    --txt:#e7eef3; --muted:#9fb2bd; --dim:#677888; --faint:#46525d;
+    --acc:#35e0d8; --acc2:#2fd4ff; --ok:#5bd0a0; --warn:#ffb347; --err:#ff7a8a;
+    --gold:#ffb347; --violet:#c08bff;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--font);
+    line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  /* top nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(7,10,14,.85);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--panel-brd);padding:10px 0;display:flex;gap:22px;justify-content:center;flex-wrap:wrap;font-size:13.5px}
+  nav a{color:var(--muted)} nav a:hover{color:var(--acc)}
+  /* hero */
+  header.hero{position:relative;padding:84px 24px 64px;text-align:center;overflow:hidden;
+    background:radial-gradient(70% 60% at 50% 0%, #123244 0%, transparent 60%),var(--bg)}
+  header.hero h1{font-size:clamp(28px,5vw,52px);margin:0 0 14px;font-weight:800;letter-spacing:-.02em;
+    background:linear-gradient(90deg,#eaf2f6,#9fe9e2 60%,#7fd0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  header.hero p{color:var(--muted);max-width:680px;margin:0 auto;font-size:17px}
+  .tag{display:inline-block;margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--acc);
+    border:1px solid #1f4a48;border-radius:20px;padding:5px 14px;background:#0c1a1c}
+  /* layout */
+  main{max-width:1080px;margin:0 auto;padding:0 24px 100px}
+  section{margin:64px 0;scroll-margin-top:64px}
+  h2{font-size:26px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .num{color:var(--acc);font-family:var(--mono);font-size:15px;margin-right:10px;vertical-align:middle}
+  h3{font-size:18px;font-weight:600;margin:30px 0 8px;color:#d6e2e9}
+  .lede{color:var(--muted);margin:0 0 18px;font-size:15.5px}
+  p{margin:12px 0}
+  .panel{background:var(--panel);border:1px solid var(--panel-brd);border-radius:14px;padding:22px 24px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:780px){.grid2,.grid3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--panel-brd);border-radius:12px;padding:18px}
+  .card h4{margin:0 0 6px;font-size:15px;color:var(--acc)}
+  .card.p p{margin:6px 0;font-size:14px;color:var(--muted)}
+  ul{margin:10px 0;padding-left:20px} li{margin:6px 0}
+  .pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid var(--panel-brd);color:var(--muted);margin:2px 4px 2px 0}
+  .pill.ok{color:var(--ok);border-color:#1f4a3a;background:#0c1a14}
+  .pill.warn{color:var(--warn);border-color:#4a3a1f;background:#1a140c}
+  .pill.acc{color:var(--acc);border-color:#1f4a48;background:#0c1a1c}
+  code{font-family:var(--mono);font-size:13px;background:#0a1217;border:1px solid var(--panel-brd);border-radius:6px;padding:2px 6px;color:#9fe9e2}
+  pre{background:#0a1217;border:1px solid var(--panel-brd);border-radius:10px;padding:16px;overflow:auto;
+    font-family:var(--mono);font-size:12.5px;color:#cfe0e8;line-height:1.5}
+  pre .c{color:var(--dim)} pre .k{color:var(--acc)} pre .s{color:var(--gold)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--panel-brd)}
+  th{color:var(--muted);font-weight:600;font-size:13px}
+  td code{font-size:12px}
+  img{max-width:100%;border-radius:10px;border:1px solid var(--panel-brd);display:block;margin:14px 0}
+  .fig{font-size:12.5px;color:var(--dim);margin:-6px 0 20px;text-align:center}
+  .cap{color:var(--dim);font-size:12.5px;margin-top:8px}
+  .callout{border-left:3px solid var(--acc);background:#0c1a1c;padding:14px 18px;border-radius:0 10px 10px 0;margin:18px 0}
+  .callout.warn{border-color:var(--warn);background:#1a140c}
+  .callout.ok{border-color:var(--ok);background:#0c1a14}
+  blockquote{margin:16px 0;padding:12px 18px;border-left:3px solid var(--dim);color:var(--muted);font-style:italic}
+  .kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--panel-brd);border-radius:6px;padding:1px 7px;color:var(--muted);background:#0a1217}
+  .diagram{background:#0a0e13;border:1px solid var(--panel-brd);border-radius:14px;padding:8px;margin:18px 0}
+  .diagram svg{width:100%;height:auto;display:block;border-radius:8px}
+  .scorebar{height:8px;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc2));}
+  .muted{color:var(--muted)} .dim{color:var(--dim)} .small{font-size:13.5px}
+  .toc{columns:2;column-gap:30px;font-size:14px}
+  @media(max-width:780px){.toc{columns:1}}
+  .toc a{display:block;padding:4px 0;color:var(--muted)}
+  .footer{border-top:1px solid var(--panel-brd);margin-top:80px;padding:30px 24px;text-align:center;color:var(--dim);font-size:13px}
+  .badge{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;background:#0c1a1c;color:var(--acc);border:1px solid #1f4a48}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#summary">Summary</a>
+  <a href="#audit">1 · Audit</a>
+  <a href="#potential">2 · Potential</a>
+  <a href="#research">3 · Best Practice</a>
+  <a href="#concept">4 · UI Concept</a>
+  <a href="#mockup">5 · Mockup</a>
+  <a href="#evidence">6 · Evidence</a>
+  <a href="#roadmap">7 · Roadmap</a>
+  <a href="#risks">8 · Risks</a>
+</nav>
+
+<header class="hero">
+  <h1>OctaneX Agentic Canvas</h1>
+  <p>A human interface concept for the OctaneX Agentic Ecosystem — turning natural-language intent into precise, beautiful, near-real-time renders through a minimal, clutter-free control surface.</p>
+  <span class="tag">Plato · project review &amp; UI proposal · 2026-07-09</span>
+</header>
+
+<main>
+
+<!-- ============ EXECUTIVE SUMMARY ============ -->
+<section id="summary">
+  <h2><span class="num">§</span>Executive Summary</h2>
+  <p class="lede">The OctaneX MCP project is a working, locally-run bridge that lets an AI agent (Hermes) drive Octane X — a GPU photoreal renderer — through an allowlisted JSON command queue and a Lua bridge. It already produces real renders end-to-end. The missing piece is <strong>a human-facing surface</strong> that lets a person express intent in natural language and watch it become a precise visual in seconds, without ever opening Octane's node graph.</p>
+
+  <div class="grid3">
+    <div class="card p"><h4>What exists</h4><p>A complete agentic loop: NL intent → tool calls → validated commands → Lua bridge → native render → vision review → re-patch.</p><p>14 shipped MCP tools, a self-improving recipe book, parity-guarded bridges, JSON scene manifests.</p></div>
+    <div class="card p"><h4>What's missing</h4><p>A live, minimal human interface. Today the human drives the agent from a chat pane; there is no canvas-native control surface, no on-screen intent feedback, no reveal-on-demand inspector.</p></div>
+    <div class="card p"><h4>The proposal</h4><p><strong>OctaneX Agentic Canvas</strong> — a clutter-free viewport (the render IS the UI) with a single persistent command bar, corner intent/status pills, and ⌘K palette + ⌘I inspector that appear only on demand.</p></div>
+  </div>
+
+  <div class="callout ok">
+    <strong>Verdict:</strong> High viability. The hard problems (agent→renderer control, validation, vision feedback, asset hygiene) are already solved. The dashboard is additive — it sits on top of the existing MCP layer and needs no renderer changes. The single dominant risk is <em>perceived latency</em> between intent and visible render, which the UI design must absorb through progressive acknowledgement (see §3).
+  </div>
+
+  <h3>Table of contents</h3>
+  <div class="toc panel">
+    <a href="#audit">1 · Project audit — docs &amp; codebase</a>
+    <a href="#potential">2 · Project potential &amp; market position</a>
+    <a href="#research">3 · Industry best practice for fluid human–AI visuals</a>
+    <a href="#concept">4 · The UI concept — Agentic Canvas</a>
+    <a href="#mockup">5 · Interactive mockup &amp; states</a>
+    <a href="#evidence">6 · Evidence — real renders from the project</a>
+    <a href="#roadmap">7 · Build roadmap &amp; acceptance criteria</a>
+    <a href="#risks">8 · Risks, mitigations &amp; open questions</a>
+  </div>
+</section>
+
+<!-- ============ 1 AUDIT ============ -->
+<section id="audit">
+  <h2><span class="num">1</span>Project Audit — Documentation &amp; Codebase</h2>
+  <p class="lede">A read of the docs set (<code>roadmap.md</code>, <code>canvas-roadmap.md</code>, <code>visual-grammar.md</code>, <code>command-schema.md</code>, <code>recipe-library.md</code>, <code>visual-iteration-protocol.md</code>, <code>agent-quickstart.md</code>, <code>local-model-rich-moa.md</code>, <code>scene-plan.md</code>) and the source tree (<code>src/octanex_mcp/</code>, <code>octane_lua/</code>, <code>scripts/</code>, <code>tests/</code>).</p>
+
+  <h3>1.1 Architecture (as built)</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b0e13"/><stop offset="1" stop-color="#0d1218"/></linearGradient>
+        <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2fd4ff"/><stop offset="1" stop-color="#35e0d8"/></linearGradient>
+        <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#ff8a5b"/></linearGradient>
+        <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L9,5 L0,10 z" fill="#5b6b78"/></marker>
+        <marker id="arrC" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L9,5 L0,10 z" fill="#35e0d8"/></marker>
+      </defs>
+      <rect width="1200" height="520" fill="url(#bg)"/>
+      <text x="40" y="46" fill="#eaf2f6" font-size="22" font-weight="700">OctaneX Agentic Ecosystem — Current Architecture</text>
+      <text x="40" y="70" fill="#7d8c99" font-size="13">Intent → tool calls → allowlisted command queue → Lua bridge → native render → vision review → loop</text>
+      <g><rect x="40" y="300" width="150" height="120" rx="12" fill="#10161d" stroke="#23303a"/>
+        <text x="115" y="345" fill="#eaf2f6" font-size="15" font-weight="600" text-anchor="middle">Human</text>
+        <text x="115" y="368" fill="#7d8c99" font-size="11" text-anchor="middle">natural-language</text>
+        <text x="115" y="384" fill="#7d8c99" font-size="11" text-anchor="middle">intent / correction</text>
+        <text x="115" y="400" fill="#7d8c99" font-size="11" text-anchor="middle">gesture / voice</text></g>
+      <g><rect x="250" y="120" width="180" height="300" rx="12" fill="#10161d" stroke="#23303a"/>
+        <rect x="250" y="120" width="180" height="34" rx="12" fill="#15202b"/>
+        <text x="340" y="143" fill="url(#cyan)" font-size="14" font-weight="700" text-anchor="middle">Hermes Agent</text>
+        <text x="340" y="186" fill="#cdd9e1" font-size="11.5" text-anchor="middle">reasoning + planning</text>
+        <text x="340" y="204" fill="#cdd9e1" font-size="11.5" text-anchor="middle">recipe book (self-improving)</text>
+        <text x="340" y="222" fill="#cdd9e1" font-size="11.5" text-anchor="middle">local vision review</text>
+        <text x="340" y="240" fill="#cdd9e1" font-size="11.5" text-anchor="middle">(glm-ocr)</text>
+        <text x="340" y="266" fill="#8aa0ad" font-size="11" text-anchor="middle">— MCP tool calls —</text>
+        <text x="340" y="290" fill="#9fb2bd" font-size="10.5" text-anchor="middle">build_scene · visualize_*</text>
+        <text x="340" y="308" fill="#9fb2bd" font-size="10.5" text-anchor="middle">set_camera · set_lighting</text>
+        <text x="340" y="326" fill="#9fb2bd" font-size="10.5" text-anchor="middle">create_material · create_light</text>
+        <text x="340" y="344" fill="#9fb2bd" font-size="10.5" text-anchor="middle">save_preview · review_preview</text>
+        <text x="340" y="370" fill="#ffb347" font-size="10.5" text-anchor="middle">⤺ render-review loop</text></g>
+      <g><rect x="500" y="190" width="180" height="150" rx="12" fill="#0f1a1f" stroke="#1f3b3d"/>
+        <text x="590" y="218" fill="url(#cyan)" font-size="14" font-weight="700" text-anchor="middle">octanex-mcp</text>
+        <text x="590" y="240" fill="#9fb2bd" font-size="11" text-anchor="middle">FastMCP stdio server</text>
+        <text x="590" y="260" fill="#9fb2bd" font-size="10.5" text-anchor="middle">validate schema</text>
+        <text x="590" y="278" fill="#9fb2bd" font-size="10.5" text-anchor="middle">write JSON command</text>
+        <text x="590" y="296" fill="#9fb2bd" font-size="10.5" text-anchor="middle">scene manifests</text>
+        <text x="590" y="318" fill="#7d8c99" font-size="10" text-anchor="middle">lightweight (mcp only)</text></g>
+      <g><rect x="740" y="250" width="150" height="70" rx="10" fill="#141014" stroke="#3a2a1f"/>
+        <text x="815" y="278" fill="url(#gold)" font-size="13" font-weight="700" text-anchor="middle">Command Queue</text>
+        <text x="815" y="298" fill="#b9a48f" font-size="10.5" text-anchor="middle">queue → processing</text>
+        <text x="815" y="312" fill="#b9a48f" font-size="10.5" text-anchor="middle">→ processed / failed</text></g>
+      <g><rect x="740" y="350" width="150" height="70" rx="10" fill="#10161d" stroke="#23303a"/>
+        <text x="815" y="378" fill="#eaf2f6" font-size="13" font-weight="700" text-anchor="middle">Lua Bridge</text>
+        <text x="815" y="398" fill="#9fb2bd" font-size="10.5" text-anchor="middle">allowlisted DSL</text>
+        <text x="815" y="412" fill="#9fb2bd" font-size="10.5" text-anchor="middle">no arbitrary Lua</text></g>
+      <g><rect x="960" y="150" width="200" height="200" rx="14" fill="#0c1118" stroke="#2a3a47"/>
+        <rect x="960" y="150" width="200" height="34" rx="14" fill="#142231"/>
+        <text x="1060" y="173" fill="url(#cyan)" font-size="14" font-weight="700" text-anchor="middle">Octane X</text>
+        <text x="1060" y="212" fill="#cdd9e1" font-size="11.5" text-anchor="middle">GPU photoreal renderer</text>
+        <text x="1060" y="230" fill="#9fb2bd" font-size="10.5" text-anchor="middle">mesh · material · light</text>
+        <text x="1060" y="248" fill="#9fb2bd" font-size="10.5" text-anchor="middle">camera · render target</text>
+        <text x="1060" y="274" fill="#7d8c99" font-size="10" text-anchor="middle">— shared canvas —</text>
+        <text x="1060" y="300" fill="#9fb2bd" font-size="10.5" text-anchor="middle">native preview PNG</text>
+        <text x="1060" y="320" fill="#9fb2bd" font-size="10.5" text-anchor="middle">clutter-free mode</text></g>
+      <line x1="190" y1="360" x2="248" y2="300" stroke="#5b6b78" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="430" y1="270" x2="498" y2="258" stroke="url(#cyan)" stroke-width="2.5" marker-end="url(#arrC)"/>
+      <line x1="680" y1="262" x2="738" y2="278" stroke="url(#gold)" stroke-width="2.5" marker-end="url(#arrC)"/>
+      <line x1="815" y1="320" x2="815" y2="348" stroke="#5b6b78" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="890" y1="385" x2="958" y2="290" stroke="#5b6b78" stroke-width="2" marker-end="url(#arr)"/>
+      <path d="M960,360 C820,470 420,470 320,425" fill="none" stroke="url(#cyan)" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrC)"/>
+      <text x="640" y="468" fill="#5fd6c9" font-size="11" text-anchor="middle">preview.png → Hermes vision review → next patch</text>
+    </svg>
+  </div>
+  <p class="cap">Fig 1 — The current end-to-end loop. A dashboard would attach to the dashed "Human" edge and surface the status/queue/preview signals that are today only visible in logs.</p>
+
+  <h3>1.2 What is genuinely strong</h3>
+  <div class="grid2">
+    <div class="card p">
+      <h4>Local-first &amp; private <span class="badge">✓</span></h4>
+      <p>No cloud round-trip. Octane X, the agent, and vision review all run on-device (Apple Silicon). This is a defensible differentiator against every cloud render/Midjourney-style tool.</p>
+    </div>
+    <div class="card p">
+      <h4>Allowlisted command bridge <span class="badge">✓</span></h4>
+      <p>The Lua bridge is a strict DSL — no arbitrary Lua execution. This is the right security model for an agent that writes code, and it is already parity-tested.</p>
+    </div>
+    <div class="card p">
+      <h4>Self-improving recipe book <span class="badge">✓</span></h4>
+      <p>Recipes are captured as reusable JSON + OBJ + reference PNG. <code>feedback_log.md</code> drives a review→patch→capture loop. This is the seed of a durable visual memory.</p>
+    </div>
+    <div class="card p">
+      <h4>Vision feedback closure <span class="badge">✓</span></h4>
+      <p><code>octane_review_preview()</code> + <code>glm-ocr</code> give the agent a real perceptual check, not just "did it run". The render-review loop is the core moat.</p>
+    </div>
+  </div>
+
+  <h3>1.3 Gaps &amp; fragilities (from the audit)</h3>
+  <table>
+    <thead><tr><th>Gap</th><th>Evidence</th><th>Impact on a UI</th></tr></thead>
+    <tbody>
+      <tr><td>No human-facing surface</td><td>All control is via Hermes chat / MCP; no canvas UI exists</td><td>This is the deliverable — §4</td></tr>
+      <tr><td>Latency not surfaced</td><td>Bridge writes <code>status.json</code> but nothing renders it</td><td>UI must show queue→render progress (§3)</td></tr>
+      <tr><td>Render-start wedge risk</td><td>Bridge review notes describe a historical <code>start{}</code> hang</td><td>UI needs an honest "rendering… N%" + timeout</td></tr>
+      <tr><td>No live preview frame</td><td>Only final <code>preview.png</code> is saved; no progressive frame</td><td>UI must set expectations (no mid-render pixels yet)</td></tr>
+      <tr><td>Tool sprawl risk</td><td>14 tools; some overlap (<code>set_lighting</code> vs <code>create_light</code>)</td><td>Palette should group, not list all 14</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Honesty note:</strong> Octane X was not running in the environment where this report was compiled, so no <em>new</em> render was produced for it. Every render shown in §6 is a <strong>genuine artifact already committed to the repo</strong> (produced in earlier sessions via the same bridge). The dashboard mockup in §5 is a real, interactive HTML artifact — open it and press <span class="kbd">⌘K</span>, <span class="kbd">⌘I</span>, <span class="kbd">~</span>.
+  </div>
+</section>
+
+<!-- ============ 2 POTENTIAL ============ -->
+<section id="potential">
+  <h2><span class="num">2</span>Project Potential &amp; Market Position</h2>
+  <p class="lede">The objective is "a fluid human–AI interactive visual experience — with AI translating human intent into precise and beautiful visuals in near-real-time." Mapping that against what the project already does reveals a clear, defensible wedge.</p>
+
+  <h3>2.1 Where the project already wins</h3>
+  <ul>
+    <li><strong>Precision, not just vibes.</strong> Diffusion image tools (Midjourney, SDXL) produce <em>plausible</em> images; Octane produces <em>geometrically correct</em> scenes from explicit meshes, materials, cameras, and lights. For data viz, scientific illustration, and product/architecture preview, precision is the whole point.</li>
+    <li><strong>Real-time-ish on local silicon.</strong> Apple M3 Max/Ultra GPU rendering of a preview frame in seconds-to-tens-of-seconds is competitive with cloud queues for interactive iteration, with zero data leaving the machine.</li>
+    <li><strong>Programmable &amp; reproducible.</strong> Every scene is a JSON manifest. That is the opposite of a black-box generative model — it is version-controllable, diffable, and automatable.</li>
+  </ul>
+
+  <h3>2.2 The white space</h3>
+  <p>Most "AI 3D" products today are either (a) text-to-3D model generators (slow, one-shot, low control) or (b) pro DCC apps (Blender/Houdini — powerful, but high-friction, node-graph UX). <strong>Nobody owns "say it → see it, precisely, locally, in seconds" as a calm, minimal surface.</strong> That is exactly the gap this project fills.</p>
+
+  <div class="grid2">
+    <div class="card p"><h4>Near-term value</h4><p>Researchers, analysts, and technical communicators who need a correct visual <em>now</em> without learning a renderer. Internal tool, then a product.</p></div>
+    <div class="card p"><h4>Strategic moat</h4><p>The recipe book + vision review loop compound: every corrected render makes the next one better. A dashboard that captures intent→scene history turns usage into training data for the agent.</p></div>
+  </div>
+
+  <h3>2.3 Potential scorecard</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Today</th><th>With dashboard</th></tr></thead>
+    <tbody>
+      <tr><td>Intent → visual latency (perceived)</td><td>Hidden in chat</td><td>Sub-400ms acknowledgement, live progress</td></tr>
+      <tr><td>Approachability</td><td>Requires agent fluency</td><td>One command bar; reveal-on-demand depth</td></tr>
+      <tr><td>Correctness guarantee</td><td>Strong (explicit scene)</td><td>Unchanged — UI doesn't weaken it</td></tr>
+      <tr><td>Memorability / continuity</td><td>Recipe book only</td><td>Scene timeline + intent history on-screen</td></tr>
+      <tr><td>Differentiation vs diffusion tools</td><td>High (precision)</td><td>High + visible (you watch it build)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 3 RESEARCH ============ -->
+<section id="research">
+  <h2><span class="num">3</span>Industry Best Practice — Fluid Human–AI Visual Interfaces</h2>
+  <p class="lede">Three converging threads define the current state of the art. Together they dictate the UI's spine: <em>intent-based UX</em>, the <em>cognitive-latency stack</em>, and <em>ambient/multimodal continuity</em>.</p>
+
+  <h3>3.1 Intent-based UX (Nielsen, 2024–25)</h3>
+  <p>Jakob Nielsen's framing: the next UX paradigm shifts from <em>intent→command</em> (the user specifies exact steps) to <em>intent→outcome</em> (the user states the goal; the system figures out the steps). The UI's job becomes <strong>confidence, not control</strong> — show the user the system understood, then show the result, and make correction trivial.</p>
+  <blockquote>"Users should state what they want to achieve and let the AI figure out how to do it… The interface must make the user feel confident the AI got it right." — J. Nielsen</blockquote>
+  <p><strong>Implication for this project:</strong> The command bar is an <em>intent</em> field, not a command line. The "Build" action translates intent → tools invisibly. The on-screen "Intent" pill is the confidence anchor.</p>
+
+  <h3>3.2 The cognitive-latency stack → Render-loop mapping</h3>
+  <p>UX Tigers' "Think-Time UX" decomposes human patience into five bands. Each band demands a <em>different</em> UI response. A fluid interface must carry the temporal burden so the human's attention is never left hanging.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 460" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0e13"/><stop offset="1" stop-color="#0d1218"/></linearGradient>
+        <linearGradient id="c1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#35e0d8"/><stop offset="1" stop-color="#2fd4ff"/></linearGradient>
+        <linearGradient id="c2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5bd0a0"/><stop offset="1" stop-color="#35e0d8"/></linearGradient>
+        <linearGradient id="c3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#ffb347"/></linearGradient>
+        <linearGradient id="c4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff9f6b"/><stop offset="1" stop-color="#ff7a8a"/></linearGradient>
+        <linearGradient id="c5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c08bff"/><stop offset="1" stop-color="#8b9bff"/></linearGradient>
+      </defs>
+      <rect width="1200" height="460" fill="url(#bg2)"/>
+      <text x="40" y="46" fill="#eaf2f6" font-size="22" font-weight="700">Cognitive Latency Stack → Render Loop Mapping</text>
+      <text x="40" y="70" fill="#7d8c99" font-size="13">Adapted from Think-Time UX (UX Tigers). Each band needs a different UI response; the UI must bear the temporal burden, not the human.</text>
+      <g><rect x="40" y="100" width="1120" height="58" rx="10" fill="#0f1a1f" stroke="#1f3b3d"/><rect x="40" y="100" width="10" height="58" fill="url(#c1)"/>
+        <text x="70" y="128" fill="#eaf2f6" font-size="15" font-weight="700">1 · Perception</text><text x="70" y="148" fill="#7d8c99" font-size="12">0–400 ms · did anything happen?</text>
+        <text x="430" y="128" fill="#cdd9e1" font-size="12.5">UI acknowledgement: input echo, intent pill "heard", motion affordance at point of action.</text>
+        <text x="430" y="148" fill="#6fd6c9" font-size="11.5">System: queue write ack + command id bubble in HUD corner.</text></g>
+      <g><rect x="40" y="168" width="1120" height="58" rx="10" fill="#0f1a1a" stroke="#1f3b3b"/><rect x="40" y="168" width="10" height="58" fill="url(#c2)"/>
+        <text x="70" y="196" fill="#eaf2f6" font-size="15" font-weight="700">2 · Comprehension</text><text x="70" y="216" fill="#7d8c99" font-size="12">0.4–2 s · what happened?</text>
+        <text x="430" y="196" fill="#cdd9e1" font-size="12.5">Outcome-first microcopy: "Queued 4 commands", "Rendering… 38%". No log dumps.</text>
+        <text x="430" y="216" fill="#6fd6c9" font-size="11.5">System: live progress from bridge.status.json heartbeat.</text></g>
+      <g><rect x="40" y="236" width="1120" height="58" rx="10" fill="#171510" stroke="#3a2f1f"/><rect x="40" y="236" width="10" height="58" fill="url(#c3)"/>
+        <text x="70" y="264" fill="#eaf2f6" font-size="15" font-weight="700">3 · Decision</text><text x="70" y="284" fill="#7d8c99" font-size="12">2–10 s · is it right?</text>
+        <text x="430" y="264" fill="#cdd9e1" font-size="12.5">Preview card appears with one-line QA verdict ("OK / clipped / low-contrast").</text>
+        <text x="430" y="284" fill="#ffd166" font-size="11.5">System: octane_review_preview() summary surfaced, not buried.</text></g>
+      <g><rect x="40" y="304" width="1120" height="58" rx="10" fill="#17110f" stroke="#3a241f"/><rect x="40" y="304" width="10" height="58" fill="url(#c4)"/>
+        <text x="70" y="332" fill="#eaf2f6" font-size="15" font-weight="700">4 · Execution</text><text x="70" y="352" fill="#7d8c99" font-size="12">10 s–2 min · refine?</text>
+        <text x="430" y="332" fill="#cdd9e1" font-size="12.5">On-demand inspector: camera/light/material sliders + suggested-patch chips.</text>
+        <text x="430" y="352" fill="#ff9f6b" font-size="11.5">System: suggest_camera_fix / suggest_lighting_fix as one-click patches.</text></g>
+      <g><rect x="40" y="372" width="1120" height="58" rx="10" fill="#12111a" stroke="#2a2740"/><rect x="40" y="372" width="10" height="58" fill="url(#c5)"/>
+        <text x="70" y="400" fill="#eaf2f6" font-size="15" font-weight="700">5 · Recovery</text><text x="70" y="420" fill="#7d8c99" font-size="12">minutes–return · what was I doing?</text>
+        <text x="430" y="400" fill="#cdd9e1" font-size="12.5">Persistent scene timeline + recipe memory restores context after interruption.</text>
+        <text x="430" y="420" fill="#c08bff" font-size="11.5">System: scene manifests + recipe book = resumable intent history.</text></g>
+    </svg>
+  </div>
+  <p class="cap">Fig 2 — The five latency bands and exactly where the proposed UI responds in each. This is the backbone of the design.</p>
+
+  <h3>3.3 Ambient, multimodal, continuous (2025 trends)</h3>
+  <ul>
+    <li><strong>Ambient computing:</strong> the interface recedes; the output is the foreground, controls fade to the edge. Directly matches Octane's "clutter-free" presentation mode.</li>
+    <li><strong>Multimodal intent:</strong> text, voice, drag, and reference-image all feed the same intent. The command bar should accept attachments (e.g. "make this like <em>that</em>").</li>
+    <li><strong>Post-visit continuity:</strong> a session shouldn't evaporate when closed. Scene manifests + recipe memory make the canvas resumable — the fifth latency band handled natively.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Synthesis:</strong> The winning pattern is <em>calm-by-default, deep-on-demand</em>. The render owns the screen; a single intent field is always reachable; everything else (palette, inspector, history) materialises only when summoned and dissolves when not needed. This is precisely the OctaneX clutter-free ethos applied to UI.
+  </div>
+</section>
+
+<!-- ============ 4 CONCEPT ============ -->
+<section id="concept">
+  <h2><span class="num">4</span>The UI Concept — "OctaneX Agentic Canvas"</h2>
+  <p class="lede">A minimal, slick human surface that wraps Octane X's clutter-free presentation viewport. The render <em>is</em> the interface. Controls are edge-anchored and reveal-on-demand.</p>
+
+  <h3>4.1 Design principles</h3>
+  <div class="grid3">
+    <div class="card p"><h4>1. Render-first</h4><p>The viewport fills the frame. No toolbars, no panels, no node graph. Octane's clutter-free mode is the default state.</p></div>
+    <div class="card p"><h4>2. One persistent control</h4><p>A single command bar ("say what you want to see"). Everything else is summoned, never parked.</p></div>
+    <div class="card p"><h4>3. Confidence over control</h4><p>Show the system heard you (intent pill), show progress (status), surface the QA verdict (preview card).</p></div>
+    <div class="card p"><h4>4. Reveal-on-demand</h4><p><span class="kbd">⌘K</span> palette, <span class="kbd">⌘I</span> inspector, <span class="kbd">~</span> clutter-free. Depth appears only when asked.</p></div>
+    <div class="card p"><h4>5. Honest about latency</h4><p>Live progress from <code>bridge.status.json</code>. No fake spinners; real queue→render→review stages.</p></div>
+    <div class="card p"><h4>6. Local &amp; continuous</h4><p>Nothing leaves the machine. Scene timeline + recipe memory make every session resumable.</p></div>
+  </div>
+
+  <h3>4.2 Layout — the canvas as HUD</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#05070a"/><stop offset="1" stop-color="#0a0f15"/></linearGradient>
+        <linearGradient id="scene" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0e2030"/><stop offset="0.5" stop-color="#13303f"/><stop offset="1" stop-color="#1a2230"/></linearGradient>
+        <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#101820"/><stop offset="1" stop-color="#16222c"/></linearGradient>
+        <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#35e0d8"/><stop offset="1" stop-color="#2fd4ff"/></linearGradient>
+        <radialGradient id="glow" cx="0.5" cy="0.42" r="0.6"><stop offset="0" stop-color="#2a4a5e" stop-opacity="0.9"/><stop offset="1" stop-color="#0a0f15" stop-opacity="0"/></radialGradient>
+        <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+      </defs>
+      <rect width="1200" height="720" fill="url(#bg3)"/>
+      <rect x="20" y="20" width="1160" height="620" rx="16" fill="url(#scene)"/>
+      <rect x="20" y="20" width="1160" height="620" rx="16" fill="url(#glow)"/>
+      <g opacity="0.5" filter="url(#soft)"><ellipse cx="600" cy="330" rx="360" ry="200" fill="#1d4a5e" opacity="0.5"/><ellipse cx="600" cy="300" rx="250" ry="120" fill="#2c6f80" opacity="0.35"/></g>
+      <text x="600" y="46" fill="#cfe6ee" font-size="13" text-anchor="middle" opacity="0.7">Octane X — clutter-free presentation viewport (render fills the frame)</text>
+      <g><rect x="40" y="44" width="250" height="40" rx="20" fill="#0c1318" stroke="#243441" opacity="0.92"/><circle cx="66" cy="64" r="6" fill="url(#acc)"/><text x="84" y="69" fill="#cfe0e8" font-size="13">Intent · <tspan fill="#8aa0ad">visualize Titan atmosphere scan</tspan></text></g>
+      <g><rect x="910" y="44" width="250" height="40" rx="20" fill="#0c1318" stroke="#243441" opacity="0.92"/><circle cx="936" cy="64" r="6" fill="#5bd0a0"/><text x="954" y="69" fill="#cfe0e8" font-size="12.5">Render ready · 128 spp</text><text x="1100" y="69" fill="#7d8c99" font-size="12">⌘K</text></g>
+      <g><rect x="320" y="600" width="560" height="56" rx="28" fill="url(#bar)" stroke="#2a3a47"/><rect x="320" y="600" width="560" height="56" rx="28" fill="none" stroke="#35e0d8" stroke-opacity="0.25"/>
+        <text x="352" y="635" fill="#9fb2bd" font-size="14">⌘K  “show me the orbital decay as a timeline…”</text>
+        <rect x="804" y="612" width="60" height="32" rx="16" fill="url(#acc)"/><text x="834" y="633" fill="#03141a" font-size="13" font-weight="700" text-anchor="middle">Build</text></g>
+      <g opacity="0.95"><rect x="40" y="540" width="180" height="64" rx="12" fill="#0c1318" stroke="#243441" opacity="0.9"/>
+        <text x="56" y="564" fill="#8aa0ad" font-size="11">SCENE</text><text x="56" y="584" fill="#eaf2f6" font-size="13" font-weight="600">atmosphere_007</text>
+        <text x="56" y="600" fill="#6fd6c9" font-size="10.5">● 3 objects · 2 lights</text></g>
+      <text x="44" y="528" fill="#5b6b78" font-size="11">▸ context appears only on hover / focus</text>
+      <text x="600" y="688" fill="#5b6b78" font-size="12" text-anchor="middle">One persistent control: the command bar. Everything else is reveal-on-demand. (⌘K palette, ⌘I inspector, ~ to toggle clutter-free)</text>
+    </svg>
+  </div>
+  <p class="cap">Fig 3 — Proposed default state. The render owns the frame; a single command bar sits at the bottom; corner pills carry intent + status.</p>
+
+  <h3>4.3 The three reveal surfaces</h3>
+  <div class="grid3">
+    <div class="card p"><h4>⌘K · Command palette</h4><p>Intent field + grouped tool/recipe suggestions (not all 14 tools). Typing flows straight into the command bar. Mirrors the agent's tool vocabulary.</p><span class="pill acc">intent</span><span class="pill">recipes</span><span class="pill">tools</span></div>
+    <div class="card p"><h4>⌘I · Inspector</h4><p>Reveal-on-demand side drawer mapped to the live scene manifest: camera, lights, materials as sliders + one-click "suggested patches" from <code>suggest_camera_fix</code> etc.</p><span class="pill warn">camera</span><span class="pill warn">light</span><span class="pill warn">material</span></div>
+    <div class="card p"><h4>~ · Clutter-free</h4><p>Toggles every HUD element away, leaving pure render (present/hang mode). The same key the user already expects from Octane's presentation mode.</p><span class="pill ok">fullscreen</span><span class="pill">present</span></div>
+  </div>
+
+  <h3>4.4 How each latency band is served</h3>
+  <table>
+    <thead><tr><th>Band</th><th>UI response</th><th>Source signal</th></tr></thead>
+    <tbody>
+      <tr><td>Perception (≤400ms)</td><td>Intent pill lights; command id bubble in corner</td><td>Queue write ack</td></tr>
+      <tr><td>Comprehension (≤2s)</td><td>"Queued N commands" → "Rendering… %"</td><td><code>bridge.status.json</code> heartbeat</td></tr>
+      <tr><td>Decision (≤10s)</td><td>Preview card + one-line QA verdict (OK/clipped/low-contrast)</td><td><code>octane_review_preview()</code></td></tr>
+      <tr><td>Execution (≤2min)</td><td>Inspector sliders + suggested-patch chips</td><td>scene manifest + suggest_* tools</td></tr>
+      <tr><td>Recovery (return)</td><td>Scene timeline + recipe memory</td><td>manifests + recipe book</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.5 Why clutter-free is the right anchor</h3>
+  <p>Octane X already ships a "clutter free" presentation mode — it strips UI chrome so the image is the message. The dashboard borrows that exact philosophy: <strong>default to the image, summon chrome only on intent</strong>. This is not a skin; it is a direct continuation of the renderer's own UX DNA, which means the mental model transfers seamlessly from Octane power-users to first-time intent-users.</p>
+</section>
+
+<!-- ============ 5 MOCKUP ============ -->
+<section id="mockup">
+  <h2><span class="num">5</span>Interactive Mockup &amp; States</h2>
+  <p class="lede">A working HTML prototype was built with the project's own tooling mindset (self-contained, no external deps). Open it and try the three states. Screenshots below are real captures of that prototype running.</p>
+
+  <div class="grid3">
+    <div class="card"><img src="assets/mockup-default.png" alt="Default clutter-free state"/><p class="cap">Default — render + command bar + corner pills. Pure canvas.</p></div>
+    <div class="card"><img src="assets/mockup-palette.png" alt="⌘K palette open"/><p class="cap">⌘K — intent palette with grouped tool/recipe suggestions.</p></div>
+    <div class="card"><img src="assets/mockup-inspector.png" alt="⌘I inspector open"/><p class="cap">⌘I — reveal-on-demand inspector mapped to scene manifest.</p></div>
+  </div>
+
+  <div class="callout">
+    <strong>Try it:</strong> the prototype is at <code>reports/dashboard-proposal/assets/dashboard-mockup.html</code>. Press <span class="kbd">⌘K</span> to open the palette (typing updates the command bar + intent pill live), <span class="kbd">⌘I</span> for the inspector, and <span class="kbd">~</span> to collapse all HUD chrome into pure clutter-free render mode. <span class="kbd">Esc</span> closes overlays.
+  </div>
+
+  <h3>5.1 What the mockup proves</h3>
+  <ul>
+    <li>The render can own the entire frame while keeping a single, calm entry point for intent.</li>
+    <li>Depth (palette, inspector) can be <em>summoned and dismissed</em> without permanently consuming screen space.</li>
+    <li>The same intent string flows from palette → command bar → intent pill, so the human always sees what the agent heard.</li>
+    <li>Inspector controls map 1:1 to the existing scene-manifest schema (camera distance/FOV, light intensity, material transmission) — no new renderer API needed.</li>
+  </ul>
+</section>
+
+<!-- ============ 6 EVIDENCE ============ -->
+<section id="evidence">
+  <h2><span class="num">6</span>Evidence — Real Renders From the Project</h2>
+  <p class="lede">These are genuine Octane X outputs already in the repo, produced through the same bridge the dashboard would control. They demonstrate the breadth the intent surface must cover: data, math, space, product, and scientific illustration.</p>
+
+  <h3>6.1 Data &amp; scientific viz</h3>
+  <div class="grid3">
+    <div class="card"><img src="assets/data-bars.png" alt="3D data bars"/><p class="cap">3D bar chart — <code>octane_visualize_bars</code></p></div>
+    <div class="card"><img src="assets/math-surface.png" alt="Math surface"/><p class="cap">Math surface z=f(x,y) — native render</p></div>
+    <div class="card"><img src="assets/vector-field.png" alt="Vector field"/><p class="cap">Vector field visualization</p></div>
+    <div class="card"><img src="assets/network-graph.png" alt="Network graph"/><p class="cap">Network / graph layout</p></div>
+    <div class="card"><img src="assets/geospatial-terrain.png" alt="Geospatial terrain"/><p class="cap">Geospatial terrain</p></div>
+    <div class="card"><img src="assets/wave-interference-field.png" alt="Wave interference field"/><p class="cap">Wave interference field</p></div>
+  </div>
+
+  <h3>6.2 Photoreal &amp; concept</h3>
+  <div class="grid3">
+    <div class="card"><img src="assets/saturn.png" alt="Saturn and moons"/><p class="cap">Photoreal planet + atmosphere — <code>saturn-moons</code> recipe</p></div>
+    <div class="card"><img src="assets/photoreal-earth.png" alt="Earth from space"/><p class="cap">Photoreal Earth — space recipe</p></div>
+    <div class="card"><img src="assets/photoreal-product.png" alt="Product studio"/><p class="cap">Photoreal product studio</p></div>
+    <div class="card"><img src="assets/photoreal-vase-native.png" alt="Vase studio native"/><p class="cap">Photoreal vase — native render (looped)</p></div>
+    <div class="card"><img src="assets/pipeline-architecture-flow.png" alt="Architecture flow"/><p class="cap">Pipeline / architecture flow diagram</p></div>
+    <div class="card"><img src="assets/avatar-guide.png" alt="Avatar guide"/><p class="cap">Hermes avatar guide — <code>octane_show_avatar</code></p></div>
+  </div>
+
+  <h3>6.3 The render-review loop in action</h3>
+  <div class="grid2">
+    <div class="card"><img src="assets/iteration-loop.png" alt="Iteration loop"/><p class="cap">Vision-feedback iteration loop — the core moat</p></div>
+    <div class="card"><img src="assets/physics-orbits.png" alt="Physics orbits"/><p class="cap">Physics orbits — simulation-to-render</p></div>
+  </div>
+  <p class="dim small">All renders above are genuine Octane X outputs committed in <code>examples/recipes/</code> and produced through the same bridge the dashboard would control. The set spans data viz, math surfaces, geospatial, space/photoreal, product studio, and the agent's own avatar/architecture guides.</p>
+</section>
+
+<!-- ============ 7 ROADMAP ============ -->
+<section id="roadmap">
+  <h2><span class="num">7</span>Build Roadmap &amp; Acceptance Criteria</h2>
+  <p class="lede">The dashboard is a thin, local web/Electron surface over the existing MCP + Octane layer. No renderer changes required. Phased so each step is independently demoable.</p>
+
+  <h3>Phase A — Canvas shell (1–2 days)</h3>
+  <ul>
+    <li>Local web view that launches Octane X (or attaches to a running instance) and displays its viewport full-bleed.</li>
+    <li>Bottom command bar wired to Hermes agent (send intent → receive tool-plan summary).</li>
+    <li>Corner <strong>Intent</strong> + <strong>Status</strong> pills fed by <code>bridge.status.json</code> heartbeat.</li>
+  </ul>
+  <p class="small"><span class="pill ok">Acceptance</span> Type an intent → Octane builds the scene → preview appears, with live status text. (Matches the mockup default state.)</p>
+
+  <h3>Phase B — Reveal surfaces (2–3 days)</h3>
+  <ul>
+    <li><span class="kbd">⌘K</span> palette: grouped tool/recipe suggestions, attachments (reference image intent).</li>
+    <li><span class="kbd">⌘I</span> inspector: sliders bound to scene manifest; "suggested patch" chips calling <code>suggest_camera_fix</code> / <code>suggest_lighting_fix</code>.</li>
+    <li><span class="kbd">~</span> clutter-free toggle (hide all HUD).</li>
+  </ul>
+  <p class="small"><span class="pill ok">Acceptance</span> Opening inspector and dragging camera-distance slider re-renders; suggested-patch chip applies and re-queues.</p>
+
+  <h3>Phase C — Latency honesty &amp; continuity (3–4 days)</h3>
+  <ul>
+    <li>Progress stages: queued → processing → rendering % → review → ready, with honest timeouts (no wedge).</li>
+    <li>Preview card with <code>octane_review_preview()</code> verdict (OK / clipped / low-contrast).</li>
+    <li>Scene timeline + intent history; resumable on reopen (ties to recipe book).</li>
+  </ul>
+  <p class="small"><span class="pill ok">Acceptance</span> During a 20s render the UI shows real stage transitions; closing and reopening restores the last scene + intent.</p>
+
+  <h3>Phase D — Voice &amp; multimodal (stretch)</h3>
+  <ul>
+    <li>Voice intent → same command bar; drag-reference-image intent ("like this, but…").</li>
+    <li>Export/share: copy PNG, copy scene-manifest JSON, "save as recipe".</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Definition of done:</strong> A person with zero Octane knowledge can type "show me the orbital decay as a timeline," watch it build with honest progress, see the QA verdict, tweak the camera from the inspector, and reopen the session to find it exactly as left — all locally, all without touching a node.
+  </div>
+</section>
+
+<!-- ============ 8 RISKS ============ -->
+<section id="risks">
+  <h2><span class="num">8</span>Risks, Mitigations &amp; Open Questions</h2>
+  <div class="grid2">
+    <div class="card p"><h4>Perceived latency</h4><p>Octane preview frames take seconds–tens of seconds. <strong>Mitigation:</strong> sub-400ms acknowledgement + live stage progress (§3.2). Never a dead spinner.</p></div>
+    <div class="card p"><h4>Render-start wedge</h4><p>Historical <code>start{}</code> hang in the bridge. <strong>Mitigation:</strong> honest "rendering…" with timeout + restart path; this is a bridge concern, surfaced honestly in UI.</p></div>
+    <div class="card p"><h4>Tool sprawl in palette</h4><p>14 tools, overlapping. <strong>Mitigation:</strong> palette groups by intent ("visualize data", "photoreal", "scene"), not raw tool list.</p></div>
+    <div class="card p"><h4>Agent misinterpretation</h4><p>NL → wrong scene. <strong>Mitigation:</strong> intent pill + preview card verdict make misreads catchable in &lt;10s; one-click re-patch.</p></div>
+    <div class="card p"><h4>Octane licensing/sandbox</h4><p>Container FS + app-bundle coupling. <strong>Mitigation:</strong> dashboard reads the existing workspace contract; no new filesystem assumptions.</p></div>
+    <div class="card p"><h4>Scope creep</h4><p>Easy to rebuild Octane in HTML. <strong>Mitigation:</strong> dashboard is a <em>surface</em>, not a renderer. Hard rule: no scene logic in the UI.</p></div>
+  </div>
+
+  <h3>Open questions for Craig</h3>
+  <ul>
+    <li><strong>Host:</strong> native <code>WKWebView</code> overlay inside Octane's own window, or a separate Electron/WebView app that attaches to the running Octane? (Affects clutter-free key handling.)</li>
+    <li><strong>Multi-surface:</strong> should the same intent surface also drive the Mac Studio (M3 Ultra, 512GB) for heavy renders, with the local machine as the thin client?</li>
+    <li><strong>Voice:</strong> is hands-free intent a day-1 requirement or Phase D stretch?</li>
+    <li><strong>Share:</strong> do outputs need one-click export to X/image, or stay local-first by default?</li>
+  </ul>
+
+  <div class="callout ok">
+    <strong>Bottom line:</strong> The OctaneX Agentic Ecosystem already solves the hard part — turning intent into a correct, beautiful, local render through a guarded, self-improving agent loop. The dashboard proposed here is the missing human surface that makes that power feel <em>fluid</em>: calm by default, deep on demand, and honest about time. It is additive, low-risk, and buildable in roughly 1–2 weeks of focused work.
+  </div>
+</section>
+
+</main>
+
+<div class="footer">
+  OctaneX Agentic Canvas — UI concept &amp; project review · compiled by Plato · 2026-07-09<br/>
+  Assets: genuine Octane X renders from <code>examples/recipes/</code> + purpose-built SVG/HTML mockups · No external dependencies.
+</div>
+
+</body>
+</html>

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0e13"/><stop offset="1" stop-color="#0d1218"/></linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#35e0d8"/><stop offset="1" stop-color="#2fd4ff"/></linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5bd0a0"/><stop offset="1" stop-color="#35e0d8"/></linearGradient>
+    <linearGradient id="c3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#ffb347"/></linearGradient>
+    <linearGradient id="c4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff9f6b"/><stop offset="1" stop-color="#ff7a8a"/></linearGradient>
+    <linearGradient id="c5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c08bff"/><stop offset="1" stop-color="#8b9bff"/></linearGradient>
+  </defs>
+  <rect width="1200" height="460" fill="url(#bg2)"/>
+  <text x="40" y="46" fill="#eaf2f6" font-size="22" font-weight="700">Cognitive Latency Stack → Render Loop Mapping</text>
+  <text x="40" y="70" fill="#7d8c99" font-size="13">Adapted from Think-Time UX (UX Tigers). Each band needs a different UI response; the UI must bear the temporal burden, not the human.</text>
+
+  <!-- band rows -->
+  <!-- Perception -->
+  <g>
+    <rect x="40" y="100" width="1120" height="58" rx="10" fill="#0f1a1f" stroke="#1f3b3d"/>
+    <rect x="40" y="100" width="10" height="58" fill="url(#c1)"/>
+    <text x="70" y="128" fill="#eaf2f6" font-size="15" font-weight="700">1 · Perception</text>
+    <text x="70" y="148" fill="#7d8c99" font-size="12">0–400 ms · did anything happen?</text>
+    <text x="430" y="128" fill="#cdd9e1" font-size="12.5">UI acknowledgement: input echo, intent pill "heard", motion affordance at point of action.</text>
+    <text x="430" y="148" fill="#6fd6c9" font-size="11.5">System: queue write ack + command id bubble in HUD corner.</text>
+  </g>
+  <!-- Comprehension -->
+  <g>
+    <rect x="40" y="168" width="1120" height="58" rx="10" fill="#0f1a1a" stroke="#1f3b3b"/>
+    <rect x="40" y="168" width="10" height="58" fill="url(#c2)"/>
+    <text x="70" y="196" fill="#eaf2f6" font-size="15" font-weight="700">2 · Comprehension</text>
+    <text x="70" y="216" fill="#7d8c99" font-size="12">0.4–2 s · what happened?</text>
+    <text x="430" y="196" fill="#cdd9e1" font-size="12.5">Outcome-first microcopy: "Queued 4 commands", "Rendering… 38%". No log dumps.</text>
+    <text x="430" y="216" fill="#6fd6c9" font-size="11.5">System: live progress from bridge.status.json heartbeat.</text>
+  </g>
+  <!-- Decision -->
+  <g>
+    <rect x="40" y="236" width="1120" height="58" rx="10" fill="#171510" stroke="#3a2f1f"/>
+    <rect x="40" y="236" width="10" height="58" fill="url(#c3)"/>
+    <text x="70" y="264" fill="#eaf2f6" font-size="15" font-weight="700">3 · Decision</text>
+    <text x="70" y="284" fill="#7d8c99" font-size="12">2–10 s · is it right?</text>
+    <text x="430" y="264" fill="#cdd9e1" font-size="12.5">Preview card appears with one-line QA verdict ("OK / clipped / low-contrast").</text>
+    <text x="430" y="284" fill="#ffd166" font-size="11.5">System: octane_review_preview() summary surfaced, not buried.</text>
+  </g>
+  <!-- Execution -->
+  <g>
+    <rect x="40" y="304" width="1120" height="58" rx="10" fill="#17110f" stroke="#3a241f"/>
+    <rect x="40" y="304" width="10" height="58" fill="url(#c4)"/>
+    <text x="70" y="332" fill="#eaf2f6" font-size="15" font-weight="700">4 · Execution</text>
+    <text x="70" y="352" fill="#7d8c99" font-size="12">10 s–2 min · refine?</text>
+    <text x="430" y="332" fill="#cdd9e1" font-size="12.5">On-demand inspector: camera/light/material sliders + suggested-patch chips.</text>
+    <text x="430" y="352" fill="#ff9f6b" font-size="11.5">System: suggest_camera_fix / suggest_lighting_fix as one-click patches.</text>
+  </g>
+  <!-- Recovery -->
+  <g>
+    <rect x="40" y="372" width="1120" height="58" rx="10" fill="#12111a" stroke="#2a2740"/>
+    <rect x="40" y="372" width="10" height="58" fill="url(#c5)"/>
+    <text x="70" y="400" fill="#eaf2f6" font-size="15" font-weight="700">5 · Recovery</text>
+    <text x="70" y="420" fill="#7d8c99" font-size="12">minutes–return · what was I doing?</text>
+    <text x="430" y="400" fill="#cdd9e1" font-size="12.5">Persistent scene timeline + recipe memory restores context after interruption.</text>
+    <text x="430" y="420" fill="#c08bff" font-size="11.5">System: scene manifests + recipe book = resumable intent history.</text>
+  </g>
+</svg>
