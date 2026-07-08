@@ -89,6 +89,21 @@ osascript -e 'tell application "Octane X" to run script file "MacintoshHD:Users:
 
 Run the one-shot bridge after queueing the scene AND again after queueing the preview save.
 
+**Drain-loop detail (easy to get wrong):** the one-shot bridge drains only
+**~1 command per click** — the persistent auto-poll timer is broken, so nothing
+keeps the queue warm. After each click, poll `…/OctaneMCP/queue/` and **repeat
+the click until `queue/` is empty** (watch the file count, not just
+`processed_count`). A 6-command pipeline needs ~6 clicks. If the MCP tool
+`octane_run_oneshot_bridge` throws `ClosedResourceError`, fall back to the raw
+osascript menu-click above (same effect, no MCP server).
+- If that raw osascript `run script file` returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is non-receptive (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, restart Octane X (purges the loaded scene — re-queue) or reuse an existing render.
+
+**CRITICAL — never restart Octane X between `import_geometry` and `save_preview`.**
+A restart purges the in-memory scene, so later commands render against an empty
+scene → uniform gray `(243,243,243)` frame, ~16 KB, wasting a long render.
+Restart Octane X only to reload a patched bridge, and do it *before* queueing any
+scene command. Queue the whole import→…→save pipeline in ONE live session.
+
 ### 3. Inspect the render locally (vision gate)
 
 Before returning the PNG, inspect it with `vision_analyze`:
@@ -107,7 +122,8 @@ Before returning the PNG, inspect it with `vision_analyze`:
 
 - The preview is returned inline in the conversation chat.
 - Works with both one-shot and persistent bridge modes.
-- If an existing persistent bridge is active, it drains the queue automatically (1 s poll), but prefer one-shot for clean repaint on multi-command batches.
+- **Always drain the queue with the one-shot bridge** (`octane_run_oneshot_bridge` or the osascript one-shot trigger). The persistent bridge's auto-poll timer is **broken** (`timer create attempt 1 failed`), so it will NOT drain on its own — do not rely on it to auto-drain. Prefer one-shot for clean repaint on multi-command batches.
+- **Materials with distinct colors:** `import_geometry` ignores MTL `Kd` (objects render black), and `assign_material` paints every group pin with one material. For a multi-color object, emit ONE combined OBJ with `usemtl` groups, `create_material` each color, then assign per-group — but the MCP `assign_material` tool lacks `group_index`, so write the queue JSON directly with `"payload": {"object_name":…, "material_name":…, "group_index": N}`. See `octanex-mcp` → Materials/Import gotchas.
 - Clean up: do not leave test command files in `…/OctaneMCP/queue/`.
 
 ## Examples
@@ -119,3 +135,4 @@ Before returning the PNG, inspect it with `vision_analyze`:
 | `Visualise with a green torus` | Construct torus, apply green material, render, inspect, return real PNG preview |
 | `Visualise it simply` | Construct default cube with glossy blue, render, inspect, return real PNG preview |
 | `Visualise the helix with a copper material` | Construct helix, apply copper material, render, inspect, return real PNG preview |
+| `Visualise a photorealistic mathematical 3D surface` | Generate a parametric surface OBJ in Python (`octanex-mcp` → `scripts/gen_math_surface.py`), `import_geometry` + explicit glossy material + `assign_material` + camera/lighting + `save_preview`; drain repeatedly until `queue/` empty, then verify. See `octanex-mcp` → `references/photoreal-math-surface.md`. |

@@ -1,40 +1,26 @@
 {
   "slug": "math-surface",
-  "title": "Radial Math Surface",
+  "title": "Photoreal mathematical 3D surface (sinc + azimuthal ridge)",
   "category": "Mathematics",
-  "purpose": "Render a height field for z = sin(r*2.2)/max(r, 0.45) to explain radial damping and singularity protection.",
-  "prompt": "Show a damped radial wave surface for a math explanation.",
+  "purpose": "Render a glossy bronze height field for z = sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8 to explain radial damping, singularity protection, and azimuthal modulation in a photo-real surface.",
+  "prompt": "Visualise a photorealistic mathematical 3D surface.",
+  "generator": "scripts/gen_math_surface.py (writes OctaneMCP_staging/math_surface.obj, ~40k verts / 79k tris, single usemtl group)",
+  "function": {
+    "expr": "sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8",
+    "r": "hypot(x,y)",
+    "domain": [-6, 6],
+    "grid": 200
+  },
   "camera": {
-    "position": [
-      4.5,
-      -5.5,
-      3.2
-    ],
-    "target": [
-      0,
-      0,
-      0.1
-    ],
-    "fov": 42
+    "position": [11, 9, 11],
+    "target": [0, 0.5, 0],
+    "fov": 40
   },
   "materials": {
-    "base": {
-      "kind": "diffuse",
-      "color": [
-        0.1373,
-        0.1765,
-        0.2941
-      ],
-      "roughness": 0.55
-    },
-    "gold": {
+    "math_surface_mat": {
       "kind": "glossy",
-      "color": [
-        1.0,
-        0.7098,
-        0.2392
-      ],
-      "roughness": 0.18
+      "color": [0.85, 0.55, 0.25],
+      "roughness": 0.3
     }
   },
   "commands": [
@@ -43,49 +29,31 @@
       "payload": {
         "path": "examples/recipes/math-surface/scene.obj",
         "format": "obj",
-        "name": "math-surface"
+        "name": "math_surface"
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "base",
-        "kind": "diffuse",
-        "color": [
-          0.1373,
-          0.1765,
-          0.2941
-        ],
-        "roughness": 0.55
-      }
-    },
-    {
-      "op": "create_material",
-      "payload": {
-        "name": "gold",
+        "name": "math_surface_mat",
         "kind": "glossy",
-        "color": [
-          1.0,
-          0.7098,
-          0.2392
-        ],
-        "roughness": 0.18
+        "color": [0.85, 0.55, 0.25],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "math_surface",
+        "material_name": "math_surface_mat"
       }
     },
     {
       "op": "set_camera",
       "payload": {
-        "position": [
-          4.5,
-          -5.5,
-          3.2
-        ],
-        "target": [
-          0,
-          0,
-          0.1
-        ],
-        "fov": 42
+        "position": [11, 9, 11],
+        "target": [0, 0.5, 0],
+        "fov": 40
       }
     },
     {
@@ -95,24 +63,23 @@
       }
     },
     {
-      "op": "start_render",
-      "payload": {
-        "samples": 128,
-        "width": 1280,
-        "height": 1280
-      }
-    },
-    {
       "op": "save_preview",
       "payload": {
         "path": "examples/recipes/math-surface/octane-preview.png",
         "width": 1280,
-        "height": 1280
+        "height": 1280,
+        "quality": "ultra"
       }
     }
   ],
-  "preview_note": "preview.png is a lightweight repo-generated raster preview; re-render in Octane for final quality.",
-  "native_render_note": "Some teaching assets use OBJ line primitives for paths/arrows. If the Octane OBJ importer drops lines, convert those paths to thin cylinders/tubes before final native rendering.",
+  "convergence_tiers": {
+    "standard": { "max_render_time": 30, "timeout_seconds": 30, "min_samples": 24, "samples": 512 },
+    "high": { "max_render_time": 60, "timeout_seconds": 60, "min_samples": 48, "samples": 1024 },
+    "ultra": { "max_render_time": 120, "timeout_seconds": 120, "min_samples": 96, "samples": 2048 },
+    "final": { "max_render_time": 0, "timeout_seconds": 600, "min_samples": 1024, "samples": 1000000 }
+  },
+  "preview_note": "octane-preview.png is a REAL Octane X render (ultra tier, 1280×1280, ~326 KB). preview.png is a downscaled copy for docs.",
+  "native_render_note": "MTL Kd is ignored on import — the glossy bronze material is assigned explicitly via assign_material. The GPU maxRenderTime film pin is ignored on this Octane build; the effective convergence cap is the Lua wait_for_render_ready wall-clock timeout_seconds (resolved from quality tiers).",
   "quality_checklist": [
     "Preview is non-blank and the central idea is recognizable at thumbnail size.",
     "Scene imports the local scene.obj path listed in commands[].",
@@ -120,18 +87,23 @@
     "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
     "If native Octane output differs from preview.png, record the lesson in docs/recipe-book.md."
   ],
-  "target_preview": "preview.png",
+  "target_preview": "octane-preview.png",
+  "verification": {
+    "method": "PIL full-frame pixel scan + vision_analyze",
+    "real_surface_signature": "brightness min ~60, max ~765, warm pixels (255,235,179) present",
+    "blank_frame_signature": "min==mean==max ~729, ~16 KB, uniform gray (243,243,243)"
+  },
   "visual_iteration_protocol": {
     "model": "ollama:glm-ocr",
     "reference_image": "examples/recipes/math-surface/preview.png",
     "candidate_image": "examples/recipes/math-surface/octane-preview.png",
     "max_iterations": 4,
     "review_focus": [
-      "object count and semantic content",
+      "surface recognition and singularity/azimuthal structure",
       "composition, framing, and camera perspective",
-      "material/color readability and contrast",
-      "lighting, shadows, and background clarity",
-      "task-specific labels, legends, or focal details"
+      "material/color readability and contrast (bronze glossy)",
+      "lighting, reflections, and background clarity",
+      "task-specific smoothness/continuity of the height field"
     ],
     "patch_dimensions": [
       "geometry",
@@ -149,8 +121,8 @@
       "iteration review/patch records under iterations/"
     ],
     "stop_conditions": [
-      "candidate content and major silhouettes match the reference or stated recipe intent",
-      "task-critical colors/materials/labels are visually distinguishable",
+      "candidate surface structure matches the reference or stated recipe intent",
+      "task-critical materials (bronze glossy) are visually distinguishable",
       "camera/framing and lighting are close enough for the task",
       "remaining gaps require bridge schema or native material capability work"
     ],
@@ -158,26 +130,10 @@
       "enabled": true,
       "purpose": "Rapidly disambiguate scene orientation/camera framing before fine visual matching.",
       "camera_or_scene_variants": [
-        {
-          "name": "front",
-          "azimuth_degrees": 0,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "left_three_quarter",
-          "azimuth_degrees": -35,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "right_three_quarter",
-          "azimuth_degrees": 35,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "top_oblique",
-          "azimuth_degrees": 0,
-          "elevation_degrees": 45
-        }
+        { "name": "front", "azimuth_degrees": 0, "elevation_degrees": 12 },
+        { "name": "left_three_quarter", "azimuth_degrees": -35, "elevation_degrees": 12 },
+        { "name": "right_three_quarter", "azimuth_degrees": 35, "elevation_degrees": 12 },
+        { "name": "top_oblique", "azimuth_degrees": 0, "elevation_degrees": 45 }
       ],
       "visual_grammar_axes": [
         "orientation",
@@ -205,7 +161,8 @@
       "iterations/*.png",
       "assets/*"
     ],
-    "status": "pending_native_octane_iteration",
+    "status": "native_candidate_saved_but_not_final",
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
-  }
+  },
+  "status": "native_octane_verified (ultra tier, 2026-07-08)"
 }

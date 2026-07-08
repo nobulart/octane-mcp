@@ -460,3 +460,91 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - **Connect all scene meshes to the render target**, not just the last import; iterate the bridge so multi-geometry scenes render every object (or explicitly compose a single combined OBJ).
 - Assert non-blank with `review_preview` (near_black, contrast, foreground metrics) before reporting any rendered result.
 
+
+## Multi-group colored mesh: green sphere on red cube (per-group material + render restart fix)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-08 19:08 UTC
+- **Context:** Combined single OBJ with two usemtl groups (cube_red, sphere_green) imported via import_geometry. MTL Kd is IGNORED by handle_import_geometry, so explicit Octane diffuse materials + per-group pin assignment is required. Two render-restart bugs were also fixed in the bridge.
+
+### Steps
+- Patched request_render_restart in both hermes_bridge_persistent.generated.lua and hermes_bridge_oneshot.generated.lua: stop()+pause() before start; removed invalid maxSamples key (Octane X ignores it and renders unbounded, blocking every later restart); render now bounded by wait_for_render_ready() polling sample count.
+- Extended connect_material_to_mesh_pins(mesh,mat,group_index) so a single combined mesh with multiple material pins can receive distinct materials per usemtl group; handle_assign_material reads cmd.group_index.
+- OBJ order = cube (group 1) then sphere (group 2); group_index 1=red, 2=green.
+- Queued import_geometry, then raw create_material x2, then raw assign_material x2 (with group_index) as queue JSON, then set_camera/set_lighting/save_preview; drained via octane_run_oneshot_bridge (persistent timer is broken: 'timer create attempt 1 failed').
+- Verified both with vision_analyze (green sphere on red cube) AND PIL pixel scan: greenest pixel (2,175,110), reddest (255,95,103).
+
+### Signals / evidence
+- MTL Kd ignored on import -> must create_material + assign explicitly
+- maxSamples key INVALID in octane.render.start -> use stop+pause then start, bound via wait_for_render_ready
+- Persistent bridge timer broken -> use octane_run_oneshot_bridge to drain queue
+- assign_material supports group_index via raw queue JSON (not exposed in MCP tool schema)
+- Verify with PIL pixel scan, not just box averages (warm studio rim light fools box averages)
+
+### Follow-ups
+- Expose group_index in the MCP assign_material tool schema
+- Restore/repair persistent bridge auto-poll timer
+
+## Photoreal mathematical surface + render convergence tiers (success)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-08 22:10 UTC
+- **Context:** Two lessons learned from one run: (a) a glossy bronze parametric surface rendered with a Python-generated OBJ and verified by pixel scan + local vision; (b) the new `quality` convergence tier on `octane_save_preview` (standard 30s / high 60s / ultra 120s / final unbounded, 600s wall cap) correctly bounds the render and still saves on timeout.
+
+### Steps
+- Generate the surface OBJ in Python (`scripts/gen_math_surface.py`): z = sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8, r=hypot(x,y), x,y∈[-6,6], 200×200 grid, single `usemtl` group → ~40k verts / 79k tris. Copy into the container workspace `OctaneMCP/assets/` (sandboxed Octane only reads container FS).
+- Queue the full pipeline in ONE live Octane session (do NOT restart Octane between import and save): import_geometry(name `math_surface`) → create_material(glossy, color [0.85,0.55,0.25], roughness 0.3) → assign_material → set_camera(fov 40, pos [11,9,11], target [0,0.5,0]) → set_lighting(soft_studio) → save_preview(quality="high"|"ultra").
+- Drain with the one-shot bridge (repeat the click until `queue/` is empty — one command per click).
+- Produced `math_surface_high.png` (325,995 B, 21:52) and `math_surface_ultra.png` (326,230 B, 22:02).
+
+### Signals / evidence
+- PIL full-frame scan: warm surface pixels (255,235,179) present; brightness min 57 / mean 685 / max 765 → genuine shaded surface, not flat gray (243,243,243) ~16 KB blank frame.
+- `wait_for_render_ready` returned at beauty=5000 samples (well past min_samples 48) within the 60s `high` ceiling — confirms the wall-clock cap is the effective convergence limit.
+- `quality="ultra"` (120s) saved a near-identical clean frame; tiers earn their keep on heavier scenes where the cap stops a runaway unbounded render.
+
+### Pitfalls (load-bearing)
+- Do NOT restart Octane X between import and save → empty-scene gray frame (cost one wasted render before learned).
+- One-shot bridge drains ~1 command/click; persistent auto-poll timer is BROKEN.
+- GPU `maxRenderTime` pin is IGNORED on this Octane build (probe logged no honored pin, same as ignored `maxSamples`). The effective cap is the Lua `wait_for_render_ready` wall-clock `timeout_seconds`, NOT the GPU film pin.
+- `handle_save_preview` now SAVES BEST-EFFORT ON TIMEOUT (previously aborted with `return false`, producing no PNG on a capped slow scene). Do not regress.
+- `set_render_resolution` logs non-fatal `setPinValue failed pin=filmResolution/width/height…` but reports ok=true — ignore.
+- Container FS is slow + 79k-tri surface @ 512 samples took ~90 s before the PNG timestamp moved — don't conclude failure early.
+- `octane_record_recipe` MCP tool was absent in-session → record inline in `NOTES-*.md` / `docs/recipe-book.md`.
+
+### Follow-ups
+- Keep `octane-viz` / `octanex-mcp` skills pointing at the current bridge templates + lib (source of truth), regenerate `.generated.lua` after edits, restart Octane to reload.
+- Reproductions: `references/photoreal-math-surface.md` + `references/render-convergence-tiers.md` (bundled octanex-mcp skill); generator `scripts/gen_math_surface.py`.
+
+## WP4 create_light shipped + render-start hang regression (pitfall)
+
+- **Outcome:** pitfall (partial success)
+- **Recorded:** 2026-07-08 21:35 UTC
+- **Context:** User asked to "visualize something to test the pipeline." Ran the math-surface pipeline as the surprise scene, exercising the new WP4 `create_light` + PBR `create_material` ops end-to-end against a live Octane X session.
+
+### What worked (real bridge evidence)
+- WP4 `create_material` with PBR fields (kind=metal, metallic, roughness, ior, clearcoat) → `created material bronze_pbr` logged.
+- WP4 `create_light` (`light_type=sun_light`) → after fix, maps to an `NT_ENV_DAYLIGHT` environment node (see below); `created environment light` logged.
+- `import_geometry`, `set_camera`, `set_lighting` (soft_studio) all processed and logged success in earlier cycles.
+
+### WP4 create_light fix (committed separately)
+- `NT_LIGHT_AREA` / `NT_LIGHT_SUN` etc. are `nil` on this Octane X build, so the original `create_node(light_type)` returned "missing node type".
+- `handle_create_light` rewritten: `environment`/`sun_light` → create/connect `NT_ENV_DAYLIGHT` env node (reuses the proven `handle_set_lighting` path); `area`/`point`/`spot`/`directional`/`emissive` → create an emissive-material proxy (`NT_MAT_EMISSIVE`, defensive nil-check) with an honest `emissive light proxy` log.
+- Added `expand_path()` helper so `save_preview` paths with `~` resolve to `$HOME` (Octane Lua `os`/`saveImage` do not expand `~`; without it `mkdir`/save target the literal `~/...` path and the save returns false).
+
+### Blocker: `request_render_restart` → `octane.render.start` HANGS
+- On the 12:50 run (fresh idle Octane) the same `request_render_restart` (`stop()`+`pause()`+`start{}`) returned and the PNG saved.
+- In this session `octane.render.start{renderTargetNode=rt}` BLOCKS indefinitely on a fresh Octane launch (no `render attempt start` log line appears; the command sits in `processing/` forever). Octane X auto-starts rendering the default scene on launch, so the explicit `start` collides with an already-active render and wedges.
+- This hangs EVERY command that calls `request_render_restart` (import_geometry, assign_material, create_light, set_camera, set_lighting, save_preview) — the one-shot/persistent loop never advances past the first stuck command.
+- `set_render_resolution` non-fatal `setPinValue failed pin=filmResolution/...` noise is expected (line 510) — not the cause.
+
+### Signals / evidence
+- `bridge.log` shows `import_geometry` → `film resolution requested 1280x1280 ok=true` then silence; command ID remains in `processing/`.
+- No `render attempt start{renderTargetNode=rt} ok=true` line for the wedged run (contrast: 21:24/21:26/21:29/21:30 runs logged it; 21:32+ did not).
+- Repeated bridge clicks (oneshot 1 cmd/click) and persistent timer both stall at the same stuck `processing/` file.
+
+### Follow-ups (the real next step)
+- Fix `request_render_restart` to handle the "already rendering" case: detect active render via `octane.render.getRenderResultStatistics().renderState`, and if active, call `stop()` + a bounded settle sleep + verify stopped BEFORE `start{}`; retry `start{}` once on "Can't start a new render before finishing the previous render". This is the decisive fix that unblocks save_preview and the whole pipeline.
+- Alternatively, gate the explicit `start{}` behind a check that Octane is idle, or rely on Octane's continuous viewport render and only `saveImage` the live RT (no restart).
+- Re-run this exact pipeline (`OctaneMCP_staging/queue_clean.py`) after the fix; expect `wp4_sinc_preview.png` at `~/OctaneMCP_staging/`.
+- Do NOT claim a native Octane render until `wp4_sinc_preview.png` exists and `review_preview` passes (per recipe-registry gap entry).
+

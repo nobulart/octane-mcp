@@ -81,22 +81,33 @@ PYTHONPATH= uv run octanex-mcp doctor
 PYTHONPATH= uv run octanex-mcp --self-test
 ```
 
-Hermes config in `~/.hermes/config.yaml`:
+Hermes config in `~/.hermes/config.yaml` (merge into the existing `mcp_servers` key):
 
 ```yaml
 mcp_servers:
   octanex:
-    command: "uv"
-    args: ["run", "--project", "/path/to/octane-mcp", "octanex-mcp"]
+    # Use the bundled launcher, NOT bare `uv run` — it strips the Hermes
+    # runtime PYTHONPATH so the server uses its own .venv (with
+    # mcp/pydantic_core) instead of Hermes' broken one, which would crash
+    # the server on import.
+    command: "/path/to/octanex-mcp/run_octanex_mcp.sh"
+    args: []
     timeout: 180
     connect_timeout: 30
+    # Only if your workspace/app paths differ from the defaults the server
+    # resolves. Hermes strips unlisted env vars from the subprocess, so any
+    # custom path MUST be declared here explicitly.
+    # env:
+    #   OCTANEX_MCP_WORKSPACE: "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP"
+    #   OCTANEX_APP_PATH: "/Applications/Octane X.app"
 ```
 
-For another checkout location, replace the `--project` path or set `OCTANEX_MCP_REPO` before running the MCP server.
+For another checkout location, point `command` at that checkout's `run_octanex_mcp.sh` (the `--project` path is baked into the launcher), or set `OCTANEX_MCP_REPO` before running the server.
 
-Restart Hermes or use `/reload-mcp` after config changes, then verify:
+MCP servers are discovered at Hermes startup; restart Hermes (or use `/reload-mcp` in-session) after config changes, then verify:
 
 ```bash
+hermes mcp list       # shows `octanex` (✓ enabled)
 hermes mcp test octanex
 ```
 
@@ -216,12 +227,13 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_ping(message)` | Queue a bridge ping. |
 | `octane_create_test_cube(name, size)` | Generate a cube OBJ and queue import. |
 | `octane_import_geometry(path, name, format)` | Queue OBJ/USD/FBX/Alembic import. |
-| `octane_create_material(name, kind, color, roughness, metallic)` | Queue material create/update. |
+| `octane_create_material(name, kind, color, roughness, metallic, transmission, ior, opacity, clearcoat, anisotropy, emission, texture_path, normal_path)` | Queue material create/update with extended PBR fields (unsupported Octane pins are acked with a warning by the bridge). |
 | `octane_assign_material(object_name, material_name)` | Queue material assignment. |
 | `octane_set_camera(position, target, fov)` | Queue camera placement. |
 | `octane_set_lighting(preset)` | Queue lighting preset. |
+| `octane_create_light(name, light_type, intensity, position, direction, size, angle, hdr_path)` | Queue native light creation (`area_light`, `sun_light`, `point_light`, `spot_light`, `directional_light`, `environment`, `emissive`). |
 | `octane_start_render(samples, width, height)` | Queue render restart and resolution update. |
-| `octane_save_preview(path, width, height, samples, min_samples, timeout_seconds)` | Queue render-ready PNG preview save. |
+| `octane_save_preview(path, width, height, samples, min_samples, timeout_seconds, quality, max_render_time)` | Queue render-ready PNG preview save. `quality` ∈ `standard`(30s)/`high`(60s)/`ultra`(120s)/`final`(unbounded, 600s wall cap) sets a convergence ceiling; raw `samples`/`min_samples`/`timeout_seconds`/`max_render_time` override the tier. On timeout the current frame is saved best-effort. |
 | `octane_review_preview(path)` | Review saved PNG previews with metrics, diagnosis, likely causes, and recommended actions. |
 | `octane_suggest_camera_fix(preview_review, asset_bounds)` | Suggest a camera patch from preview QA and asset bounds. |
 | `octane_suggest_lighting_fix(preview_review)` | Suggest a lighting/render patch from preview QA. |

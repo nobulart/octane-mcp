@@ -80,6 +80,8 @@ The validator is intentionally lightweight and dependency-free. It checks:
 - common scalar/vector field types;
 - stable structured error codes in `error_details`;
 - render/camera/material ranges;
+- `create_light` payload (name, light_type, intensity, size, position, direction, angle, hdr_path) with supported light types;
+- extended PBR material ranges (transmission, ior, opacity, clearcoat, anisotropy, emission, texture/normal paths);
 - generated path traversal safety.
 
 It does not yet validate every Octane API-specific semantic constraint. Those should be added incrementally as command payloads stabilize.

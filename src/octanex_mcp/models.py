@@ -5,9 +5,29 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any, Mapping
 
+# Light types accepted by create_light (mirrors schema.ALLOWED_LIGHT_TYPES;
+# defined locally to avoid a circular import with schema.py).
+ALLOWED_LIGHT_TYPES: frozenset[str] = frozenset({
+    "area_light", "sun_light", "point_light", "spot_light", "directional_light",
+    "environment", "emissive",
+})
+
 SCHEMA_VERSION = "1.0"
 COMMAND_SCHEMA_REVISION = "typed-contracts-1"
 MAX_RENDER_DIMENSION = 8192
+
+# Render convergence quality tiers. Each tier resolves to an Octane film
+# maxRenderTime (GPU stop, seconds; 0 = unlimited) AND a wall-clock
+# timeout_seconds (Lua poll ceiling). Both act as caps; whichever is hit
+# first stops the render. min_samples / samples are targets only.
+QUALITY_TIERS: dict[str, dict[str, Any]] = {
+    "standard": {"max_render_time": 30, "timeout_seconds": 30, "min_samples": 24, "samples": 512},
+    "high": {"max_render_time": 60, "timeout_seconds": 60, "min_samples": 48, "samples": 1024},
+    "ultra": {"max_render_time": 120, "timeout_seconds": 120, "min_samples": 96, "samples": 2048},
+    "final": {"max_render_time": 0, "timeout_seconds": 600, "min_samples": 1024, "samples": 1_000_000},
+}
+DEFAULT_QUALITY = "standard"
+
 
 ALLOWED_OPS = {
     "ping",
@@ -17,6 +37,7 @@ ALLOWED_OPS = {
     "assign_material",
     "set_camera",
     "set_lighting",
+    "create_light",
     "start_render",
     "pause_render",
     "save_preview",
@@ -120,6 +141,13 @@ class PayloadValidator:
         if not isinstance(value, list) or len(value) != 3 or not all(_is_number(item) for item in value):
             errors.error(f"payload.{field}.type", f"payload.{field} must be a 3-number array for {self.op}", f"payload.{field}")
 
+    def optional_vector3(self, payload: Mapping[str, Any], field: str, errors: _Collector) -> None:
+        value = payload.get(field)
+        if value is None:
+            return
+        if not isinstance(value, list) or len(value) != 3 or not all(_is_number(item) for item in value):
+            errors.error(f"payload.{field}.type", f"payload.{field} must be a 3-number array for {self.op}", f"payload.{field}")
+
     def optional_color(self, payload: Mapping[str, Any], field: str, errors: _Collector) -> None:
         value = payload.get(field)
         if value is None:
@@ -159,8 +187,44 @@ class CreateMaterialPayload(PayloadValidator):
     def validate(self, payload: Mapping[str, Any], errors: _Collector) -> None:
         self.require_string(payload, "name", errors)
         self.optional_color(payload, "color", errors)
+        self.optional_color(payload, "diffuse", errors)
+        self.optional_color(payload, "albedo", errors)
         self.optional_number_range(payload, "roughness", 0, 1, errors)
         self.optional_number_range(payload, "metallic", 0, 1, errors)
+        self.optional_number_range(payload, "specular", 0, 1, errors)
+        self.optional_number_range(payload, "transmission", 0, 1, errors)
+        self.optional_number_range(payload, "ior", 1.0, 2.5, errors)
+        self.optional_number_range(payload, "opacity", 0, 1, errors)
+        self.optional_number_range(payload, "clearcoat", 0, 1, errors)
+        self.optional_number_range(payload, "anisotropy", 0, 1, errors)
+        self.optional_number_range(payload, "emission", 0, 1000, errors)
+        self.optional_safe_path(payload, "texture_path", errors)
+        self.optional_safe_path(payload, "normal_path", errors)
+
+
+class CreateLightPayload(PayloadValidator):
+    def validate(self, payload: Mapping[str, Any], errors: _Collector) -> None:
+        self.require_string(payload, "name", errors)
+        light_type = payload.get("light_type")
+        if light_type is not None and light_type not in ALLOWED_LIGHT_TYPES:
+            errors.error(
+                "payload.light_type.invalid",
+                f"light_type must be one of {sorted(ALLOWED_LIGHT_TYPES)}",
+                "light_type",
+            )
+        if light_type == "area_light":
+            self.optional_number_range(payload, "intensity", 0, 100, errors)
+            self.optional_vector3(payload, "size", errors)
+        elif light_type == "sun_light":
+            self.optional_number_range(payload, "intensity", 0, 200, errors)
+            self.optional_number_range(payload, "angle", 0, 180, errors)
+        elif light_type == "environment":
+            self.optional_number_range(payload, "intensity", 0, 100, errors)
+            self.optional_safe_path(payload, "hdr_path", errors)
+        elif light_type == "emissive":
+            self.optional_number_range(payload, "intensity", 0, 500, errors)
+        self.optional_vector3(payload, "position", errors)
+        self.optional_vector3(payload, "direction", errors)
 
 
 class AssignMaterialPayload(PayloadValidator):
@@ -195,6 +259,14 @@ class SavePreviewPayload(PayloadValidator):
         self.optional_number_range(payload, "samples", 1, 1_000_000, errors)
         self.optional_number_range(payload, "min_samples", 0, 1_000_000, errors)
         self.optional_number_range(payload, "timeout_seconds", 0, 600, errors)
+        self.optional_number_range(payload, "max_render_time", 0, 600, errors)
+        quality = payload.get("quality")
+        if quality is not None and quality not in QUALITY_TIERS:
+            errors.error(
+                "payload.quality.invalid",
+                f"quality must be one of {sorted(QUALITY_TIERS)}",
+                "quality",
+            )
 
 
 class SceneSummaryPayload(PayloadValidator):
@@ -214,6 +286,7 @@ PAYLOAD_VALIDATORS: dict[str, type[PayloadValidator]] = {
     "assign_material": AssignMaterialPayload,
     "set_camera": SetCameraPayload,
     "set_lighting": SetLightingPayload,
+    "create_light": CreateLightPayload,
     "start_render": StartRenderPayload,
     "pause_render": PayloadValidator,
     "save_preview": SavePreviewPayload,
@@ -280,6 +353,7 @@ def command_schema() -> dict[str, Any]:
             "assign_material": {"fields": {"object_name": {"type": "string", "required": True}, "material_name": {"type": "string", "required": True}}},
             "set_camera": {"fields": {"position": {"type": "number[3]", "required": True}, "target": {"type": "number[3]", "required": True}, "fov": {"type": "number", "min": 5, "max": 120}}},
             "set_lighting": {"fields": {"preset": {"type": "string", "required": False}}},
+            "create_light": {"fields": {"name": {"type": "string", "required": True}, "light_type": {"type": "string", "required": True, "allowed": ["area_light", "sun_light", "point_light", "spot_light", "directional_light", "environment", "emissive"]}, "intensity": {"type": "number", "min": 0, "max": 500}, "angle": {"type": "number", "min": 0, "max": 180}, "size": {"type": "number[3]", "required": False}, "position": {"type": "number[3]", "required": False}, "direction": {"type": "number[3]", "required": False}, "hdr_path": {"type": "safe path", "required": False}}},
             "start_render": {"fields": {"samples": {"type": "number", "min": 1, "max": 1_000_000}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}}},
             "pause_render": {"fields": {}},
             "save_preview": {"fields": {"path": {"type": "safe path", "required": False}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "samples": {"type": "number", "min": 1, "max": 1_000_000}, "min_samples": {"type": "number", "min": 0, "max": 1_000_000}, "timeout_seconds": {"type": "number", "min": 0, "max": 600}}},

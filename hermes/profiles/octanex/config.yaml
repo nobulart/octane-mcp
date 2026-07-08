@@ -1,14 +1,15 @@
 # Minimal Hermes profile overlay/snippet for OctaneX MCP.
 # Copy into ~/.hermes/profiles/octanex/config.yaml or merge the mcp_servers
 # block into an existing profile. Replace the repo path before use.
+#
+# IMPORTANT: point `command` at the bundled launcher, NOT bare `uv`. Hermes
+# spawns MCP subprocesses with its own runtime PYTHONPATH, which crashes the
+# server on import (broken pydantic_core). run_octanex_mcp.sh strips that
+# PYTHONPATH so the project .venv is used.
 
 mcp_servers:
   octanex:
-    command: "uv"
-    args:
-      - "run"
-      - "--project"
-      - "/ABSOLUTE/PATH/TO/octanex-mcp"
-      - "octanex-mcp"
+    command: "/ABSOLUTE/PATH/TO/octanex-mcp/run_octanex_mcp.sh"
+    args: []
     timeout: 180
     connect_timeout: 30

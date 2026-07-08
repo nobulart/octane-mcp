@@ -184,6 +184,15 @@ local function dirname(path)
     return tostring(path):match("^(.*)/[^/]+$") or "."
 end
 
+local function expand_path(path)
+    path = tostring(path)
+    if path:sub(1, 1) == "~" then
+        local home = os.getenv("HOME") or "/Users/craig"
+        path = home .. path:sub(2)
+    end
+    return path
+end
+
 local function json_escape(s)
     s = tostring(s or "")
     s = s:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
@@ -370,24 +379,41 @@ local function set_render_resolution(rt, width, height)
     return ok_any
 end
 
-local function connect_material_to_all_mesh_pins(mesh, mat)
+-- Assign a material to a mesh's material pin(s). If group_index is provided,
+-- only the Nth material pin (ordered by pin index) is wired; otherwise all
+-- material pins are wired to the same material. This enables a single combined
+-- OBJ with multiple usemtl groups (e.g. red cube group + green sphere group)
+-- to receive distinct materials.
+local function connect_material_to_mesh_pins(mesh, mat, group_index)
     local connected = false
     if not mesh or not mat then return connected end
     local ok_count, pin_count = pcall(function() return mesh:getPinCount() end)
-    if ok_count and pin_count then
-        for i = 1, pin_count do
-            local ok_info, info = pcall(function() return mesh:getPinInfoIx(i) end)
-            if not ok_info then ok_info, info = pcall(function() return mesh:getPinInfoIx(i - 1) end) end
-            if ok_info and info then
-                local is_material = (octane.PT_MATERIAL and info.type == octane.PT_MATERIAL) or info.label == "Material" or info.name == "Material"
-                if is_material then
+    if not (ok_count and pin_count) then return connected end
+    local material_pin_ix = 0
+    for i = 1, pin_count do
+        local ok_info, info = pcall(function() return mesh:getPinInfoIx(i) end)
+        if not ok_info then ok_info, info = pcall(function() return mesh:getPinInfoIx(i - 1) end) end
+        if ok_info and info then
+            local is_material = (octane.PT_MATERIAL and info.type == octane.PT_MATERIAL) or info.label == "Material" or info.name == "Material"
+            if is_material then
+                material_pin_ix = material_pin_ix + 1
+                if group_index and material_pin_ix ~= tonumber(group_index) then
+                    append_log("skipping material pin #" .. tostring(material_pin_ix) .. " (group filter " .. tostring(group_index) .. ")")
+                else
                     if info.name then connected = connect_to(mesh, info.name, mat) or connected end
                     if info.id then connected = connect_to(mesh, info.id, mat) or connected end
                 end
             end
         end
     end
+    if group_index then
+        append_log("material pin #" .. tostring(group_index) .. " target on mesh (of " .. tostring(material_pin_ix) .. " material pins)")
+    end
     return connected
+end
+
+local function connect_material_to_all_mesh_pins(mesh, mat)
+    return connect_material_to_mesh_pins(mesh, mat, nil)
 end
 
 local function get_or_create_render_target()
@@ -450,19 +476,54 @@ local function request_render_restart(samples, width, height)
     activate_render_target(rt)
     set_render_resolution(rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
     samples = samples or 64
+    -- Octane X renders continuously on its own (default RT) once any scene
+    -- exists, but saveImage() saves OUR render target's buffer -- so we MUST
+    -- explicitly start OUR RT. A prior regression added an early-return that
+    -- skipped start{rt} whenever Octane's default scene already reported
+    -- beauty>0; that left our RT unrendered and forced a manual "render start"
+    -- click. The correct behavior is to ALWAYS ensure OUR RT is rendering.
+    -- CRITICAL: octane.render.start{renderTargetNode=rt} WEDGES (blocks
+    -- forever) when Octane's render engine is already active -- which it is
+    -- whenever Octane auto-renders the current scene. So we must NOT issue
+    -- start{} while a render is live. Instead: probe render state; if a render
+    -- is already running, just wait on it (it will populate our RT buffer).
+    -- Only stop()+pause()+start{rt} when nothing is rendering.
+    if octane.render.getRenderResultStatistics then
+        local s_ok, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
+        if s_ok and type(stats) == "table" then
+            local state = tostring(stats.renderState)
+            local beauty = tonumber(stats.beautySamplesPerPixel) or 0
+            -- renderState values observed: 0=idle, 1/2/3=queued/starting,
+            -- 4=rendering. If already rendering (state>=1) or has samples,
+            -- do NOT call start{} (it would wedge) -- just reuse the live run.
+            if state ~= "0" or beauty > 0 then
+                append_log("render already active (state=" .. state .. " beauty=" .. tostring(beauty) .. "); reusing live render, no start{}")
+                return true, "render already active; reusing live render"
+            end
+        end
+    end
+    -- Stop any in-flight render before starting ours. Octane rejects a new
+    -- start/restart while a previous render is still active
+    -- ("Can't start a new render before finishing the previous render"), which
+    -- left blank/black previews. stop() ends the current pass so the next
+    -- start/restart is accepted. pause() alone is NOT enough (a paused render
+    -- is still "in progress").
+    pcall(function() if octane.render.stop then octane.render.stop() end end)
+    pcall(function() octane.render.pause() end)
     -- On a clean Octane File > New scene, restart() alone may no-op until the
     -- render API has been primed with a renderTargetNode. This call can raise
     -- "render engine failure" after binding the target; the following restart
     -- then starts the viewport renderer and makes saveImage available.
-    local ok, result = try_render_call("start{renderTargetNode=rt,maxRenderTime=2}", function() return octane.render.start{ renderTargetNode=rt, maxRenderTime=2 } end)
-    if ok then return true, "render start completed" end
+    -- NOTE: maxSamples is NOT a recognized key for octane.render.start on this
+    -- Octane build, so it is intentionally NOT used; the render is instead
+    -- bounded by wait_for_render_ready() polling the sample count to min_samples
+    -- (with a wall-clock timeout), then the frame is grabbed. This avoids an
+    -- unbounded render that would block every subsequent restart.
+    local ok, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode=rt } end)
+    if ok then return true, "render start requested (unbounded; bounded by wait_for_render_ready)" end
     ok, result = try_render_call("restart()", function() return octane.render.restart() end)
     if ok then return true, "render restart requested" end
-    ok, result = try_render_call("start{renderTargetNode=rt,maxSamples=samples}", function() return octane.render.start{ renderTargetNode=rt, maxSamples=samples } end)
-    if ok then return true, "render start requested" end
-    ok, result = try_render_call("start({renderTargetNode=rt,maxSamples=samples})", function() return octane.render.start({ renderTargetNode=rt, maxSamples=samples }) end)
-    if ok then return true, "render start requested" end
-    ok, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode=rt } end)
+    ok, result = try_render_call("start({renderTargetNode=rt})", function() return octane.render.start({ renderTargetNode=rt }) end)
     if ok then return true, "render start requested" end
     ok, result = try_render_call("continue()", function() return octane.render.continue() end)
     if ok then return true, "render continue requested" end
@@ -564,8 +625,72 @@ local function handle_create_material(cmd)
     if cmd.kind == "metallic" and octane.NT_MAT_METALLIC then matType = octane.NT_MAT_METALLIC end
     local mat, err = create_node(matType, name, {650, 500})
     if not mat then return false, "create material failed: " .. tostring(err) end
-    if cmd.color then set_pin_value(mat, octane.P_DIFFUSE or "diffuse", {cmd.color[1] or 0.8, cmd.color[2] or 0.8, cmd.color[3] or 0.8}) end
+    local col = cmd.color or cmd.diffuse or cmd.albedo or {0.8, 0.8, 0.8}
+    local function setdef(pin, val)
+        if val ~= nil then
+            local okp, w = pcall(set_pin_value, mat, pin, val)
+            if not okp then append_log("material pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
+        end
+    end
+    setdef(octane.P_DIFFUSE or "diffuse", {col[1] or 0.8, col[2] or 0.8, col[3] or 0.8})
+    setdef(octane.P_ROUGHNESS or "roughness", cmd.roughness)
+    setdef(octane.P_SPECULAR or "specular", cmd.specular)
+    setdef(octane.P_METALLIC or "metallic", cmd.metallic)
+    setdef(octane.P_TRANSMISSION or "transmission", cmd.transmission)
+    setdef(octane.P_INDEX or "ior", cmd.ior)
+    setdef(octane.P_OPACITY or "opacity", cmd.opacity)
+    setdef(octane.P_CLEARCOAT or "clearcoat", cmd.clearcoat)
+    setdef(octane.P_ANISOTROPY or "anisotropy", cmd.anisotropy)
+    setdef(octane.P_EMISSION or "emission", cmd.emission)
+    if cmd.texture_path then setdef(octane.P_DIFFUSE_TEXTURE or "diffuse_texture", cmd.texture_path) end
+    if cmd.normal_path then setdef(octane.P_NORMAL_TEXTURE or "normal_texture", cmd.normal_path) end
     return true, "created material " .. tostring(name)
+end
+
+local function handle_create_light(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local name = cmd.name or "mcp_light"
+    local light_type = cmd.light_type or "emissive"
+    local intensity = cmd.intensity or 10
+    -- NOTE: native NT_LIGHT_* node types are NOT scripting-exposed on this
+    -- Octane X build (octane.NT_LIGHT_AREA / NT_LIGHT_SUN are nil). The only
+    -- scene-lightable primitives are environment nodes (NT_ENV_DAYLIGHT) and
+    -- emissive materials (NT_MAT_EMISSIVE, applied to geometry). We map:
+    --   sun_light / environment / daylight -> daylight environment node
+    --   area/point/spot/directional/emissive -> emissive material proxy
+    if light_type == "sun_light" or light_type == "environment" or light_type == "daylight" then
+        local rt, rt_err = get_or_create_render_target()
+        if not rt then return false, "render target failed: " .. tostring(rt_err) end
+        activate_render_target(rt)
+        local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
+        if not env_type then return true, "no known environment node type constant" end
+        local env = find_item_by_name(name)
+        if not env then
+            local err
+            env, err = create_node(env_type, name, {300, 680})
+            if not env then return false, "environment create failed: " .. tostring(err) end
+        end
+        connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
+        local refreshed, refresh_msg = request_render_restart(64)
+        append_log("post-light render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+        return true, "created environment light " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
+    end
+    -- emissive-material proxy for all other light types
+    local existing = find_item_by_name(name)
+    if existing then return true, "light/material exists " .. tostring(name) end
+    local mat, err = create_node(octane.NT_MAT_EMISSIVE or octane.NT_MAT_DIFFUSE, name, {760, 500})
+    if not mat then return false, "create light material failed: " .. tostring(err) end
+    local function setdef(pin, val)
+        if val ~= nil then
+            local okp, w = pcall(set_pin_value, mat, pin, val)
+            if not okp then append_log("light pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
+        end
+    end
+    local rgb = cmd.color or {1.0, 0.95, 0.85}
+    setdef(octane.P_EMISSION or "emission", {rgb[1] or 1, rgb[2] or 1, rgb[3] or 1})
+    setdef(octane.P_POWER or "power", intensity)
+    return true, "created emissive light proxy " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
 end
 
 local function handle_assign_material(cmd)
@@ -575,14 +700,15 @@ local function handle_assign_material(cmd)
     local mat = find_item_by_name(cmd.material_name)
     if not mesh then return false, "unknown object " .. tostring(cmd.object_name) end
     if not mat then return false, "unknown material " .. tostring(cmd.material_name) end
-    local connected = connect_material_to_all_mesh_pins(mesh, mat)
+    local group_index = cmd.group_index or cmd.payload and cmd.payload.group_index
+    local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
     for _, pin in ipairs({"default", "Material", "material", "m1", "mat", octane.P_MATERIAL}) do
         if pin then connected = connect_to(mesh, pin, mat) or connected end
     end
     if connected then
         local refreshed, refresh_msg = request_render_restart(64)
         append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
-        return true, "assigned material " .. tostring(cmd.material_name)
+        return true, "assigned material " .. tostring(cmd.material_name) .. (group_index and (" to group #" .. tostring(group_index)) or "")
     end
     return true, "material exists; no known material pin accepted on mesh"
 end
@@ -634,7 +760,7 @@ end
 
 local function handle_save_preview(cmd)
     if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
-    local path = cmd.path or DEFAULT_PREVIEW
+    local path = expand_path(cmd.path or DEFAULT_PREVIEW)
     local rt = get_or_create_render_target()
     activate_render_target(rt)
     set_render_resolution(rt, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
@@ -671,19 +797,10 @@ local function handle_save_preview(cmd)
         local ok, err = attempt("saveImage path," .. cname, function() return octane.render.saveImage(path, cvalue) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage2 table path/saveType " .. cname, function() return octane.render.saveImage2{ path=path, saveType=cvalue, type=cvalue, renderTargetNode=rt } end)
+        ok, err = attempt("saveImage2 filename,saveType " .. cname, function() return octane.render.saveImage2(path, cvalue) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage2 filename,props saveType " .. cname, function() return octane.render.saveImage2(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
-        if ok then return true, "preview saved " .. tostring(path) end
-        last_err = err
-        ok, err = attempt("saveImage2 filename,props imageSaveType " .. cname, function() return octane.render.saveImage2(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
-        if ok then return true, "preview saved " .. tostring(path) end
-        last_err = err
-        ok, err = attempt("saveImage3 filename,props saveType " .. cname, function() return octane.render.saveImage3(path, { saveType=cvalue, type=cvalue, renderTargetNode=rt }) end)
-        if ok then return true, "preview saved " .. tostring(path) end
-        last_err = err
-        ok, err = attempt("saveImage3 filename,props imageSaveType " .. cname, function() return octane.render.saveImage3(path, { imageSaveType=cvalue, imageSaveFormat=cvalue, renderTargetNode=rt }) end)
+        ok, err = attempt("saveImage3 filename,saveType " .. cname, function() return octane.render.saveImage3(path, cvalue) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
         ok, err = attempt("saveRenderPass beauty,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
@@ -698,6 +815,7 @@ local function handle_command(cmd)
     if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
     if cmd.op == "import_geometry" then return handle_import_geometry(cmd) end
     if cmd.op == "create_material" then return handle_create_material(cmd) end
+    if cmd.op == "create_light" then return handle_create_light(cmd) end
     if cmd.op == "assign_material" then return handle_assign_material(cmd) end
     if cmd.op == "set_camera" then return handle_set_camera(cmd) end
     if cmd.op == "set_lighting" then return handle_set_lighting(cmd) end

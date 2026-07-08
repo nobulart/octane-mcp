@@ -20,6 +20,7 @@ from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
+from .models import QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 
@@ -148,15 +149,78 @@ def build_mcp() -> Any:
         color: Optional[list[float]] = None,
         roughness: float = 0.25,
         metallic: float = 0.0,
+        transmission: float = 0.0,
+        ior: float = 1.5,
+        opacity: float = 1.0,
+        clearcoat: float = 0.0,
+        anisotropy: float = 0.0,
+        emission: float = 0.0,
+        texture_path: Optional[str] = None,
+        normal_path: Optional[str] = None,
     ) -> str:
-        """Queue a material creation/update command."""
-        return _json(write_command("create_material", {
+        """Queue a material creation/update command with optional PBR fields.
+
+        Any non-default PBR field is forwarded to the bridge. Octane pins that
+        are unavailable on the current build are acknowledged with a warning by
+        the Lua handler rather than crashing the command.
+        """
+        payload: dict[str, Any] = {
             "name": name,
             "kind": kind,
             "color": color or [0.8, 0.8, 0.8],
             "roughness": roughness,
             "metallic": metallic,
-        }))
+        }
+        if transmission:
+            payload["transmission"] = transmission
+        if ior != 1.5:
+            payload["ior"] = ior
+        if opacity != 1.0:
+            payload["opacity"] = opacity
+        if clearcoat:
+            payload["clearcoat"] = clearcoat
+        if anisotropy:
+            payload["anisotropy"] = anisotropy
+        if emission:
+            payload["emission"] = emission
+        if texture_path:
+            payload["texture_path"] = texture_path
+        if normal_path:
+            payload["normal_path"] = normal_path
+        return _json(write_command("create_material", payload))
+
+    @mcp.tool()
+    def octane_create_light(
+        name: str,
+        light_type: str = "area_light",
+        intensity: float = 10.0,
+        position: Optional[list[float]] = None,
+        direction: Optional[list[float]] = None,
+        size: Optional[list[float]] = None,
+        angle: float = 45.0,
+        hdr_path: Optional[str] = None,
+    ) -> str:
+        """Queue a native light creation command (area, sun, environment, emissive, etc.).
+
+        The bridge creates the matching Octane light/environment node and wires it
+        to the active render target, acking unsupported pins with a warning.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "light_type": light_type,
+            "intensity": intensity,
+        }
+        if position:
+            payload["position"] = position
+        if direction:
+            payload["direction"] = direction
+        if size:
+            payload["size"] = size
+        if light_type == "sun_light":
+            payload["angle"] = angle
+        if light_type == "environment" and hdr_path:
+            payload["hdr_path"] = hdr_path
+        return _json(write_command("create_light", payload))
 
     @mcp.tool()
     def octane_assign_material(object_name: str, material_name: str) -> str:
@@ -186,16 +250,34 @@ def build_mcp() -> Any:
         samples: int = 64,
         min_samples: int = 16,
         timeout_seconds: int = 10,
+        quality: Optional[str] = None,
+        max_render_time: Optional[int] = None,
     ) -> str:
-        """Queue a render-ready preview image save command."""
-        return _json(write_command("save_preview", {
+        """Queue a render-ready preview image save command.
+
+        Convergence ceiling: pass ``quality`` to pick a preset tier
+        (standard=30s, high=60s, ultra=120s, final=unlimited). Either the
+        Octane film ``maxRenderTime`` or the Lua ``timeout_seconds`` poll acts
+        as the cap; the render stops at whichever is hit first and the frame is
+        saved (best-effort on timeout). Raw ``samples``/``min_samples``/
+        ``timeout_seconds``/``max_render_time`` override the tier when given.
+        """
+        tier = None
+        if quality:
+            if quality not in QUALITY_TIERS:
+                return _json({"ok": False, "error": f"quality must be one of {sorted(QUALITY_TIERS)}"})
+            tier = QUALITY_TIERS[quality]
+        resolved = {
             "path": path,
             "width": width,
             "height": height,
-            "samples": samples,
-            "min_samples": min_samples,
-            "timeout_seconds": timeout_seconds,
-        }))
+            "samples": samples if samples != 64 else (tier["samples"] if tier else 64),
+            "min_samples": min_samples if min_samples != 16 else (tier["min_samples"] if tier else 16),
+            "timeout_seconds": timeout_seconds if timeout_seconds != 10 else (tier["timeout_seconds"] if tier else 10),
+            "max_render_time": max_render_time if max_render_time is not None else (tier["max_render_time"] if tier else None),
+            "quality": quality or None,
+        }
+        return _json(write_command("save_preview", resolved))
 
     @mcp.tool()
     def octane_review_preview(path: Optional[str] = None) -> str:

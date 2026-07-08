@@ -2,6 +2,20 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
+## Status snapshot (2026-07-08)
+
+**Shipped (previously listed under Priority A — do not redo):**
+
+- **WP1 — Shared Lua runtime/handler extraction.** `octane_lua/lib/runtime.lua` and `octane_lua/lib/handlers.lua` exist and are the documented source of truth; the one-shot/persistent entrypoints route through `handle_command`. Note: the entrypoint scripts still *inline* their own handler copies (the parity test enforces byte-identical inline copies), so `lib/handlers.lua` is currently reference-only. Handler edits must be mirrored into both `hermes_bridge_oneshot_v2.lua` and `hermes_bridge_persistent_v1.lua` and kept identical.
+- **WP2 — `octane_patch_scene`.** Implemented in `src/octanex_mcp/scene.py` / `bridge.py`.
+- **WP3 — Preview comparison + richer QA.** `compare_previews()` implemented in `src/octanex_mcp/review.py`.
+- **WP5 — Render-review orchestration.** `octane_render_review_loop()` implemented in `src/octanex_mcp/server.py` (+ `bridge.py`/`recipes.py`).
+
+**Still open:**
+
+- **WP4 — Native material/light controls.** Done: PBR material fields (`transmission`/`ior`/`opacity`/`clearcoat`/`anisotropy`/`emission`/textures) wired through `create_material` validation + defensive Lua pin-setting; new `create_light` op + `octane_create_light` tool with `area_light`/`sun_light`/`point_light`/`spot_light`/`directional_light`/`environment`/`emissive` types, registered in both bridge dispatch tables and kept parity-identical. Material presets on the Python side remain a follow-up (WP4 task 3).
+- **WP6 — Recipe promotion, WP7 — science/geo grammar, WP8 — animation DSL.** Not started.
+
 ## How smaller models should use this file
 
 Before changing code:
@@ -45,16 +59,12 @@ The repository already has more than the old review baseline:
 
 Important current constraints:
 
-- Lua bridge logic is still largely duplicated between one-shot and persistent scripts. The JSON decoder exists, but shared runtime/handler extraction is not complete.
-- The generated bridge scripts inline logic. This is reliable, but harder to maintain.
+- The shared `lib/runtime.lua`/`lib/handlers.lua` exist as documented source of truth, but the one-shot/persistent entrypoints still *inline* handler copies (parity test enforces byte-identical copies). Lua handler edits must be made in BOTH entrypoints and kept identical, or the parity test fails.
 - Scene manifest v2 is present but not yet rich enough for the full desired grammar: no cones, tubes, arrows, polyline tubes, point clouds, text-label placeholders, timelines, or complete patch grammar.
-- `octane_patch_scene(scene_id, patch)` is not yet implemented as a general patch tool.
-- Preview QA is useful but still lacks multi-preview comparison and explicit clipped-at-frame-edge checks.
-- Material/light payloads remain shallow compared with actual Octane material needs.
-- Recipe tools can index/load/queue recipes, but recipe promotion into dedicated high-level tools is not complete.
-- Optional science/geo/fields visualizers are mostly still roadmap items.
-- Animation is documented as frame-sequence examples, but there is not yet an MCP animation DSL.
-- A render-review orchestration tool does not yet exist.
+- Material/light payloads remain shallow compared with actual Octane material needs — WP4 is the active fix (PBR fields + light ops).
+- Recipe tools can index/load/queue recipes, but recipe promotion into dedicated high-level tools is not complete (WP6).
+- Optional science/geo/fields visualizers are mostly still roadmap items (WP7).
+- Animation is documented as frame-sequence examples, but there is not yet an MCP animation DSL (WP8).
 
 ---
 

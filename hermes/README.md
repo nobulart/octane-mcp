@@ -15,20 +15,23 @@ The skill gives agents the operational loop for configuring the MCP server, drai
 
 ## Profile/config snippet
 
-`profiles/octanex/config.yaml` is a minimal profile overlay/snippet. Replace `/ABSOLUTE/PATH/TO/octanex-mcp` with this checkout path, or generate an equivalent config with:
+`profiles/octanex/config.yaml` is a minimal profile overlay/snippet that registers the OctaneX MCP server for a dedicated `octanex` Hermes profile. It points at the bundled `run_octanex_mcp.sh` launcher, which strips the Hermes runtime `PYTHONPATH` so the server uses its own `.venv` (with `mcp`/`pydantic_core`) instead of Hermes' broken one. Replace `/ABSOLUTE/PATH/TO/octanex-mcp` with this checkout path, or generate an equivalent profile config:
 
 ```bash
 hermes profile create octanex
-hermes --profile octanex config set mcp_servers.octanex.command uv
+hermes --profile octanex config set mcp_servers.octanex.command "/ABSOLUTE/PATH/TO/octanex-mcp/run_octanex_mcp.sh"
+hermes --profile octanex config set mcp_servers.octanex.args "[]"
+hermes --profile octanex config set mcp_servers.octanex.connect_timeout 30
 ```
 
-Then edit `~/.hermes/profiles/octanex/config.yaml` to include the args from the snippet.
+> Do NOT use `command: uv` / bare `uv run` in a profile — Hermes spawns the MCP subprocess with its own runtime `PYTHONPATH`, which crashes the server on import (`No module named 'pydantic_core._pydantic_core'`). The launcher fixes this.
 
 ## Smoke test
 
 ```bash
 PYTHONPATH= uv run octanex-mcp init
 PYTHONPATH= uv run octanex-mcp doctor
+hermes mcp list        # shows `octanex` (✓ enabled)
 hermes mcp test octanex
 ```
 

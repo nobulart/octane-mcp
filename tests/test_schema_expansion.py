@@ -212,6 +212,72 @@ class ExpandedSchemaTests(unittest.TestCase):
         fields = schema_data.get("light_fields", {})
         self.assertIn("area_intensity", fields)
 
+    def test_create_light_is_an_allowed_op(self) -> None:
+        """create_light is part of the command contract."""
+        from octanex_mcp.models import ALLOWED_OPS
+        self.assertIn("create_light", ALLOWED_OPS)
+
+    def test_validate_command_for_pbr_material(self) -> None:
+        """validate_command accepts extended PBR material fields."""
+        command = {
+            "id": "cmd-pbr",
+            "op": "create_material",
+            "payload": {
+                "name": "my_glass",
+                "kind": "glossy",
+                "color": [0.2, 0.6, 0.9],
+                "roughness": 0.1,
+                "metallic": 0.0,
+                "transmission": 0.9,
+                "ior": 1.45,
+                "opacity": 1.0,
+                "clearcoat": 0.3,
+                "anisotropy": 0.0,
+                "emission": 0.0,
+            },
+            "schema_version": SCHEMA_VERSION,
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+        result = validate_command(command)
+        self.assertTrue(result.ok, result.errors)
+
+    def test_validate_command_for_create_light(self) -> None:
+        """validate_command accepts a well-formed create_light command."""
+        command = {
+            "id": "cmd-light",
+            "op": "create_light",
+            "payload": {
+                "name": "key_light",
+                "light_type": "area_light",
+                "intensity": 12.0,
+                "size": [2.0, 1.0, 1.0],
+                "position": [0.0, 5.0, 3.0],
+            },
+            "schema_version": SCHEMA_VERSION,
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+        result = validate_command(command)
+        self.assertTrue(result.ok, result.errors)
+
+    def test_validate_command_rejects_invalid_light_type(self) -> None:
+        """validate_command rejects an unknown light_type."""
+        command = {
+            "id": "cmd-bad-light",
+            "op": "create_light",
+            "payload": {
+                "name": "bad_light",
+                "light_type": "warp_drive",
+            },
+            "schema_version": SCHEMA_VERSION,
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+        result = validate_command(command)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("light_type" in e for e in result.errors))
+
 
 if __name__ == "__main__":
     unittest.main()
