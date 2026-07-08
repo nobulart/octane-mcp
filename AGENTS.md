@@ -12,9 +12,10 @@ examples/recipes/       copy-paste scene libraries (obj/json/png + README)
 docs/                   command-schema, recipe-book, octane-bridge, roadmap,
                         idea, plan, review, review-2, octanex-apple-test-report,
                         recipe-library, visual-grammar, visual-iteration-protocol,
-                        agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan
-hermes/                 Hermes skill + profile snippet
-tests/                  parity + schema tests
+                        agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan,
+                        benchmark-suite
+benchmarks/            progressive visualisation benchmark suite (spec/acceptance/harness)
+tests/                  parity + schema + benchmark tests
 ```
 
 ## Editing the bridge (Lua)

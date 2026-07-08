@@ -548,3 +548,38 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Re-run this exact pipeline (`OctaneMCP_staging/queue_clean.py`) after the fix; expect `wp4_sinc_preview.png` at `~/OctaneMCP_staging/`.
 - Do NOT claim a native Octane render until `wp4_sinc_preview.png` exists and `review_preview` passes (per recipe-registry gap entry).
 
+## Benchmark suite: progressive visualisation tasks (Tier 1–2 live PASS)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-09 01:30 UTC
+- **Context:** Built `benchmarks/` — a deterministic, pixel-verified progressive test harness (6 tiers / 18 tasks) to develop and regression-test the Octane MCP bridge. Ran Tier 1 (single primitives) and Tier 2 (multi-group / data) live against native Octane X. All 6 tasks rendered and passed pixel acceptance.
+
+### What the harness is
+- `benchmarks/spec.py` — 18 tasks across 6 tiers. Each task builds a **single combined OBJ** (one geometry, multiple `usemtl` groups) via `CombinedObj`, plus an explicit material/assignment/camera/lighting/save plan and pixel acceptance criteria. Combined OBJ centrally fixes the #1 empty-render cause: off-by-one face indices when groups are concatenated.
+- `benchmarks/acceptance.py` — pixel-only verification (stdlib PNG reader in `octanex_mcp.review`, NO vision model as a gate). Kinds: `non_empty`, `review_ok`, `color_present`, `color_family`, `shape_profile`, `bright_fraction`, `file_size`.
+- `benchmarks/harness.py` — `run_task/run_tier/run_all`: mirror OBJ into container `assets/`, queue full command sequence, drain bridge, poll PNG, verify.
+- `tests/test_benchmarks.py` — 13 offline unittest tests pass; 1 live-gated (`OCTANEX_LIVE=1`).
+
+### Tier 1–2 tasks run live (all PASS on pixel acceptance)
+- `t1_glossy_cube` — glossy blue cube, `soft_studio`. PASS.
+- `t1_metallic_sphere` — gold sphere. First attempt used `metallic=1.0` → rendered silvery (no env map → no gold reflection). Fixed to `metallic=0.55` → reads gold. PASS.
+- `t1_surface_field` — `sin(r)/r` radial bronze surface. PASS.
+- `t2_bar_chart` — 5 cyan bars, single combined OBJ, per-group material. PASS.
+- `t2_multi_material` — red cube + green sphere (two groups). PASS.
+- `t2_scatter` — orange points in 3D space. PASS.
+
+### Signals / evidence
+- 6 `bench_*.png` produced in container `renders/`: cube (331 KB), sphere (352 KB), surface (361 KB), bars (414 KB), multi-material (357 KB), scatter (363 KB).
+- `evaluate_acceptance` for all 6: PASS (non_empty + review_ok + color_family + shape where required).
+- Local vision confirmed: gold sphere warm/gold not silver; scatter shows orange points distributed in 3D; multi-material shows red cube + green sphere; bars read blue-ish with red base (expected; see pitfall).
+
+### Pitfalls surfaced by the suite (load-bearing)
+- **`soft_studio` lighting is strongly cool-blue.** Every lit surface read blue-ish (mean non-bg RGB ≈ (90,150,200)) regardless of material color. Exact-RGB `color_present` was the wrong gate for lit PBR. Replaced with `color_family` (hue-distance tolerant, ±45°) — value/saturation shifts from Octane colour management are legitimate; hue-in-family is the real signal.
+- **`metallic=1.0` with no environment map does NOT read as its base colour** — it reflects the neutral studio and comes out silvery. Use `metallic≈0.5–0.6` (or supply a tinted HDR) when a coloured metal is intended.
+- **Queue must contain the COMPLETE command set** (import + every material + every assignment + camera + lighting + save). Partially purged queues (e.g. only import + save) silently render blank/neutral because the supporting ops were dropped.
+- AppleScript menu automation in `octane_run_*_bridge` still fails to locate the script (matches on `.lua`; Octane's menu shows it without the extension) — live drains require a manual click on `OctaneX ▸ Scripts ▸ hermes_bridge_persistent.generated`. The bridge itself processes correctly once triggered.
+
+### Follow-ups
+- Run Tier 3–6 (group arrays, text/annotation, environment/HDR, photoreal Saturn) live; add results to this entry.
+- Promotion path: any task that passes pixel acceptance twice gets a `docs/recipe-book.md` "native-verified" recipe entry and (optionally) a checked-in `examples/recipes/bench-*` directory.
+
