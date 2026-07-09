@@ -90,6 +90,20 @@ _WP7 geo grammar first slice landed (uncommitted); see Done recently. Direction 
   is rejected too, never silently accepted. Network is injectable + backoff-decorated
   so the matcher is offline-testable and the harvest is resumable. Wired into
   `harvest_subject`/`harvest_batch` (fail-closed on gate). Full suite 179 pass / 3 skip.
+- **WP9 — iteration loop (shipped 2026-07-09):** added `src/octanex_mcp/iteration.py`
+  + `tests/test_iteration.py` (7 tests, all pass). Closes the corpus→benchmark loop:
+  `build_candidate_scene()` turns a harvested entry's *derived* acceptance grammar
+  (dominant hue → material color, iso camera, soft studio) into an Octane scene spec;
+  `iterate_entry()` renders it (injectable `render_fn`; `live_render_fn` drains Octane
+  via `benchmarks.harness`), evaluates against the entry's own `derived_acceptance`,
+  and applies bounded material/lighting tweaks on cheap failures (near-black,
+  low-contrast, missing color family) — halting as `needs_human` only on genuine
+  structural failures (shape_profile with a non-empty render, or object-too-small/
+  clipped). `promote_entry()` writes `octane-preview.png` + `promotion.json` +
+  a paste-ready `promotion_snippet.py` into the entry dir, flips `status=converged`,
+  and appends a generated `BenchmarkTask` to `PROMOTED_TASKS`. Full suite now
+  186 pass / 3 skip. Live drain path is not exercised in CI (needs an Octane session);
+  the offline path is fully covered.
 - **A (live) — recipe verification fix + vision tier** (2026-07-09): found the 5
   "verified-but-wrong" recipes were failing because the Octane bridge ignores OBJ
   `usemtl`/MTL colors — materials only reach the mesh via explicit
