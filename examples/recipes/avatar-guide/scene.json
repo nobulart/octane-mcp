@@ -4,7 +4,9 @@
   "category": "Agent communication",
   "purpose": "Place a geometric Hermes guide in a scene with a pointer so agents can direct attention visually.",
   "prompt": "Render Hermes as a non-human guide pointing at an object or idea.",
-  "camera": {
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-09)",
+  "meta": {
     "position": [
       0,
       -4.5,
