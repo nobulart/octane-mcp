@@ -17,6 +17,7 @@ ENV_WORKSPACE = "OCTANEX_MCP_WORKSPACE"
 ENV_REPO = "OCTANEX_MCP_REPO"
 ENV_APP_PATH = "OCTANEX_APP_PATH"
 ENV_APP_PATH_LEGACY = "OCTANE_APP_PATH"
+ENV_RENDER_HOST = "OCTANEX_RENDER_HOST"
 
 WORKSPACE_DIRS = ("queue", "processing", "processed", "failed", "results", "artifacts", "assets", "renders", "scenes")
 
@@ -28,6 +29,7 @@ class OctaneConfig:
     workspace: Path
     repo_root: Path
     app_path: Path
+    render_host: str = "localhost"
 
     @property
     def lua_dir(self) -> Path:
@@ -74,6 +76,7 @@ def resolve_config(env: Mapping[str, str] | None = None, *, repo_root: Path | No
         workspace=_path_from_env(env, ENV_WORKSPACE, DEFAULT_WORKSPACE),
         repo_root=_path_from_env(env, ENV_REPO, default_repo),
         app_path=_path_from_env(env, ENV_APP_PATH, app_default),
+        render_host=env.get(ENV_RENDER_HOST, "") or "localhost",
     )
 
 
@@ -116,11 +119,13 @@ def write_json_config(config: OctaneConfig) -> Path:
         "workspace": str(config.workspace),
         "repo_root": str(config.repo_root),
         "app_path": str(config.app_path),
+        "render_host": str(config.render_host),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "environment": {
             ENV_WORKSPACE: str(config.workspace),
             ENV_REPO: str(config.repo_root),
             ENV_APP_PATH: str(config.app_path),
+            ENV_RENDER_HOST: str(config.render_host),
         },
     }
     config.config_json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

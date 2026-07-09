@@ -15,6 +15,7 @@ geo = ["shapely"]
 
 [project.scripts]
 octanex-mcp = "octanex_mcp.server:main"
+octanex-gateway = "octanex_mcp.gateway:main"
 
 [tool.uv]
 package = true
