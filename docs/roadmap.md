@@ -2,17 +2,18 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
-## Status snapshot (2026-07-09 — steward run c90d84c)
+## Status snapshot (2026-07-09 — steward run b96bf2e)
 
-Live-checked 2026-07-09 (autonomous hourly steward, commit c90d84c). Evidence-based, not aspirational:
+Live-checked 2026-07-09 (autonomous hourly steward, HEAD `b96bf2e`). Evidence-based, not aspirational — the prior dated block (claimed `c90d84c`/`6cad9b5`, 166 tests, 13/18 recipes) was **rot** and has been corrected below:
 
-- **Repo:** `main` = `c90d84c` (HEAD), ahead of `origin/main` (not pushed); tree **clean** at steward start. This run added `src/octanex_mcp/geo.py` + `tests/test_geo_grammar.py` (uncommitted, per no-auto-commit rule).
-- **Tests:** **166 passed / 3 skipped** (offline `python -m unittest discover -s tests`). Green. (Up from 158/1: +8 geo tests; 3 skipped are the 2 shapely-backed geojson tests + 1 pre-existing env-gated test, because the `geo` extra is not installed here.)
-- **Octane X:** running (pid 67403); one-shot + persistent bridges launchable; bridge status `processed`, last event `save_preview recipe_geospatial-terrain`, status age ~2413s, 0 failed — no wedge.
-- **Benchmarks:** **18/18 native-Octane verified** across Tiers 1–6.
-- **Recipe library — LIVE NATIVE VERIFICATION MOSTLY DONE:** 18 recipes registered; **13/18 now `native_octane_verified=true`**. The 5 remaining unverified: `annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`. (Note: the prior snapshot's "12 remaining" undercounted the live sweep — the actual recipe index now shows 13 verified.)
+- **Repo:** `main` = `b96bf2e` (HEAD; WP9 iteration loop landed this session). Tree **clean** at steward start.
+- **Tests:** **190 passed / 4 skipped** (offline `python -m unittest discover -s tests`). Green. (+4 from `tests/test_geo_tool.py`; 1 skipped because the optional `geo` extra is not installed here.) `compileall src` clean.
+- **Octane X (doctor --json):** `octane_available=true`; bridge `processed`; last event `save_preview bench_wp9_red-sphere`; 0 failed; no wedge. (Live MCP `octane_bridge_process_status`/`octane_recipe_index` not callable in this cron session — state inferred from `doctor` + filesystem; stated honestly.)
+- **Benchmarks:** 18/18 native-Octane verified across Tiers 1–6 (per `docs/benchmark-suite.md` recorded table; not re-rendered this run).
+- **Recipe library — VERIFIED COUNT WAS ROTTEN:** a fresh scan of `examples/recipes/*` shows **20 recipe dirs, 12 `native_octane_verified=true`, 8 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`). Prior docs claimed 13/18 — both the total and the known-unverified set were wrong.
+- **WP7 geo:** `geo.py` (first slice) + `octane_visualize_geojson` MCP tool now registered (graceful `GeoDependencyError` → `uv sync --extra geo`). Shapely-backed path offline-skipped (extra absent).
 
-**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 science/geo grammar, WP8 animation DSL, **Agentic Canvas wiring beyond Phase A** (HTTP gateway + web bundle + Swift host merged this session; direction-B dashboard integration still open), multi-host (Studio) rendering, visual memory. The gap is *surface area + closure*, not reliability.
+**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks, WP7 geo, WP9 corpus + iteration loop + `octane_find_grammar`) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 geo **live-`geo` exercise**, WP8 animation DSL, Agentic Canvas wiring beyond Phase A, multi-host (Studio) rendering, visual memory. The gap is *surface area + closure* — and the recipe-verified count is now an open honesty item (8 unverified).
 
 **Shipped (previously listed under Priority A — do not redo):**
 

@@ -3,32 +3,30 @@
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
 brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 
-## Current state (evidence, 2026-07-09 — WP9 shipped through 6cad9b5)
+## Current state (evidence, 2026-07-09 — steward run b96bf2e)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `6cad9b5` (pushed to `origin/main`) |
-| Tests | 166 passed / 3 skipped (offline `python -m unittest discover -s tests`) — green |
-| Octane X | running (pid 67403); bridge status `processed`, last event `save_preview`; status age ~2413s, no wedge/failed |
-| Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
-| Recipe library | 18 recipes; **13/18 `native_octane_verified=true`** (5 remain: `annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`) |
-| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar first slice**, **WP9 corpus + `octane_find_grammar` (shipped)** |
-| Unscaffolded | WP6 promoted tools, WP7 geo live-path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
+| Repo | `main` = `b96bf2e` (HEAD; tree clean at steward start) |
+| Tests | **190 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. +4 from `tests/test_geo_tool.py`; 1 skipped (optional `geo` extra absent in this env) |
+| Octane X | running (doctor: `octane_available=true`, bridge `processed`, last event `save_preview bench_wp9_red-sphere`, no failed/wedge) |
+| Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
+| Recipe library | **DRIFTED** — fresh scan of `examples/recipes/*` shows **20 recipe dirs, 12 `native_octane_verified=true`, 8 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`). Docs previously claimed 13/18 — both the count and the known-unverified set were wrong |
+| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)** |
+| Unscaffolded | WP6 promoted tools, WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
-grammars, canvas UI, autonomous loop) and recipe-library verification (5 recipes
-still unverified) are the remaining work.
+grammars, canvas UI, autonomous loop) and recipe-library verification (now **8**
+unverified recipes, incl. `earth-moon-space`/`helicoid-spiral`/`math-surface` not
+previously tracked) are the remaining work.
 
 ## Backlog (from brainstorm 2026-07-09)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-1. **A — Recipe verification** (LOW effort / HIGH integrity): live-verify the 16
-   unverified recipes, flip `native_octane_verified`, append `docs/recipe-book.md`.
-   *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task`
-   over `examples/recipes/*`.
-2. **B — Geo / terrain grammar** (HIGH strategic fit; FIRST SLICE SHIPPED this run): `src/octanex_mcp/geo.py` now has pure-Python `elevation_grid_to_obj` (DEM/grid→height-field) + shapely-gated `geojson_to_obj` (GeoJSON/points/lines/polygons→extruded OBJ) with graceful `GeoDependencyError` + `uv sync --extra geo` hint, plus `geo_asset_to_scene_commands`. *Remaining first-step:* add a thin MCP tool `octane_geojson_to_scene` exposing `geojson_to_obj` + bounds camera; exercise the shapely path under a `geo` extra env.
+1. **A — Recipe verification** (LOW effort / HIGH integrity): **fresh scan shows 8 unverified recipes** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`) — docs previously said 5. Live-verify each, flip `native_octane_verified`, append `docs/recipe-book.md`. *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task` over `examples/recipes/*`.
+2. **B — Geo / terrain grammar** (HIGH strategic fit; **MCP tool SHIPPED this run**): `src/octanex_mcp/geo.py` has `elevation_grid_to_obj` + shapely-gated `geojson_to_obj` + `geo_asset_to_scene_commands`; `octane_visualize_geojson` now registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase A slice — shell + full-bleed
    viewport + intent command bar + `OCTANEX_RENDER_HOST` Studio flag
    (from `docs/canvas-implementation-roadmap.md`).
@@ -42,20 +40,20 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
 ## Recommended next move
 
-**B (geo live-path) → then close recipe honesty gap.** B's pure-Python slice
-is shipped and offline-green; the shapely-backed `geojson_to_obj` path needs a
-`uv sync --extra geo` env to exercise live, and then a thin MCP tool
-(`octane_geojson_to_scene`) to expose it. The 5 still-unverified recipes
-(`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`,
-`document-ocr-layout`) remain the only remaining honesty gap. C (Canvas) is a
-separate Swift/JS workstream.
+**A (recipe honesty) → then B live-`geo` path.** The recipe-verified figure rotted
+(13/18 claimed, reality is 12/20 with 8 unverified incl. `earth-moon-space`,
+`helicoid-spiral`, `math-surface` not previously tracked). Closing that honesty gap
+is the highest-integrity next move and needs only a live Octane sweep. B's tool is
+shipped + offline-green; the shapely live path needs a `uv sync --extra geo` env.
+C (Canvas) is a separate Swift/JS workstream.
 
 ## In progress / this session
 
-_WP7 geo grammar first slice landed (uncommitted); see Done recently. Direction A's 5-recipe fix + vision tier is committed. Live recipe sweep sits at 13/18._
+_WP7 geo MCP tool `octane_visualize_geojson` shipped (uncommitted, +4 tests). WP9 iteration loop committed at `b96bf2e`. Recipe-verified count corrected to 12/20 (8 unverified)._
 
 ## Done recently
 
+- **WP7 geo MCP tool — `octane_visualize_geojson`** (steward run b96bf2e, uncommitted): closed the remaining WIP backlog item B. Added the tool to `src/octanex_mcp/server.py` as a thin wrapper over `geojson_to_obj` + `geo_asset_to_scene_commands`; it catches `GeoDependencyError` and returns `{"error", "hint": "uv sync --extra geo", "queued_commands": []}` when the optional extra is absent — no traceback. New `tests/test_geo_tool.py` (4 tests: tool registration, graceful missing-extra, bounds-camera command build, skipped-if-`geo`-present happy path). Suite now **190 passed / 4 skipped** (was 186/3). `compileall` clean; server import does not pull `shapely` or `benchmarks` at load (layering rule holds). No Lua edits, no heavy deps.
 - **WP7 geo grammar — first slice** (steward run c90d84c, uncommitted): added
   `src/octanex_mcp/geo.py` + `tests/test_geo_grammar.py`. Two offline-testable
   ops: `elevation_grid_to_obj` (pure-Python DEM/grid → height-field OBJ, no

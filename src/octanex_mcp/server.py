@@ -24,6 +24,7 @@ from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
+from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -446,6 +447,32 @@ def build_mcp() -> Any:
         asset = create_avatar_face_obj(name=name)
         commands = scene_commands_for_asset(asset, material_name=f"{asset['name']}_warm_light", color=[0.88, 0.95, 1.0])
         commands[3] = {"op": "set_camera", "payload": camera_for_bounds(asset["bounds"], view="front", margin=1.15, fov=38)}
+        results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
+        return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
+    def octane_visualize_geojson(
+        geojson: Dict[str, Any],
+        name: str = "visual_geojson",
+        z_extrude: float = 0.5,
+        color: Optional[list[float]] = None,
+    ) -> str:
+        """Visualize GeoJSON (or a shapely geometry) as extruded geometry in Octane (WP7 geo grammar).
+
+        Accepts a GeoJSON FeatureCollection / Feature / bare geometry dict, or any
+        object exposing __geo_interface__ (e.g. a shapely geometry). Points become
+        marker boxes; lines and polygons become extruded walls. Requires the optional
+        `geo` extra (shapely) — if it is not installed the tool fails with an exact
+        install hint rather than an import traceback.
+
+        Returns the generated asset path, the queued render commands, and the current
+        bridge status, so the caller knows the next Octane action required.
+        """
+        try:
+            asset = geojson_to_obj(geojson, name=name, z_extrude=z_extrude)
+        except GeoDependencyError as exc:
+            return _json({"error": str(exc), "hint": "uv sync --extra geo", "queued_commands": []})
+        commands = geo_asset_to_scene_commands(asset, color=color)
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
 
