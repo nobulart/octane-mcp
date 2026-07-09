@@ -58,3 +58,33 @@ copy is needed.
 - A blank/low-deviation frame is NOT success, regardless of what a vision model says.
 - Run `hermes mcp test octanex` after config changes; `uv run octanex-mcp doctor`
   before a render session.
+
+## Mandatory pre-commit / pre-push documentation review
+
+The lessons learned in this project live in the **bundled Hermes skills**
+(`hermes/skills/octanex-mcp/`, `hermes/skills/octane-viz/`) and the `docs/`
+narrative files. Every fresh model reads these first, so **stale or wrong claims
+in them actively re-create bugs**. Before ANY commit or push on this repo, run
+this review:
+
+1. **Diff the change set.** For each file touched, ask: does any doc/skill
+   describe a now-obsolete behavior, mechanism, path, or error?
+2. **Check the launch prerequisites are current.** The bridge launch requires:
+   - macOS **Accessibility (TCC) granted to `Hermes.app`** (the process that runs
+     `osascript`) — without it every launch fails `-1719`. The skill must state
+     this, not "Automation → Octane X".
+   - Octane's `default_script_path` → repo `octane_lua/`.
+   - Launch via UI-scripting the **Script** menu (singular), NOT `run script file`.
+   - One click of the one-shot drains the **entire** queue.
+3. **Check for stale error narratives.** If a doc records a failure like
+   "script not found in Scripts menu" / "one command per click" / "run script
+   file", annotate or correct it — these were symptoms of the masked `-1719`
+   TCC denial or an outdated drain model, now fixed.
+4. **Bump skill `version:`** in `hermes/skills/*/SKILL.md` when the content
+   changes, so downstream models can tell a refreshed skill from a stale one.
+5. **Verify, don't assert.** Run the offline suite and (for render/launch
+   changes) a live ad-hoc check before committing. Documentation-only commits
+   still get a dry-run suite pass.
+
+This review is required even for "docs-only" commits — a wrong skill instruction
+is a functional regression for the next agent.
