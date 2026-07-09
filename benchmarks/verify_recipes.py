@@ -210,7 +210,10 @@ def run_recipe(
     run.obj_mirrored = True
 
     commands = _resolved_commands(data)
-    preview_filename = "octane-preview.png"
+    # Per-recipe unique preview filename so concurrent/sequential batches don't
+    # clobber each other's PNG (recipe scene.json paths name "octane-preview.png",
+    # which would collide across recipes otherwise).
+    preview_filename = f"recipe_{slug}_octane-preview.png"
     for cmd in commands:
         op = cmd.get("op")
         p = cmd.setdefault("payload", {})
@@ -220,7 +223,6 @@ def run_recipe(
             cmd["_drop"] = True  # strip collision-prone op
         elif op == "save_preview":
             original = str(p.get("path") or "")
-            preview_filename = Path(original).name or f"{slug}-octane-preview.png"
             p["bundle_path"] = str(recipe_dir / "octane-preview.png")
             p["path"] = str((ws.renders_dir / preview_filename).resolve())
             if quality:
