@@ -11,15 +11,14 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09** (stewa
 | Tests | **216 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. 1 skip because optional `geo` extra absent. Up from 199 (the `2fbc567` snapshot) — harness commits added tests. |
 | Octane X | running (healthy bridge: `status=processed`, `last_event="save_preview … octane-preview.png"`, status age ~20 min). Not wedged. |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
-| Recipe library | **18 recipe dirs, 18 `native_octane_verified=true`, 0 unverified.** `avatar-guide` closed this run via live Octane render (real native PNG, passed pixel QA + vision subject check). |
+| Recipe library | **20 recipe dirs; 17 genuinely `native_octane_verified=true` (real PNG on disk); 1 false-positive flag corrected (`math-surface` — flag was set but no native PNG on disk, reverted 2026-07-09); 2 unverified (`earth-moon-space`, `helicoid-spiral`).** `avatar-guide` closed via live Octane render (real native PNG, passed pixel QA + vision subject check). |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP8 animation model started (`animation.py`)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)**, WP6 promoted tools |
 | Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 **MCP tool + bridge bake** (model only so far), WP6 live end-to-end of promoted tools, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — ergonomic surface (animation tool/bake, geo live
 exercise, canvas UI, autonomous loop) remain the open work. **Recipe library is
-now 18/18 `native_octane_verified`** (`avatar-guide` closed 2026-07-09 via live
-Octane render). Recipe-count "drift" was a scan artifact (§Recipe library row).
+now 17/18 genuinely `native_octane_verified`** (20 dirs total; `math-surface` flag reverted to false — no native PNG on disk; `earth-moon-space` + `helicoid-spiral` still unverified). `avatar-guide` closed 2026-07-09 via live Octane render. Recipe-count "drift" was a scan artifact (§Recipe library row).
 
 ## Backlog (from brainstorm 2026-07-09)
 
@@ -38,7 +37,8 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
 **A (close the last honesty gap) → then B live-`geo` path.** `avatar-guide` is the
 only remaining `native_octane_verified=false`; a live `verify_recipe_library(live=True,
 copy_back=True, slug='avatar-guide')` flips it if the re-render passes pixel QA,
-making the library 18/18. The earlier "12/20 / 8 unverified" drift was a scan
+making the genuinely-verified count 17/18 (20 dirs total: 17 with real PNG on
+disk, 1 false flag reverted, 2 unverified). The earlier "12/20 / 8 unverified" drift was a scan
 artifact (non-recipe dirs counted); truth is 17/18. B's tool is shipped +
 offline-green; the shapely live path needs a `uv sync --extra geo` env. C (Canvas)
 is a separate Swift/JS workstream. WP8 model shipped this run (F→F2): the next

@@ -92,32 +92,34 @@ leftover scene (not a material bug) is the usual cause of a near-black frame.
 ### 2. Drain the queue in Octane X
 
 The bridge uses the **one-shot bridge** mode (`hermes_bridge_oneshot.generated`). Run it from
-Octane X's Script menu, or trigger it.
+Octane X's Script menu, or trigger it via the control layer (which handles TCC + classification):
 
-**Preferred (code path, handles TCC):** `drain_oneshot()` in `src/octanex_mcp/bridge_control.py`
-clicks Octane X's **Script** menu item via System Events UI scripting. The MCP tool
-`octane_run_oneshot_bridge` calls it; it returns `{"ok": true}` or
-`{"tcc_blocked": true}` if macOS Accessibility is missing. **The TCC target is the
-Hermes agent-runtime python (`/Users/craig/.hermes/hermes-agent/venv/bin/python`),
-NOT `Hermes.app`** — the MCP server runs under the agent runtime, so that binary
-(or its Terminal/shell ancestor) must be granted Accessibility in System Settings →
-Privacy & Security → Accessibility. Granting `Hermes.app` alone does NOT clear
-`-1719`. (See `octanex-mcp` skill, Setup step 4 — corrected 2026-07-09.)
-
-**Raw AppleScript fallback** (MCP server down): UI-script the menu item — the menu
-is **"Script"** (singular), not "Scripts"; do NOT use `run script file ...`:
 ```bash
-osascript -e 'tell application "System Events" to tell process "Octane X" to click menu item "hermes_bridge_oneshot.generated" of menu 1 of menu bar item "Script" of menu bar 1'
+uv run python -c "from octanex_mcp.bridge_control import run_bridge_script; print(run_bridge_script('oneshot')['stdout'])"
+# -> clicked hermes_bridge_oneshot.generated via Script
 ```
 
-Run the one-shot bridge after queueing the scene AND again after queueing the preview save.
+**Never use `run script file` on the `.lua` bridge** — AppleScript tries to compile the Lua as AppleScript and dies with `-2741` ("Expected end of line, but found ="). Use the Scripts-menu click (above) which runs it as Lua.
 
-**Drain detail (corrected 2026-07-09):** one click drains the **entire queue** then
-renders and returns — do NOT loop "one click per command". Poll `…/OctaneMCP/queue/`
-once after the click; it should be empty. If `octane_run_oneshot_bridge` throws
-`ClosedResourceError`, fall back to the raw osascript menu-click above (same effect,
-no MCP server). Visit `octanex-mcp` for the full launch + TCC prerequisites.
-- If that raw osascript `run script file` returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is non-receptive (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, restart Octane X (purges the loaded scene — re-queue) or reuse an existing render.
+**Canonical drain rule — ONE click, then poll, never re-click on a timer.** A single oneshot click runs the Lua drain loop and processes the ENTIRE queue (assembly + `save_preview`) in one pass. After queueing the full pipeline, fire ONE `octane_run_oneshot_bridge` (or `run_bridge_script('oneshot')`), then poll `…/OctaneMCP/queue/` to confirm it hit 0. Do NOT loop one click per command, and do NOT re-click while the queue is empty — a second click while `save_preview` is rendering is ignored and would kill that render. Only re-click on a *genuine failed click*, capped.
+
+**Warm-engine reset between recipes** (File ▸ New on the running Octane, NOT a cold quit/open-a relaunch):
+
+```text
+octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
+```
+
+**Application-control error taxonomy** (the control layer classifies these so the agent branches instead of blindly retrying):
+
+| Symptom / code | Class | Action |
+|---|---|---|
+| `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry once; if it persists, restart Octane. |
+| `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to **Hermes.app** (the process running `osascript`), not Octane. |
+| `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
+| `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Scripts-menu click path instead. |
+| `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
+
+The launch now waits for Octane X's menu bar to become UI-ready after `open -a` (inside the same AppleScript), eliminating the cold-launch race that produced false "script not found".
 
 **CRITICAL — never restart Octane X between `import_geometry` and `save_preview`.**
 A restart purges the in-memory scene, so later commands render against an empty

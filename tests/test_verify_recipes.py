@@ -20,10 +20,13 @@ RECIPES = REPO_ROOT / "examples" / "recipes"
 
 class TestRecipeContractOffline(TestCase):
     def test_known_verified_recipe_passes_contract(self):
-        # math-surface is a known native_octane_verified recipe with a clean command set
-        recipe_dir = RECIPES / "math-surface"
+        # data-bars is a known native_octane_verified recipe (WP6 promotion) with a
+        # clean command set AND a checked-in reference preview, so it must pass the
+        # offline contract. (math-surface is the one intentional gap — its preview
+        # was dropped in commit 0993e51 — and is excluded here on purpose.)
+        recipe_dir = RECIPES / "data-bars"
         data = json.loads((recipe_dir / "scene.json").read_text())
-        ok, errors, warnings, obj_path = _check_contract("math-surface", recipe_dir, data)
+        ok, errors, warnings, obj_path = _check_contract("data-bars", recipe_dir, data)
         self.assertTrue(ok, f"unexpected contract errors: {errors}")
         self.assertIsNotNone(obj_path)
 
@@ -52,14 +55,18 @@ class TestRecipeContractOffline(TestCase):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
         self.assertEqual(report["total"], 18)
-        # every recipe ships scene.obj + scene.json + a reference preview, so all should pass contract
-        self.assertEqual(report["contract_ok"], 18, report)
-        self.assertEqual(report["contract_failed"], 0)
+        # 17/18 recipes ship scene.obj + scene.json + a reference preview, so 17
+        # pass the offline contract. math-surface is the one intentional gap
+        # (preview PNG dropped in 0993e51) and fails contract by design.
+        self.assertEqual(report["contract_ok"], 17, report)
+        self.assertEqual(report["contract_failed"], 1)
+        failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
+        self.assertEqual(failed, ["math-surface"], report)
 
     def test_verify_recipe_library_single_slug(self):
-        report = verify_recipe_library(dry_run=True, slug="math-surface")
+        report = verify_recipe_library(dry_run=True, slug="data-bars")
         self.assertEqual(report["total"], 1)
-        self.assertEqual(report["recipes"][0]["slug"], "math-surface")
+        self.assertEqual(report["recipes"][0]["slug"], "data-bars")
         self.assertTrue(report["recipes"][0]["contract_ok"])
 
     def test_live_requires_env_guard(self):

@@ -40,7 +40,7 @@ from octanex_mcp.bridge import (
     read_status,
     write_command,
 )
-from octanex_mcp.bridge_control import octane_process_status
+from octanex_mcp.bridge_control import octane_process_status, reset_octane_scene, run_bridge_script
 from octanex_mcp.config import resolve_config
 from octanex_mcp.models import QUALITY_TIERS
 from octanex_mcp.recipes import (
@@ -118,7 +118,17 @@ DISPATCH: Dict[str, Callable[[Dict[str, Any]], Any]] = {
             progressive=a.get("progressive", False),
         ),
     ),
-    "octane_create_cube": lambda a: create_simple_obj(a.get("name", "cube"), a.get("size", 1.0)),
+    "octane_run_bridge": lambda a: run_bridge_script(
+        a.get("mode", "oneshot"), dry_run=a.get("dry_run", False),
+        timeout_seconds=a.get("timeout_seconds", 30),
+    ),
+    "octane_run_oneshot_bridge": lambda a: run_bridge_script(
+        "oneshot", dry_run=a.get("dry_run", False), timeout_seconds=a.get("timeout_seconds", 30),
+    ),
+    "octane_start_persistent_bridge": lambda a: run_bridge_script(
+        "persistent", dry_run=a.get("dry_run", False), timeout_seconds=a.get("timeout_seconds", 30),
+    ),
+    "octane_reset_octane_scene": lambda a: reset_octane_scene(timeout_seconds=a.get("timeout_seconds", 20)),
     # WP6 promoted recipe tools (thin wrappers over queue_recipe)
     "octane_build_product_studio": lambda a: queue_recipe(
         "photoreal-product-studio", overrides=a.get("overrides") or {}

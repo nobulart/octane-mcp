@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.3.0
+version: 1.8.0
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -27,7 +27,8 @@ Use this skill when an agent needs to:
 - queue and drain Octane scene commands;
 - create a quick geometry/data/math visualization;
 - trigger a PNG preview and review it locally;
-- debug a queue that is not being picked up by Octane X.
+- debug a queue that is not being picked up by Octane X;
+- build, test, or extend the Agentic Canvas dashboard (HTTP gateway + Swift/WKWebView host + web bundle).
 
 Do not use this skill for arbitrary Lua execution. The bridge is intentionally an allow-listed command DSL.
 
@@ -43,13 +44,13 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
    Completion: `doctor` reports `Overall: ok`, the workspace, generated bridges, and the Octane X app path. (Verified: `doctor` checks the app bundle, lua dir, all workspace subdirs, and workspace writability.)
 
-2. Register the MCP server with Hermes. The dedicated CLI command writes the
-   `mcp_servers` block for you. (Note: an agent's automated `patch` of
-   `~/.hermes/config.yaml` is blocked by the Hermes config guardrail, but
-   `hermes config set` / `hermes mcp add` / manual edits are all fine.)
+2. Register the MCP server with Hermes (sanctioned CLI path):
+
+   > Direct edits to `~/.hermes/config.yaml` are **blocked** by the Hermes config guardrail
+   > ("Refusing to write to Hermes config file"). Use `hermes mcp add` — it writes `mcp_servers` for you.
 
    ```bash
-   hermes mcp add octanex --command /Users/craig/octanex-mcp/run_octanex_mcp.sh --connect-timeout 30
+   printf 'y\n' | hermes mcp add octanex --command /Users/craig/octanex-mcp/run_octanex_mcp.sh --connect-timeout 30
    ```
 
    `run_octanex_mcp.sh` does `exec env -u PYTHONPATH uv run --project /Users/craig/octanex-mcp octanex-mcp`.
@@ -58,22 +59,11 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
    venv's broken `pydantic_core` and crash with `RuntimeError: mcp package is not installed`. Under a clean
    env the project `.venv` (mcp 1.26.0) imports fine.
 
-   Completion: `hermes mcp list` shows `octanex` (✓ enabled) and `hermes mcp test octanex`
-   connects and enumerates the tools (currently **39** `octane_*` tools). MCP
-   servers are discovered at startup, so start a new Hermes session (or use
-   `/reload-mcp`) to use them.
+   Completion: `hermes mcp list` shows `octanex` (✓ enabled, 38/38 tools) and `hermes mcp test octanex`
+   enumerates the tools. Start a new Hermes session to use them.
 
-   Equivalent `config.yaml` block (hand-edit or `hermes config set` — note
-   `args` must be a real empty list, not the string `"[]"`):
-
-   ```yaml
-   mcp_servers:
-     octanex:
-       command: "/Users/craig/octanex-mcp/run_octanex_mcp.sh"
-       args: []
-       timeout: 180
-       connect_timeout: 30
-   ```
+   (Equivalent hand-edited config block, if the guardrail ever allowed it:
+   `mcp_servers: octanex: command: /Users/craig/octanex-mcp/run_octanex_mcp.sh`.)
 
 3. In Octane X Preferences, set **Scripts path** to this checkout's `octane_lua/` directory:
 
@@ -141,22 +131,57 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
    Prefer `hermes_bridge_oneshot.generated` for multi-command scene batches because it exits and lets Octane repaint. Use the persistent bridge only when you need an open window that keeps polling.
 
-   **Preferred trigger (code path, handles TCC):** `drain_oneshot()` in `src/octanex_mcp/bridge_control.py` clicks Octane X's **Script** menu item (`hermes_bridge_oneshot.generated`) via System Events UI scripting and waits for the queue to drain. The MCP `octane_run_oneshot_bridge` tool calls this. It returns `{"ok": true}` on success or `{"tcc_blocked": true, "error": "-1719 ..."}` if macOS Accessibility is missing for `Hermes.app` (see Setup step 4).
+   **Never use `run script file` on the `.lua` bridge.** AppleScript will try to compile the Lua source as AppleScript and die with `-2741` ("Expected end of line, but found ="). The reliable trigger clicks the script from Octane's **Scripts menu** (which runs it as Lua):
 
-   **Raw AppleScript fallback** (only if the MCP server is down):
    ```bash
-   osascript -e 'tell application "System Events" to tell process "Octane X" to click menu item "hermes_bridge_oneshot.generated" of menu 1 of menu bar item "Script" of menu bar 1'
+   uv run python -c "from octanex_mcp.bridge_control import run_bridge_script; print(run_bridge_script('oneshot')['stdout'])"
+   # -> clicked hermes_bridge_oneshot.generated via Script
    ```
-   The menu is named **"Script"** (singular), not "Scripts". Do **not** use `tell app "Octane X" to run script file ...` — that path is unreliable here; UI-script the menu item instead.
 
-   **One click drains the ENTIRE queue** (the oneshot processes every queued command in timestamp order, then renders and returns). Do NOT loop "one click per command" — that was an outdated note. Poll `…/OctaneMCP/queue/` once after the click; it should be empty (verified live: an 8-command recipe rendered + saved in a single drain).
+   (Equivalent raw AppleScript: a `tell application "System Events" … click menu item …` block targeting the Scripts menu — see `bridge_control.render_run_bridge_applescript`.) AppleScript control of Octane X requires automation permission (System Settings -> Privacy -> Automation -> Octane X); verify with `osascript -e 'tell application "Octane X" to get name'`.
 
    Completion: queued commands move to `processed/` or `failed/`, and `results/*.json` records each outcome. Check `queue/` is empty, not just `processed_count` climbing.
+
+   **Canonical drain rule — ONE click, then poll, never re-click on a timer.**
+   A single oneshot click runs the Lua drain loop, which processes the ENTIRE
+   queue (assembly + `save_preview`) in one pass and writes the frame. After the
+   click returns `ok`, poll `…/OctaneMCP/queue/` for 0 files and wait for the
+   PNG. Do **NOT** loop one click per command, and do **NOT** re-click while the
+   queue is empty — a second click while `save_preview` is actively rendering is
+   ignored, and re-clicking after the queue empties restarts/kills that render.
+   Only re-click on a *genuine failed click* (see error taxonomy below), capped.
+
+   **Warm-engine reset between recipes (do not cold-relaunch).** To clear the
+   in-memory scene so `request_render_restart` does not wedge on stale nodes,
+   use the dedicated tool (this is File ▸ New on the running Octane, NOT a
+   quit/open-a relaunch which leaves the engine cold and re-wedges the drain):
+
+   ```text
+   octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
+   ```
+
+   **Application-control error taxonomy** (the control layer classifies these
+   so the agent branches instead of blindly retrying):
+
+   | Symptom / code | Class | Action |
+   |---|---|---|
+   | `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry **once**; if it persists, restart Octane. |
+   | `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`). Fallback: the shell/terminal that launches Hermes. |
+   | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
+   | `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Scripts-menu click path instead. |
+   | `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
+
+   The bridge launch now also **waits for Octane X's menu bar to become UI-ready**
+   after `open -a` (up to `LAUNCH_READINESS_WAIT_SECONDS`, default 10s) *inside the
+   same AppleScript* — eliminating the cold-launch race where a fixed `delay 0.5`
+   probed the menu before Octane had loaded it, producing a false "script not found".
 
 5. Save a PNG preview. Pass a convergence tier via `quality` so the render
    stops at a time budget instead of running unbounded:
 
    ```text
+   ```text
+   octane_save_preview(quality="preview")                              # 10s cap (fast sweep)
    octane_save_preview(width=1280, height=1280, quality="standard")   # 30s cap
    octane_save_preview(quality="high")                                 # 60s
    octane_save_preview(quality="ultra")                                # 120s
@@ -257,6 +282,18 @@ sequence (refined 2026-07-09 per operator guidance — the key addition is
 - If geometry appears duplicated or stale, clear the Octane scene before re-importing. Octane appends imported geometry unless the node tree is flushed.
 - Persistent bridge may leave the viewport stale (mode cycles active -> one_shot -> closed -> available). Prefer one-shot for batches.
 
+**Known-stuck-state recovery (a hung command blocks the whole queue):** If a
+command sits in `processing/` and `queue/` stops draining (no new `bridge.log`
+lines, status stuck on `draining queue`), a handler is almost certainly blocked
+inside `request_render_restart` → `octane.render.start` (see the render-start
+hang gotcha above). Do NOT keep clicking — the loop only advances after the
+stuck command returns or is removed. Recovery: move the orphaned `processing/*.json`
+to a backup dir (Octane won't re-process them, and `processed_or_failed_exists()`
+won't skip new commands because IDs differ), then requeue the remaining pipeline.
+If the hang recurs on a fresh Octane launch, the render-start logic itself is
+wedged (Octane auto-rendering on launch) — fix `request_render_restart`, don't
+keep brute-forcing clicks.
+
 ## Materials, Import & Render-Restart Gotchas
 
 These are the non-obvious failure modes that produce a black render or a
@@ -298,21 +335,143 @@ render that never finishes:
   Preserve the save-on-timeout path if you touch this handler.
   If you edit a bridge Lua file, Octane caches the script in memory — **restart
   the Octane X app** to reload the patched bridge.
+- **`create_light` light node types are NIL on this Octane build.** `octane.NT_LIGHT_AREA`
+  / `NT_LIGHT_SUN` / etc. evaluate to `nil`, so the original
+  `create_node(light_type)` returned "missing node type for <name>". The current
+  `handle_create_light` maps `light_type` `environment`/`sun_light` → a
+  `NT_ENV_DAYLIGHT` environment node (reusing the proven `handle_set_lighting`
+  path) and `area`/`point`/`spot`/`directional`/`emissive` → an `NT_MAT_EMISSIVE`
+  proxy material with an honest "emissive light proxy" log. Do NOT reintroduce a
+  raw `create_node(light_type)` for light types — it will fail on this build.
+- **`~` in paths is NOT expanded by Octane Lua — apply `expand_path()` EVERYWHERE
+  a path flows into Octane.** `save_preview` already used `expand_path(cmd.path)`,
+  but `handle_import_geometry` did NOT, so a `~/...` import path was passed verbatim
+  to `setAttribute(A_FILENAME,...)` and failed with `No such file` (the pipeline
+  then aborted after 1 command). Octane's `os` and `octane.render.saveImage` also
+  don't expand `~`, so `~/OctaneMCP_staging/x.png` makes `mkdir`/`saveImage` target
+  a literal `~/...` directory and `saveImage` returns `false` (no file written).
+  Always run `expand_path()` on `cmd.path` in BOTH `handle_import_geometry` and
+  `handle_save_preview`; prefer absolute paths in the driver.
+- **`octane.render.start{renderTargetNode=rt}` BLOCKS indefinitely if issued while
+  the engine is still rendering — and the wedge blocks the whole queue.** Symptom:
+  a command sits in `processing/` forever, `bridge.log` shows `film resolution
+  requested ... ok=true` then SILENCE (no `render attempt start` line), and `queue/`
+  stops draining. **The one-shot loop never advances past a hung command — do NOT
+  keep clicking blindly; a hung command blocks the WHOLE queue.**
+
+  **Root cause (corrected this session):** the *symptom* is real but the cause was
+  misattributed. `request_render_restart` is called by *every* scene-assembly
+  handler (`import_geometry`, `create_material`, `set_camera`, `set_lighting`,
+  `save_preview`). Two failure modes abort the whole one-shot **drain script** (not
+  just one command):
+  (1) **No-camera crash** — `octane.render.start{renderTargetNode=rt}` hard-errors
+  when no camera is wired to the RT yet (the camera is connected later, in
+  `set_camera`); and
+  (2) **Unprotected hard error** — any Lua error *anywhere* in `request_render_restart`
+  (e.g. in `ensure_render_target_defaults` / `activate_render_target` /
+  `set_render_resolution` / camera detection) throws out of the function and kills
+  the script, so the **remaining queued commands are stranded and never processed**.
+  The earlier "blocks forever" framing is only one manifestation; the load-bearing
+  failure is the unguarded crash that ends the loop early.
+
+  **The decisive fix is CODE-level (crash-proof the drain), not just operational:**
+  1. **(Legacy) Paced drain — no longer needed.** Before the crash-proof fix the
+     one-shot loop aborted after one command, so a paced click-per-command driver
+     (`scripts/drain_paced.py`) was the workaround. With the crash-proof
+     `request_render_restart`, a single oneshot click drains the entire queue; the
+     paced driver is now unnecessary. Keep it only to interoperate with an unpatched
+     bridge. Condensed runbook: `references/render-wedge-runbook.md`.
+  2. **Warm-engine rule.** A `quit`/`open -a` relaunch leaves the render engine
+     *cold*, and `start{rt}` wedges even on an otherwise-idle Octane. To reload a
+     patched bridge you must restart Octane — do it BEFORE queueing any scene command,
+     then run the whole pipeline in that ONE warm session. Do NOT `quit`/`open -a`
+     mid-debug to "recover" from a wedge; that just cold-relaunches the engine and
+     re-wedges. Reset between renders with **File ▸ New** (AppleScript) on the
+     *running* Octane, not a cold relaunch.
+  3. `expand_path(cmd.path)` in `handle_import_geometry` (see `~` pitfall above) so
+     a `~/...` import path resolves instead of failing with `No such file`.
+  4. **Crash-proof `request_render_restart` itself (the load-bearing fix).** Wrap the
+     *entire* function body in a single `pcall` that logs an entry line
+     (`request_render_restart: entered samples=...`) and, in the `pcall` error
+     branch, logs `request_render_restart: HARD ERROR caught: <err>` and returns
+     `(false, "request_render_restart crashed: "..err)`. That way NO internal error
+     can abort the drain loop. Inside the pcall, add a **camera guard**: read the RT's
+     connected camera label; if empty, log `no camera on RT; deferring start{} to
+     save_preview` and `return true, "deferred"` — so `start{}` only ever runs at
+     `save_preview`, after `set_camera` has connected the camera. The live templates
+     carry this shape; the parity test still requires the `request_render_restart`
+     substring contract inside `handle_save_preview` (do not remove it).
+  5. **DEFERRED-START fix (the actual resolution of the 18-recipe sweep wedge,
+     applied 2026-07-09 — this is the bit that makes a batch sweep work).** Even with
+     the pcall + camera guard, the per-command `octane.render.start{}` in
+     `request_render_restart` **BLOCKS for the render duration** on this Octane build.
+     While the bridge script is busy in `start{}`, a re-click is ignored (Octane won't
+     run a second bridge script), so `save_preview` strands and the queue never fully
+     empties. Fix: `request_render_restart(samples, width, height, do_start)` where
+     `do_start` defaults `true`. **Scene-assembly handlers** (`import_geometry`,
+     `create_material`, `set_camera`, `set_lighting`, `create_light`) call it with
+     `do_start=false` — they only wire the RT/camera/materials and return
+     immediately (no `start{}`). **Only `handle_save_preview` passes `do_start=true`**
+     and performs the single real `start{}` + `wait_for_render_ready` + `saveImage`.
+     With this, a oneshot click drains all 7 assembly commands instantly, then
+     `save_preview` does the one ~10 s render and saves. Verified: an 18-recipe sweep
+     now promotes 17/18 with one oneshot click per recipe (re-click once only if
+     `save_preview` is still in `queue/` — never needed during the assembly phase).
+     When you edit `request_render_restart`, add the identical `do_start` text to
+     BOTH templates (parity rule) and keep `handle_save_preview`'s call at the default.
+  5. **DEFERRED-START fix (the actual resolution of the 18-recipe sweep wedge,
+     applied 2026-07-09 — this is the bit that makes a batch sweep work).** Even with
+     the pcall + camera guard, the per-command `octane.render.start{}` in
+     `request_render_restart` **BLOCKS for the render duration** on this Octane build.
+     While the bridge script is busy in `start{}`, a re-click is ignored (Octane won't
+     run a second bridge script), so `save_preview` strands and the queue never fully
+     empties. Fix: `request_render_restart(samples, width, height, do_start)` where
+     `do_start` defaults `true`. **Scene-assembly handlers** (`import_geometry`,
+     `create_material`, `set_camera`, `set_lighting`, `create_light`) call it with
+     `do_start=false` — they only wire the RT/camera/materials and return
+     immediately (no `start{}`). **Only `handle_save_preview` passes `do_start=true`**
+     and performs the single real `start{}` + `wait_for_render_ready` + `saveImage`.
+     With this, a oneshot click drains all 7 assembly commands instantly, then
+     `save_preview` does the one ~10 s render and saves. Verified: an 18-recipe sweep
+     now promotes 17/18 with one oneshot click per recipe (re-click once only if
+     `save_preview` is still in `queue/` — never needed during the assembly phase).
+     When you edit `request_render_restart`, add the identical `do_start` text to
+     BOTH templates (parity rule) and keep `handle_save_preview`'s call at the default.
+
+  (Full diagnostic log lines are in
+  `references/wp4-create-light-and-render-start-hang.md`; a condensed runbook with
+  copy-paste diagnostic commands is in `references/render-wedge-runbook.md`; the
+  reusable paced-drain driver is `scripts/drain_paced.py`. The corrected root cause,
+  the crash-proof `request_render_restart` shape, and the blank-detection pixel
+  stats are in `references/blank-render-and-drain-crash.md`; the blank checker is
+  `scripts/verify_render_not_blank.py`.)
 - **Persistent bridge auto-poll timer is BROKEN** (`timer create attempt 1
   failed: bad argument #1 to 'create'`). It will not drain the queue on its own.
   Always drain with `octane_run_oneshot_bridge` (MCP) or the osascript one-shot
   trigger — it processes every queued command in timestamp order, then returns.
   Do not rely on the persistent bridge to auto-drain.
+- **Clarification (verified 2026-07-09):** the *manual launch* of the persistent
+  bridge works — `octane_start_persistent_bridge` returns `ok:true` and clicks
+  `hermes_bridge_persistent.generated` from the Script menu once TCC is granted.
+  The broken part is ONLY the idle auto-poll timer, so after a manual launch it
+  still will not continuously drain an open queue (this session processed ~6
+  commands then stalled at `set_camera`). For a full multi-command pipeline,
+  prefer the oneshot bridge (one click drains all 8).
 
-**Drain detail (corrected 2026-07-09):** the one-shot bridge drains the
-**entire queue in one click** — it processes every queued command in timestamp
-order, then renders and returns. (An earlier note claimed "~1 command per click /
-repeat until empty"; that is wrong for the current oneshot and was removed — one
-click + a single queue-empty poll is sufficient.) If
-`octane_run_oneshot_bridge` throws `ClosedResourceError` (transient MCP blip),
-fall back to the raw osascript menu-click above — same effect, no MCP server —
-and do NOT keep re-calling the MCP tool until the server self-recovers (~45–75 s).
-- If the raw osascript `run script file` returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is in a non-receptive state (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, the only recovery is restarting Octane X (purges the loaded scene — re-queue the full pipeline) or reusing an already-produced render if one exists.
+**Drain-loop detail (one click now drains the whole queue):** since the
+crash-proof `request_render_restart` fix, the one-shot bridge's `while guard < 50`
+loop re-snapshots `queue/` and processes **every** enqueued command in a single
+Script-menu click — it no longer aborts after one command. The old "~1 command per
+click, click N times until empty" pattern was a *symptom* of the unguarded
+`request_render_restart` crash killing the loop early; that crash is gone. So:
+enqueue the full pipeline, fire ONE `octane_run_oneshot_bridge` (or
+`run_bridge_script('oneshot')`), and the queue should empty in one pass. Still
+poll `…/OctaneMCP/queue/` to confirm it hit 0 (watch the file count, not just
+`processed_count`). If `octane_run_oneshot_bridge` throws `ClosedResourceError`
+(transient MCP blip), fall back to the raw osascript menu-click above — same
+effect, no MCP server — and do NOT keep re-calling the MCP tool until the server
+self-recovers (~45–75 s).
+- If the Scripts-menu click (via `run_bridge_script("oneshot")`) returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is in a non-receptive state (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, the only recovery is restarting Octane X (purges the loaded scene — re-queue the full pipeline) or reusing an already-produced render if one exists. (Distinct from `-2741`, the compile error you get if you mistakenly use `run script file` on the Lua bridge.)
 
 - **`set_render_resolution` logs non-fatal `setPinValue failed pin=filmResolution/
   width/height/... (No pin ... in NT_FILM_SETTINGS)`** but reports `ok=true`.
@@ -346,6 +505,121 @@ session, then drain.
 > The render convergence quality-tier system (`standard`/`high`/`ultra`/`final`),
 > the confirmed `maxRenderTime`-ignored finding, and the live high-tier test
 > result are captured in `references/render-convergence-tiers.md`.
+> The WP4 `create_light` env/emissive mapping fix and the `octane.render.start`
+> render-start hang (incl. diagnostic log lines + the `request_render_restart`
+> idle-detection fix) are captured in
+> `references/wp4-create-light-and-render-start-hang.md`.
+
+## Live-verification gate: macOS TCC / Accessibility for Hermes.app
+
+A real Octane render — and therefore any honest `native_octane_verified` flip —
+requires the bridge to actually launch. That launch is gated by macOS
+Accessibility (TCC) on **`Hermes.app`**, NOT on Octane X. If the grant is missing
+or its token is stale, every launch fails with `osascript error -1719: assistive
+access denied`. This is invisible to the code; the bridge/queue/`request_render_restart`
+are all fine — only the OS permission stops the click.
+
+**Traps observed 2026-07-09:**
+- **`run_recipe(..., drain_timeout=N)` HANGS on TCC denial.** `verify_recipes`
+  enqueues AND launches; the launch blocks on the denied `osascript`, so the
+  foreground Python call sits until `drain_timeout` (and may hit the *caller's*
+  own wall first — a 120 s terminal timeout fired before the 45 s drain returned).
+  Never start a live sweep without first confirming TCC is granted.
+- **Reopening Octane X does NOT clear the -1719** — the block is on the process
+  running `osascript` (Hermes.app), not Octane.
+- **`bridge_status` can be hours-stale** during a TCC block (launch never ran).
+  Trust the launch response's `tcc_blocked: true` field over cached `status.json`.
+
+**Fix (user action — agent cannot grant):** System Settings → Privacy & Security →
+Accessibility → remove `Hermes.app`
+(`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`),
+re-add + enable (refreshes a stale token), then restart Hermes + Octane. Confirm
+with a dry `octane_run_oneshot_bridge` → expect `ok: true`, not `tcc_blocked`.
+
+Only after a green launch should you enqueue a recipe, run the oneshot bridge, and
+gate the `native_octane_verified` flip on a real pixel-QA pass. Condensed
+diagnostic + recovery: `references/live-verify-tcc-gate.md`.
+
+**Verified live 2026-07-09:** after re-adding `Hermes.app` to Accessibility
+(remove + re-add to refresh the TCC token), both `octane_run_oneshot_bridge` and
+`octane_start_persistent_bridge` returned `ok:true`. A full `data-bars` run then
+drained 8/8 commands (0 failed), `octane.render.start{renderTargetNode=rt}`
+returned `ok=true`, and `save_preview` completed at `beauty=5000` with a real
+multi-bar frame confirmed by vision. The crash-proof bridge fix + TCC grant is
+the proven end-to-end path. Full sequence + gotchas:
+`references/data-bars-verified-and-pitfalls.md`.
+
+## Agentic Canvas Dashboard (thin native client)
+
+A separate subsystem renders an `Agentic Canvas` UI — a native Swift `WKWebView`
+window that talks to a small **HTTP gateway** instead of injecting UI into Octane X.
+
+**Architecture (the load-bearing rule):** the OctaneX MCP server (`server.py`) is
+**stdio-only** and owned by Hermes — there is NO HTTP endpoint. The dashboard
+cannot call MCP tools directly. So the gateway (`src/octanex_mcp/gateway.py`,
+runnable as `octanex-gateway` or `python -m octanex_mcp.gateway --port 8731`) is a
+**separate process** that wraps the project's *library functions* and serves them
+over `http://127.0.0.1:8731`. It never touches Hermes's MCP registration.
+
+**CRITICAL gotcha — `@mcp.tool` closures are NOT importable:** every MCP tool is
+a nested function inside `build_mcp()`, so `from octanex_mcp.server import
+octane_queue_recipe` fails. The gateway dispatches via the *underlying
+module-level* functions instead:
+
+| UI calls tool           | Dispatch target (importable)                                                        |
+|-------------------------|------------------------------------------------------------------------------------|
+| octane_status           | `bridge.octane_app_status` + `bridge.list_commands`                                |
+| octane_queue_recipe     | `recipes.queue_recipe`                                                             |
+| octane_recipe_book/index/load | `bridge.read_recipe_book` / `recipes.recipe_index` / `recipes.load_recipe` |
+| octane_validate_command/queue | `schema.validate_command` / `schema.validate_queue`                        |
+| octane_review_preview / suggest_*_fix | `review.review_preview` / `review.suggest_camera_fix` / `review.suggest_lighting_fix` |
+| octane_save_preview     | `server._build_save_preview_envelope` (module-level!) → `bridge.write_command("save_preview", …)` |
+| octane_import_geometry / start_render / set_camera | `bridge.write_command(…)`                                   |
+
+When adding a dashboard-callable tool, wire it in `gateway.DISPATCH` (point at the
+library function, NOT the MCP closure). Do NOT try to import the decorated function.
+
+**Gateway endpoints:** `POST /mcp/call {"tool","args"}` → `{"ok","result"|"error"}`;
+`GET /status` → the Lua bridge `status.json` (`Workspace().status_path`);
+`GET /preview[?progressive=1]` → `renders/preview.png` / `preview_progressive.png`;
+`POST /intent {"text"}` → appends to `intents.jsonl` (agent-loop handoff);
+`GET /config` → `{render_host, workspace}`; static web bundle from `WEB_DIR`
+(default `apps/octanex-canvas/web`).
+
+**Swift host:** `apps/octanex-canvas/` (SwiftPM `Package.swift` + `Sources/.../main.swift`).
+`swift build` then `swift run` opens the `WKWebView`, loads `web/index.html`, and
+launches the gateway as a child process (passing through `OCTANEX_RENDER_HOST`).
+`apps/.build/` is gitignored — never commit Swift build artifacts.
+
+**Web bundle:** `apps/octanex-canvas/web/{index.html,app.css,app.js}` (vanilla, no
+framework). Polls `/preview` (full-bleed) + `/status` (truthful pill); `⌘K`
+palette → `octane_recipe_book` + `octane_queue_recipe`; `⌘I` inspector →
+`octane_review_preview` + `octane_suggest_camera_fix` + `octane_set_camera`;
+`~` focus mode; `localStorage` continuity. All input funnels through one
+`submitIntent(text)` so voice/drag-drop can drop in later.
+
+**New config / features (dashboard-driven):**
+- `OCTANEX_RENDER_HOST` env → `OctaneConfig.render_host` (default `localhost`).
+  Gateway `run_remote_bridge_and_pull()` `ssh`+`scp`s the preview back from a
+  Studio renderer (thin-client path; `scp` pull preferred over lazy backup sync).
+- `octane_save_preview(progressive=True)` adds `progressive:true` + `progressive_path`
+  to the command JSON (Lua `handle_save_preview` emits an early low-spp frame).
+  Shared via `server._build_save_preview_envelope` so MCP tool and gateway stay in parity.
+
+**WIP-respecting rule (project convention):** `octane_lua/hermes_bridge_*_v2/_v1.lua`
+templates, `docs/recipe-book.md`, and `benchmarks/*` frequently carry **uncommitted
+user WIP** (`git status` shows them modified). These are source-of-truth bridge
+files — do NOT hand-edit or clobber them inside a larger task. If a task needs a
+Lua-side change but those files are WIP-owned, implement the Python/Swift/web parts
+and hand back a precise patch for the Lua edit; let the user commit their WIP first.
+After any bridge Lua edit, run `PYTHONPATH=. uv run python -m unittest tests.test_lua_bridge_parity -v`.
+
+**Tests:** `tests/test_gateway.py`, `tests/test_config_render_host.py`,
+`tests/test_progressive_save.py`, `tests/test_status_schema.py`. Run with
+`PYTHONPATH=. uv run python -m pytest tests/test_gateway.py tests/test_config_render_host.py tests/test_progressive_save.py tests/test_status_schema.py`.
+
+> Dispatch table detail, endpoint contracts, the progressive / status.json schema
+> contract, and a minimal run recipe are in `references/dashboard-gateway.md`.
 
 ## Bridge Source Architecture & Patching a Bridge Bug
 
@@ -384,9 +658,185 @@ the generation source is what you must edit for any permanent fix.**
 invisible to git and lost the next time anyone runs `init`. Always port into
 the templates + lib first, then regenerate.
 
+**PARITY CONSTRAINT (hard rule — the #1 bridge-edit pitfall):** the two bridge
+templates (`hermes_bridge_oneshot_v2.lua` and `hermes_bridge_persistent_v1.lua`)
+must keep a large set of handler functions **textually identical**. The parity
+test `tests/test_lua_bridge_parity.py` asserts equality for: `handle_save_preview`,
+`handle_command`, `handle_import_geometry`, `handle_create_material`,
+`handle_assign_material`, `handle_set_camera`, `handle_set_lighting`,
+`handle_start_render`, `wait_for_render_ready`, `render_stat_number`,
+`sleep_seconds`, `ensure_connected_node`, `ensure_render_target_defaults`,
+`latest_imported_geometry_fallback`. The ONLY tolerated difference is the log
+label (`"v2 command"` vs `"persistent command"`), which the harness normalizes.
+So:
+
+- If you add code inside any parity-checked function, you MUST add the
+  **identical text** to BOTH templates (same literals, same line shape), or the
+  parity test fails and the build is blocked. A stray `v2`/`persistent` string
+  *inside the body* breaks it.
+- `write_status(state, extra, stage_info)` is NOT parity-checked and the two
+  files already differ (persistent also emits `processed_count`/`failed_count`
+  and calls `update_label`). You can extend it independently per file — but keep
+  the core JSON keys consistent so the dashboard maps them.
+- `test_save_preview_waits_for_render_readiness_before_saving` **enforces specific
+  substrings** inside `handle_save_preview`: `request_render_restart(cmd.samples
+  or 64`, `wait_for_render_ready(cmd.min_samples or 16`, `pre-save render
+  readiness ok=`, and `octane.render.saveImage(path, cvalue)`. Do NOT remove or
+  restructure those lines.
+
+> **Stale-claim trap (learned the hard way this session):** any note/legacy
+> memory asserting "`handle_save_preview` does NOT call `request_render_restart`"
+> is WRONG as of the `5d928ac` bridge fix — current code DOES call
+> `request_render_restart` in `handle_save_preview`, and the parity test enforces
+> it. **Always trust the live code + the parity test over any cached claim.**
+> Before editing a bridge handler, re-read the actual function body and the
+> relevant parity assertions in `tests/test_lua_bridge_parity.py`.
+
+> The parity-checked set, the substring contract, the `write_status` schema, and
+> the real Lua-side progressive/`status.json` contract are detailed in
+> `references/dashboard-gateway.md`.
+
 > The bridge fixes described in "Materials, Import & Render-Restart Gotchas"
 > live in `request_render_restart` and `connect_material_to_mesh_pins` — edit
 > those in the templates + `lib/runtime.lua`, not in the generated files.
+
+## Honest blank-render detection (pixel stats, not vision)
+
+A blank/geometry-less frame is the most common *silent* failure — and **`vision_analyze`
+is unreliable at catching it**: across a live sweep the auxiliary model flip-flopped,
+calling a uniform gray gradient "a clean render" one pass and "blank" the next. **Never
+flip `native_octane_verified` or call a recipe "verified" on a vision verdict alone.**
+
+Use a hard pixel discriminator instead. Reference values observed for this engine's
+blank output:
+
+| signal | blank gray frame | real geometry |
+|---|---|---|
+| mean RGB | ~ (146,146,146) | scene-dependent, lower spread |
+| std dev | ~ 28 | higher |
+| non-background % | 100% (uniform fill) | varies |
+| **edge energy** (mean gradient magnitude) | ~ 1.06 | >> 1 (sharp bars/edges) |
+
+`edge energy` = mean of `sqrt(gx^2+gy^2)` over the luminance gradient. A blank gradient
+has edge energy ≈ 1.0; any real mesh/bars pushes it well above. The reusable checker is
+`scripts/verify_render_not_blank.py` (edge-energy + nonbg% + mean-dev), the same logic
+that caught 18 falsely-flagged blank recipes this session. Gate `native_octane_verified`
+flag-flips in `benchmarks/verify_recipes.py` on a **real pixel-QA pass**, not on a
+"passed" boolean from a broken metric.
+
+**Nuance — pixel-QA confirms NON-blank, not GOOD FRAMING.** Edge energy / nonbg%
+only detect a blank or geometry-less frame. A verified render can still be
+mis-framed: this session `data-bars` passed pixel-QA (edge energy ≈ 1.16, real
+bars present) yet showed only ~3 of 8 bars because the camera was too close.
+ALWAYS also vision-check composition/framing before calling a recipe done.
+
+**Diagnostic — grey field with horizontal lines is a REAL render, not a blank.**
+If the preview shows a near-uniform grey field crossed by horizontal bands, that
+is a correctly-rendered scene with the **camera too close / inside the subject**
+(oversized geometry filling the frame), NOT the uniform blank-gradient failure
+(edge energy ≈ 1.06, no bands). Treat "grey + horizontal lines" as a framing bug
+to fix via `octane_set_camera` / bounds-aware camera, not as a bridge or blank
+failure. The auto-framing fix is still a TODO (compare asset bounds to camera
+position/distance and pull back) — do not report it as a verification failure.
+
+**Batch-sweep isolation — NEVER run more than one sweep driver at once.**
+`benchmarks/sweep.py` (and `verify_recipes.run_recipe`) all share ONE Octane
+container (`~/Library/Containers/.../OctaneMCP/`). Launching the sweep more than
+once (e.g. multiple `background=true` launches, or a `notify_on_complete`
+re-launch stacking on a still-running process) makes the concurrent processes
+fight over the queue: each clears + re-queues its own recipe, so the queue count
+climbs instead of draining and every per-recipe timer expires with
+`queue_left=N`. Symptom: `queue_left` grows past the 8 a single recipe should
+have. Fix: `pkill -f benchmarks/sweep.py` until `ps` shows zero, fully clear the
+container (`rm -f OctaneMCP/queue/*.json processed/*.json failed/*.json
+renders/*.png`), then launch EXACTLY ONE sweep process. The honest sweep driver
+(`benchmarks/sweep.py`) is fraud-proof: it clears the container + does a File▸New
+scene reset between recipes, deletes any pre-existing `recipe_<slug>_*.png` so a
+pass can only credit a freshly-written file (mtime > run start), and flips
+`native_octane_verified` ONLY on a real pixel-QA pass. Never trust a sweep that
+promotes in seconds — that is the stale-PNG fraud pattern.
+
+> Repo-side equivalent produced this session: `benchmarks/png_stats.py`
+> (edge-energy + nonbg% + mean-dev) — keep it in parity with
+> `scripts/verify_render_not_blank.py`.
+
+> The corrected root cause, the crash-proof `request_render_restart` shape, and the
+> full diagnostic numbers are in `references/blank-render-and-drain-crash.md`.
+> The end-to-end `data-bars` verification (8/8 drain, launch sequence, `run_recipe`
+> return-shape gotcha, dual-template parity-edit technique, framing nuance) is in
+> `references/data-bars-verified-and-pitfalls.md`. The fraud-proof live sweep driver,
+> its fresh-mtime anti-fraud gate, the 17/18 result, and the single-process rule are
+> `references/honest-recipe-sweep.md`, `references/binary-png-merge-resolution.md`.
+
+## Resolving diverged-branch binary preview PNG conflicts
+
+When merging two branches that both rendered the same `examples/recipes/*/octane-preview.png`
+previews, every preview is a **binary add/add conflict** — git cannot auto-merge them and
+`git merge-tree` lists them as `CONFLICT (add/add)`. Text files (server.py, scene.json,
+acceptance.py, bridge templates) usually merge cleanly; only the PNGs genuinely conflict.
+Do NOT coin-flip which side wins — resolve each by the project's own pixel discriminator.
+
+**Restore both sides' blobs and compare metrics:**
+
+```bash
+git diff --name-only --diff-filter=U          # U = unmerged; PNGs + any real text conflict
+# :2 = HEAD (local), :3 = origin (remote)
+for p in examples/recipes/<slug>/octane-preview.png; do
+  git show ":2:$p" > /tmp/pngcmp/<slug>.HEAD.png
+  git show ":3:$p" > /tmp/pngcmp/<slug>.origin.png
+done
+# png_stats.py is PURE STDLIB — run with python3, NOT `uv run` (uv swallows stderr)
+python3 benchmarks/png_stats.py /tmp/pngcmp/<slug>.HEAD.png /tmp/pngcmp/<slug>.origin.png
+```
+
+**Decision rule (per recipe):** both sides are normally *valid, non-blank* renders (the
+blank-detection section proves edge-energy, not vision, is authoritative). Pick the more
+structured render — higher `EDGE energy std` and `nonbg_pct`. The one case that justifies
+keeping **local over remote**: remote's PNG is a near-flat gradient (`edge_std` ≈ 0.5–0.7,
+the blank-HDRI signature) while local is real (`edge_std` ≈ 3–5). In the 2026-07-09 merge
+this held for exactly one recipe (`photoreal-product-studio`: local 4.92 vs remote 0.72 →
+kept local); all other 14 took remote (the more-structured render each time).
+
+**Apply + clear the conflict:**
+
+```bash
+git checkout --theirs examples/recipes/*/octane-preview.png   # take remote for all
+git checkout --ours  examples/recipes/photoreal-product-studio/octane-preview.png  # override
+git add examples/recipes/            # clears the U (unmerged) status
+stat -f "%z" examples/recipes/photoreal-product-studio/octane-preview.png  # verify bytes
+```
+
+**Real text conflict in `benchmarks/acceptance.py`** (seen this session): remote relocated
+the pixel-QA logic into `src/octanex_mcp/acceptance.py` and turned `benchmarks/acceptance.py`
+into a shim re-export. Take remote (`git checkout --theirs benchmarks/acceptance.py`) and
+verify it imports: `PYTHONPATH= uv run python -c "import benchmarks.acceptance"`.
+
+> Recipe-level metric table + the one-recipe override is condensed in
+> `references/binary-png-merge-resolution.md`.
+
+## Proving a merge introduced no new test failures
+
+A red `unittest discover` after a merge does NOT mean the merge broke the suite — the
+failures may pre-exist on either branch. Before "fixing" anything, prove ownership with
+two throwaway worktrees (git worktree leaves your main checkout untouched):
+
+```bash
+git worktree add -q /tmp/origin-main origin/main
+git worktree add -q /tmp/local-pre <your-pre-merge-tip-sha>   # old HEAD before merge
+cd /tmp/origin-main && PYTHONPATH= uv run python -m unittest <TestClass>
+cd /tmp/local-pre   && PYTHONPATH= uv run python -m unittest <TestClass>
+# capture "FAIL:" lines from each; diff against the merged result
+git worktree remove /tmp/origin-main --force
+git worktree remove /tmp/local-pre --force
+```
+
+In the 2026-07-09 merge, `discover` reported 5 failures, but this proved all 5 already
+existed on the **local** pre-merge tip (origin had only 1 — a stale data-bars assertion the
+remote WP6 promotion never updated). The merge introduced **zero** new breakage. The 5 were
+stale test expectations contradicting the project's *deliberately chosen* honest state
+(17/18 verified; `math-surface` excluded by a known contract gap). Resolution: align the
+tests to the honest state (expect 17/18, `math-surface` as the known gap; data-bars
+`native_octane_verified=true`) rather than revert the honest commits.
 
 ## Objective color verification
 
@@ -425,57 +875,6 @@ PY
 `PYTHONPATH` forces a broken venv; use any venv that has Pillow. The technique
 is documented in the recipe book under "Multi-group colored mesh".)
 
-## Live Recipe Verification (benchmarks/verify_recipes.py)
-
-To verify a recipe actually renders in native Octane (not just passes the offline
-contract check), use the harness — it mirrors the OBJ into the container, rewrites
-import/save paths to the container FS, drains, and pixel-accepts the PNG:
-
-```bash
-OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --slug network-graph
-# or the library sweep (all 18):
-OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live
-```
-
-**Two non-obvious traps this harness now handles (learned 2026-07-09):**
-
-- **Render-wait budget, not a hardcoded poll.** The PNG-write wait must honor the
-  render budget (`drain_timeout`), NOT a short fixed poll. An earlier 15 s hard
-  cap returned before the render converged and accepted a blank/partial frame as
-  "passed". The fix waits `max(30, drain_timeout)` seconds for the PNG.
-- **Wait for a FRESH PNG.** Before each run, delete any existing
-  `recipe_<slug>_octane-preview.png` so the acceptance check cannot pass on a
-  stale frame from a previous run. Per-recipe unique filenames prevent collision
-  across a batch.
-- **Verify recipe slugs before batching.** The recipe registry slugs are not
-  always the obvious names (e.g. `data-bars`, not `bar-chart`; there is no
-  `histogram`/`scatter-plot`/`correlation-heatmap`/`pca-3d`). Enumerate real
-  slugs first: `uv run python -c "from octanex_mcp.recipes import _recipe_dirs; from pathlib import Path; print([d.name for d in _recipe_dirs(Path('examples/recipes'))])"`.
-- **Promotion (`--copy-back`) flips `native_octane_verified` on a real pass.**
-  Add `--copy-back` to copy the live PNG back into the recipe dir as
-  `octane-preview.png` AND set `native_octane_verified=true` in `scene.json`.
-  The harness promotes ONLY when pixel QA passes (`acceptance.passed`); a
-  wrong-subject-but-pixel-OK render is NOT promoted on pixel alone.
-- **Opt-in vision-against-intent gate (`--vision-check`).** After pixel QA passes,
-  a vision model confirms the PNG shows the recipe's stated `intent` and BLOCKS
-  promotion on a wrong-subject verdict. The vision call is injected (`vision_fn`),
-  so the offline test suite never touches a real model. For autonomous live runs,
-  pass a real vision callable (the built-in shim imports `hermes_tools.vision_analyze`,
-  which is not available inside `uv run` — call the vision tool from the agent
-  runtime and pass it as `vision_fn`). The role of this gate: pixel QA cannot catch
-  a grey-shape-wrong-subject render (see `docs/recipe-book.md` "5 color-dependent
-  recipes rendered wrong").
-
-```bash
-# library sweep + promote verified recipes to native_octane_verified=true:
-OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live --copy-back --drain-timeout 150
-# same, with the opt-in vision gate (promotes ONLY on pixel+vision pass):
-OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live --copy-back --vision-check --drain-timeout 150
-```
-
-Completion: `acceptance.passed == True` on a fresh PNG, confirmed by a
-`vision_analyze` spot-check before declaring the recipe verified.
-
 ## Verification Checklist
 
 - [ ] `uv run octanex-mcp doctor` reports `Overall: ok` and expected paths.
@@ -485,8 +884,45 @@ Completion: `acceptance.passed == True` on a fresh PNG, confirmed by a
 - [ ] `octane_save_preview` produces a non-empty PNG file under `renders/`.
 - [ ] `octane_review_preview` returns `ok=true` with actionable metrics.
 - [ ] `vision_analyze` (local) confirms the PNG matches intent before delivery.
+- [ ] (Dashboard) `PYTHONPATH=. uv run python -m pytest tests/test_gateway.py tests/test_config_render_host.py tests/test_progressive_save.py tests/test_status_schema.py` passes.
+- [ ] (Dashboard) `swift build` in `apps/octanex-canvas` succeeds.
+- [ ] (Dashboard) gateway serves `/mcp/call`, `/status`, `/preview`, and the web bundle (`curl -s localhost:8731/` → index.html).
 - [ ] Any new pitfall is recorded in `docs/recipe-book.md` or a recipe README.
 - [ ] No test command files left behind in `…/OctaneMCP/queue/`.
+
+## Recipe recording & skill-sync upkeep
+
+Recording a non-trivial run is mandatory per the self-improvement loop. After
+every visual success (or instructive failure), do BOTH of these:
+
+### Record the recipe
+1. Append an entry to `docs/recipe-book.md` in the established format (Outcome /
+   Recorded / Context / Steps / Signals / Pitfalls / Follow-ups). Keep it
+   concise and evidence-led — pixel stats, sample counts, file sizes, log lines —
+   not prose.
+2. Refresh `examples/recipes/<name>/`:
+   - `scene.obj` — **regenerate from the canonical generator** (`scripts/gen_*.py`);
+     never hand-edit a stale OBJ. A recipe dir can hold a *different formula's*
+     OBJ than what was actually rendered; regenerate to match the live generator,
+     then copy it into the container `OctaneMCP/assets/`.
+   - `scene.json` — camera/material/tier metadata matching the real pipeline.
+   - `octane-preview.png` — a REAL Octane render (copy a produced PNG, or queue
+     `save_preview` with a `quality` tier). `preview.png` — downscaled doc copy
+     (`sips -s format png -Z 768 octane-preview.png --out preview.png`).
+   - `README.md` — the actual one-live-session queue pipeline + tier table + gotchas.
+
+### Keep the TWO skill copies in sync
+`octanex-mcp` and `octane-viz` exist in **two places**:
+- `/Users/craig/octanex-mcp/hermes/skills/<name>/` — committed repo copy (git source of truth).
+- `~/.hermes/skills/<cat>/<name>/` — **bundled copy that Hermes actually loads**.
+
+Patch BOTH. A fix landed only in the repo copy is invisible to the running agent;
+a fix landed only in the bundled copy is invisible to git and lost on the next
+checkout. Drift between the two let a stale "persistent bridge auto-drains" claim
+survive a whole session. After editing either, `diff` them to confirm parity. The
+bundled skill ships `references/` (photoreal-math-surface, render-convergence-tiers,
+multi-group-colored-mesh) and `scripts/` (gen_math_surface, verify_render_colors) —
+copy those into the repo skill dir too so doc links resolve.
 
 ## Related
 

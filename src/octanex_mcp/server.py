@@ -15,7 +15,7 @@ from .bridge import (
     record_recipe_entry,
     write_command,
 )
-from .bridge_control import octane_process_status, run_bridge_script
+from .bridge_control import octane_process_status, reset_octane_scene, run_bridge_script
 from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
 from .corpus import find_grammar
@@ -94,19 +94,43 @@ def build_mcp() -> Any:
         return _json(octane_process_status())
 
     @mcp.tool()
-    def octane_run_bridge(mode: str = "oneshot", dry_run: bool = False, timeout_seconds: int = 15) -> str:
-        """Run a generated Octane bridge script from the Scripts menu via AppleScript."""
+    def octane_run_bridge(mode: str = "oneshot", dry_run: bool = False, timeout_seconds: int = 30) -> str:
+        """Run a generated Octane bridge script from the Scripts menu via AppleScript.
+
+        Launches Octane X if needed, waits for its menu bar to become UI-ready,
+        then clicks the bridge from the Scripts menu. A single oneshot click
+        drains the ENTIRE queue (the Lua drain loop re-snapshots until empty),
+        so call this once after queueing a full pipeline — not once per command.
+        """
         return _json(run_bridge_script(mode, dry_run=dry_run, timeout_seconds=timeout_seconds))
 
     @mcp.tool()
-    def octane_run_oneshot_bridge(dry_run: bool = False, timeout_seconds: int = 15) -> str:
-        """Run hermes_bridge_oneshot.generated.lua via AppleScript for batch queue draining."""
+    def octane_run_oneshot_bridge(dry_run: bool = False, timeout_seconds: int = 30) -> str:
+        """Run hermes_bridge_oneshot.generated.lua via AppleScript for batch queue draining.
+
+        A single click drains the whole queue. After this returns ok, poll the
+        workspace queue/ for 0 files and wait for the preview PNG to be written.
+        Do NOT re-click while the queue is empty — that would restart/kill the
+        in-progress save_preview render.
+        """
         return _json(run_bridge_script("oneshot", dry_run=dry_run, timeout_seconds=timeout_seconds))
 
     @mcp.tool()
-    def octane_start_persistent_bridge(dry_run: bool = False, timeout_seconds: int = 15) -> str:
+    def octane_start_persistent_bridge(dry_run: bool = False, timeout_seconds: int = 30) -> str:
         """Run hermes_bridge_persistent.generated.lua via AppleScript to open/manage the persistent bridge."""
         return _json(run_bridge_script("persistent", dry_run=dry_run, timeout_seconds=timeout_seconds))
+
+    @mcp.tool()
+    def octane_reset_octane_scene(timeout_seconds: int = 20) -> str:
+        """Warm-engine reset: File > New on the running Octane X (clears the in-memory scene graph).
+
+        Required between recipes so request_render_restart does not wedge on
+        stale scene nodes. Prefer this over a cold quit/open-a relaunch, which
+        leaves the render engine cold and re-wedges the drain. Returns an ok
+        flag plus a failure class (tcc_denied / busy / script_not_found) so the
+        caller can branch instead of blindly retrying.
+        """
+        return _json(reset_octane_scene(timeout_seconds=timeout_seconds))
 
     @mcp.tool()
     def octane_recipe_book(limit_chars: int = 12000) -> str:
@@ -320,7 +344,7 @@ def build_mcp() -> Any:
         """Queue a render-ready preview image save command.
 
         Convergence ceiling: pass ``quality`` to pick a preset tier
-        (standard=30s, high=60s, ultra=120s, final=unlimited). Either the
+        (preview=10s, standard=30s, high=60s, ultra=120s, final=unlimited). Either the
         Octane film ``maxRenderTime`` or the Lua ``timeout_seconds`` poll acts
         as the cap; the render stops at whichever is hit first and the frame is
         saved (best-effort on timeout). Raw ``samples``/``min_samples``/

@@ -1,8 +1,8 @@
 -- Hermes / OctaneX MCP bridge one-shot v2. Run inside Octane X.
--- Processes one command from the Octane X sandbox container inbox and exits.
---
--- Octane X from the Mac App Store is sandboxed. Hermes writes commands into
--- the real container path below, which Octane Lua can read/write directly.
+-- Drains the ENTIRE command queue in a single pass (re-snapshots until the
+-- queue is empty, bounded by a guard), then exits. Octane X from the Mac App
+-- Store is sandboxed, so Hermes writes commands into the real container path
+-- below, which Octane Lua can read/write directly.
 
 local ROOT = os.getenv("OCTANEX_MCP_WORKSPACE") or ((os.getenv("HOME") or "/tmp") .. "/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP")
 local QUEUE = ROOT .. "/queue"
@@ -498,84 +498,88 @@ local function try_render_call(label, fn)
     return ok, result
 end
 
-local function request_render_restart(samples, width, height)
-    if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
-    local rt, rt_err = get_or_create_render_target()
-    if not rt then return false, "render target failed: " .. tostring(rt_err) end
-    ensure_render_target_defaults(rt)
-    activate_render_target(rt)
-    set_render_resolution(rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
-    samples = samples or 64
-    -- Octane X renders continuously on its own (default RT) once any scene
-    -- exists, but saveImage() saves OUR render target's buffer -- so we MUST
-    -- explicitly start OUR RT. A prior regression added an early-return that
-    -- skipped start{rt} whenever Octane's default scene already reported
-    -- beauty>0; that left our RT unrendered and forced a manual "render start"
-    -- click. The correct behavior is to ALWAYS ensure OUR RT is rendering.
-    -- CRITICAL: octane.render.start{renderTargetNode=rt} WEDGES (blocks
-    -- forever) when Octane's render engine is already active -- which it is
-    -- whenever Octane auto-renders the current scene. So we must NOT issue
-    -- start{} while a render is live. Instead: probe render state; if a render
-    -- is already running, just wait on it (it will populate our RT buffer).
-    -- Only stop()+pause()+start{rt} when nothing is rendering.
-    if octane.render.getRenderResultStatistics then
-        local s_ok, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
-        if s_ok and type(stats) == "table" then
-            local state = tostring(stats.renderState)
-            local beauty = tonumber(stats.beautySamplesPerPixel) or 0
-            -- renderState values observed: 0=idle, 1/2/3=queued/starting,
-            -- 4=rendering. If already rendering (state>=1) or has samples,
-            -- do NOT call start{} (it would wedge) -- just reuse the live run.
-            if state ~= "0" or beauty > 0 then
-                append_log("render already active (state=" .. state .. " beauty=" .. tostring(beauty) .. "); reusing live render, no start{}")
-                return true, "render already active; reusing live render"
-            end
+local function request_render_restart(samples, width, height, do_start)
+    -- Bulletproof: called from EVERY scene-assembly handler (import_geometry,
+    -- create_material, set_camera, set_lighting, save_preview). A hard error
+    -- here would abort the whole drain script and strand the rest of the queue,
+    -- so the ENTIRE body runs inside one pcall. Any internal failure returns
+    -- (false, err) so callers log an honest failure instead of dropping the cmd.
+    --
+    -- do_start (default true): whether to actually call octane.render.start{}.
+    -- Scene-assembly handlers pass do_start=false so they only WIRE the scene
+    -- (RT/camera/materials) and return immediately. This is critical for batch
+    -- drains: octane.render.start{} BLOCKS for the render duration on this build,
+    -- so calling it per-command wedges the drain script (a re-click is ignored
+    -- while the script is busy, and the queue never fully empties). Only
+    -- handle_save_preview passes do_start=true, performing the single real
+    -- render + wait + save at the end.
+    do_start = (do_start ~= false)  -- only explicit false skips the start
+    local ok, a, b = pcall(function()
+        if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
+        append_log("request_render_restart: entered samples=" .. tostring(samples) .. " do_start=" .. tostring(do_start))
+        local rt, rt_err = get_or_create_render_target()
+        if not rt then return false, "render target failed: " .. tostring(rt_err) end
+        pcall(ensure_render_target_defaults, rt)
+        pcall(activate_render_target, rt)
+        pcall(set_render_resolution, rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
+        samples = samples or 64
+        -- Camera guard: octane.render.start{} must NOT run until a camera is
+        -- connected to the RT. During scene assembly the camera is not wired
+        -- yet, and start{} with no camera aborts the script. Defer the start to
+        -- save_preview, where set_camera has connected the camera.
+        local cam_pin = octane.P_CAMERA or "camera"
+        local cam_label = nil
+        pcall(function() cam_label = connected_node_label(rt, cam_pin) end)
+        local cam_connected = cam_label ~= nil and cam_label ~= ""
+        if not cam_connected then
+            append_log("request_render_restart: no camera on RT; deferring start{} to save_preview")
+            return true, "render start deferred (no camera yet; will start at save_preview)"
         end
+        -- Deferred-start path: scene-assembly handlers (import/material/camera/
+        -- lighting) only WIRE the scene and return. They must NOT call
+        -- octane.render.start{} here because start{} blocks for the render
+        -- duration and wedges the batch drain (a re-click is ignored while the
+        -- script is busy). Only save_preview (do_start=true) performs the real
+        -- render. The camera is connected now, so the deferred start at
+        -- save_preview will have a valid RT+camera to begin from.
+        if not do_start then
+            append_log("request_render_restart: do_start=false; scene wired, start deferred to save_preview")
+            return true, "scene wired; render start deferred (do_start=false)"
+        end
+        pcall(function() if octane.render.stop then octane.render.stop() end end)
+        pcall(function() octane.render.pause() end)
+        local last_err = "no attempts made"
+        local started = false
+        local function engine_running()
+            if not (octane and octane.render and octane.render.getRenderResultStatistics) then return false end
+            local ok_s, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
+            if not (ok_s and type(stats) == "table") then return false end
+            if stats.hasPendingUpdates == true then return true end
+            if tostring(stats.renderState) == "4" then return true end
+            return false
+        end
+        for attempt = 1, 5 do
+            local ok1, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode = rt } end)
+            if ok1 and engine_running() then started = true; break end
+            ok1, result = try_render_call("restart()", function() return octane.render.restart() end)
+            if ok1 and engine_running() then started = true; break end
+            ok1, result = try_render_call("continue()", function() return octane.render.continue() end)
+            if ok1 and engine_running() then started = true; break end
+            last_err = tostring(result)
+            sleep_seconds(0.5)
+        end
+        if not started then
+            return false, "render engine did not start running after retries (stale-frame risk); last: " .. last_err
+        end
+        return true, "render start requested (RT " .. tostring(rt) .. "; engine running; bounded by wait_for_render_ready)"
+    end)
+    if not ok then
+        append_log("request_render_restart: HARD ERROR caught: " .. tostring(a))
+        return false, "request_render_restart crashed: " .. tostring(a)
     end
-    -- Stop any in-flight render before starting ours. Octane rejects a new
-    -- start/restart while a previous render is still active
-    -- ("Can't start a new render before finishing the previous render"), which
-    -- left blank/black previews. stop() ends the current pass so the next
-    -- start/restart is accepted. pause() alone is NOT enough (a paused render
-    -- is still "in progress").
-    pcall(function() if octane.render.stop then octane.render.stop() end end)
-    pcall(function() octane.render.pause() end)
-    -- Render the MAIN viewport (octane.render.start() with no args), NOT
-    -- octane.render.start{renderTargetNode=rt}. saveImage() captures the main
-    -- viewport buffer, so only the main-viewport render populates what saveImage
-    -- can grab. Using start{rt} leaves the main viewport empty -> saveImage
-    -- returns r1=false and writes nothing. Confirmed: the 19:06-20:34 working
-    -- runs used main-viewport start; the regression appeared only after
-    -- switching to start{rt}. The geometry is connected to our RT for the node
-    -- graph, but the actual pixels we save come from the main viewport.
-    -- NOTE: maxSamples is NOT a recognized key for octane.render.start on this
-    -- Octane build, so it is intentionally NOT used; the render is instead
-    -- bounded by wait_for_render_ready() polling the sample count to min_samples
-    -- (with a wall-clock timeout), then the frame is grabbed. This avoids an
-    -- unbounded render that would block every subsequent restart.
-    -- Retry loop: Octane's stop() does not always halt the in-flight render
-    -- synchronously, so the immediate start() can still raise "Can't start a
-    -- new render before finishing the previous render". Yield briefly and
-    -- retry so the prior pass has actually ended before we (re)start ours.
-    local last_err = "no attempts made"
-    local started = false
-    local start_msg = ""
-    for attempt = 1, 5 do
-        local ok, result = try_render_call("start()", function() return octane.render.start() end)
-        if ok then started, start_msg = true, "render start requested (main viewport; bounded by wait_for_render_ready)"; break end
-        ok, result = try_render_call("restart()", function() return octane.render.restart() end)
-        if ok then started, start_msg = true, "render restart requested"; break end
-        ok, result = try_render_call("continue()", function() return octane.render.continue() end)
-        if ok then started, start_msg = true, "render continue requested"; break end
-        last_err = tostring(result)
-        sleep_seconds(0.5)
-    end
-    -- NOTE: the delayed RT re-activation now lives at the TOP LEVEL of the one-shot
-    -- script (after the queue loop drains), because a deferred closure here does
-    -- not survive the script's exit. See the top-level block near the end of file.
-    if started then return true, start_msg end
-    return false, "render refresh failed after retries; last: " .. last_err
+    return a, b
 end
+
 
 local function render_stat_number(stats, key)
     if type(stats) ~= "table" then return 0 end
@@ -655,7 +659,7 @@ local function handle_import_geometry(cmd)
     local loaded, load_err = pcall(function() mesh:setAttribute(octane.A_FILENAME, cmd.path, true) end)
     if not loaded then return false, "mesh load failed: " .. tostring(load_err) end
     maybe_connect_geometry_to_rt(mesh)
-    local refreshed, refresh_msg = request_render_restart(64)
+    local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-import render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
     return true, "imported geometry " .. tostring(name)
 end
@@ -719,7 +723,7 @@ local function handle_create_light(cmd)
             if not env then return false, "environment create failed: " .. tostring(err) end
         end
         connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
-        local refreshed, refresh_msg = request_render_restart(64)
+        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-light render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
         return true, "created environment light " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
     end
@@ -753,7 +757,7 @@ local function handle_assign_material(cmd)
         if pin then connected = connect_to(mesh, pin, mat) or connected end
     end
     if connected then
-        local refreshed, refresh_msg = request_render_restart(64)
+        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
         return true, "assigned material " .. tostring(cmd.material_name) .. (group_index and (" to group #" .. tostring(group_index)) or "")
     end
@@ -776,7 +780,7 @@ local function handle_set_camera(cmd)
     if cmd.position then set_pin_value(cam, octane.P_POSITION or "pos", cmd.position) end
     if cmd.target then set_pin_value(cam, octane.P_TARGET or "target", cmd.target) end
     connect_to(rt, octane.P_CAMERA or "camera", cam)
-    local refreshed, refresh_msg = request_render_restart(64)
+    local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-camera render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
     return true, "camera connected"
 end
@@ -796,7 +800,7 @@ local function handle_set_lighting(cmd)
         if not env then return false, "environment create failed: " .. tostring(err) end
     end
     connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
-    local refreshed, refresh_msg = request_render_restart(64)
+    local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-lighting render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
     return true, "lighting preset " .. tostring(cmd.preset or "default") .. " connected"
 end
@@ -964,16 +968,30 @@ end
 append_log("v2 bridge starting")
 write_status("running", "draining queue", { render_stage = "queued" })
 local processed = 0
-for _, path in ipairs(list_queue_files()) do
-    local id = basename(path):gsub("%.json$", "")
-    if not processed_or_failed_exists(id) then
-        local raw = read_file(path)
-        if raw and raw ~= "" then
-            process_raw_command(raw, path, "queue")
-            processed = processed + 1
+-- Drain until the queue is empty: re-snapshot each iteration because commands
+-- may land in the queue mid-run, and save_preview is written last. A single
+-- ipairs(list_queue_files()) snapshot pass misses anything not present at the
+-- first listing (observed: save_preview left behind -> "queue did not fully
+-- drain" and a stale/blank preview copied back as "verified").
+local guard = 0
+while guard < 50 do
+    guard = guard + 1
+    local any = false
+    for _, path in ipairs(list_queue_files()) do
+        local id = basename(path):gsub("%.json$", "")
+        if not processed_or_failed_exists(id) then
+            local raw = read_file(path)
+            if raw and raw ~= "" then
+                process_raw_command(raw, path, "queue")
+                processed = processed + 1
+                any = true
+            end
         end
     end
+    if not any then break end
+    sleep_seconds(0.2)
 end
+append_log("v2 drained commands count=" .. tostring(processed))
 
 -- Top-level delayed RT re-activation (user-suggested). A deferred closure inside
 -- request_render_restart does NOT survive the one-shot script's exit (the script
