@@ -62,6 +62,38 @@ def _http_get_bytes(url: str, *, user_agent: str = DEFAULT_USER_AGENT) -> bytes:
         return resp.read()
 
 
+# JPEG/PNG magic-byte prefixes. Commons thumbnails are served in the source
+# file's format (often JPEG) even when the thumburl ends in .png, so we sniff
+# the bytes rather than trusting the extension.
+_JPEG_MAGIC = b"\xff\xd8\xff"
+_PNG_MAGIC = b"\x89PNG"
+
+
+def normalize_to_png(image_bytes: bytes) -> bytes:
+    """Return PNG-encoded bytes regardless of input format.
+
+    PNG input is passed through (stdlib pipeline only reads PNG). JPEG input is
+    transcoded via Pillow. Raises on unsupported/undecodable input so the caller
+    can reject the reference rather than silently write a corrupt file.
+    """
+    if image_bytes[:4] == _PNG_MAGIC:
+        return image_bytes
+    if image_bytes[:3] == _JPEG_MAGIC:
+        try:
+            from PIL import Image  # imported lazily: harvest extra, not core
+        except ImportError as exc:  # pragma: no cover - env misconfig
+            raise RuntimeError(
+                "Pillow is required to normalize JPEG references. "
+                "Install with: uv sync --extra harvest"
+            ) from exc
+        from io import BytesIO
+        buf = BytesIO()
+        with Image.open(BytesIO(image_bytes)) as im:
+            im.convert("RGB").save(buf, format="PNG")
+        return buf.getvalue()
+    raise RuntimeError(f"unsupported image magic {image_bytes[:4]!r} (need JPEG or PNG)")
+
+
 def commons_image_fetcher(query: str, *, width: int = 512,
                           user_agent: str = DEFAULT_USER_AGENT,
                           _get: Callable[[str], Any] = _http_get_json,
@@ -122,6 +154,13 @@ def commons_image_fetcher(query: str, *, width: int = 512,
         return {"ok": False, "image_bytes": None, "error": f"image download failed: {exc}"}
     if not image_bytes:
         return {"ok": False, "image_bytes": None, "error": "empty image"}
+
+    # Commons thumbnails may be JPEG despite a .png thumburl; normalize to PNG
+    # so the stdlib pixel-QA pipeline (which only reads PNG) can consume it.
+    try:
+        image_bytes = normalize_to_png(image_bytes)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "image_bytes": None, "error": f"image normalization failed: {exc}"}
 
     labels = _derive_labels(query, best)
     return {

@@ -405,18 +405,25 @@ def filter_reference(reference_png: str | Path, *,
                      min_contrast: float = 6.0,
                      max_near_white: float = 95.0,
                      max_edge_density: float = 80.0,
-                     min_foreground_bbox_percent: float = 8.0,
-                     max_foreground_bbox_percent: float = 85.0) -> dict[str, Any]:
+                     min_foreground_pixel_percent: float = 8.0) -> dict[str, Any]:
     """Pixel-only harvest filter: reject unsuitable reference images.
 
     A reference is rejected (and must not enter the corpus) when it is:
       * near-black / low-contrast (blank-ish),
       * blown out (near-white clipping),
       * watermarked / busy (edge density too high — text/UI over the subject),
-      * tiny / clipped (too little foreground),
-      * a full-frame flat fill (foreground bbox occupies almost everything).
+      * a flat full-frame fill or tiny / clipped subject (too little
+        foreground structure).
 
     All thresholds operate on ``review_preview`` stats — no vision model.
+
+    Note: the *distinct-subject* check uses ``foreground_pixel_percent`` (the
+    fraction of pixels deviating from the frame median), not the foreground
+    bounding-box area. The bbox spans the whole frame for any photographic image
+    (most pixels differ from the median), so bbox area is ~100% for both a real
+    photo and a genuine flat fill — it cannot distinguish them. Low
+    foreground-pixel fraction + low edge density is the real "no distinct
+    subject / flat fill" signal.
 
     Returns ``{"ok": bool, "reasons": [...], "stats": {...}}``.
     """
@@ -424,13 +431,15 @@ def filter_reference(reference_png: str | Path, *,
     if not p.exists() or p.stat().st_size == 0:
         return {"ok": False, "reasons": ["reference missing or empty"], "stats": {}}
     review = review_preview(p)
+    fg_pct = review.get("foreground_pixel_percent", 0.0) or 0.0
+    edge = review.get("edge_density", 0.0) or 0.0
     stats = {
         "mean_brightness": review.get("mean_brightness"),
         "contrast": review.get("contrast"),
         "near_black_percent": review.get("near_black_percent"),
         "near_white_percent": review.get("near_white_percent"),
-        "edge_density": review.get("edge_density"),
-        "foreground_bbox_area_percent": review.get("foreground_bbox_area_percent"),
+        "edge_density": edge,
+        "foreground_pixel_percent": fg_pct,
     }
     reasons: list[str] = []
     if review.get("near_black_percent", 0.0) > max_near_black:
@@ -439,12 +448,15 @@ def filter_reference(reference_png: str | Path, *,
         reasons.append("very low contrast")
     if review.get("near_white_percent", 0.0) > max_near_white:
         reasons.append("blown out / clipped highlights")
-    if review.get("edge_density", 100.0) > max_edge_density:
+    if edge > max_edge_density:
         reasons.append("too busy / watermarked (excessive edge density)")
-    if review.get("foreground_bbox_area_percent", 0.0) < min_foreground_bbox_percent:
-        reasons.append("subject too small / clipped")
-    if review.get("foreground_bbox_area_percent", 100.0) > max_foreground_bbox_percent:
-        reasons.append("flat full-frame fill (no distinct subject)")
+    if fg_pct < min_foreground_pixel_percent:
+        # Distinguish a flat fill (also low edge density) from a tiny/clipped
+        # subject (structure present but small).
+        if edge < 3.0:
+            reasons.append("flat full-frame fill (no distinct subject)")
+        else:
+            reasons.append("subject too small / clipped")
     return {"ok": not reasons, "reasons": reasons, "stats": stats}
 
 
