@@ -155,13 +155,8 @@ def commons_image_fetcher(query: str, *, width: int = 512,
     if not image_bytes:
         return {"ok": False, "image_bytes": None, "error": "empty image"}
 
-    # Commons thumbnails may be JPEG despite a .png thumburl; normalize to PNG
-    # so the stdlib pixel-QA pipeline (which only reads PNG) can consume it.
-    try:
-        image_bytes = normalize_to_png(image_bytes)
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "image_bytes": None, "error": f"image normalization failed: {exc}"}
-
+    # NOTE: JPEG->PNG normalization is performed centrally in harvest_subject,
+    # not here, so every fetch source (Commons, mock, cache) yields PNG bytes.
     labels = _derive_labels(query, best)
     return {
         "ok": True,
@@ -210,12 +205,21 @@ def harvest_subject(query: str, *,
     if not fetched.get("ok"):
         return {"ok": False, "entry": None, "reasons": [fetched.get("error", "fetch failed")],
                 "harvest": fetched}
+    # Centralize JPEG->PNG normalization here (not inside the fetcher) so any
+    # fetch source — Commons, a mock, a cached file — produces PNG bytes the
+    # stdlib pixel-QA pipeline can read. Without this, an injected fetcher that
+    # returns a JPEG would bypass normalization and fail the PNG-only filter.
+    try:
+        image_bytes = normalize_to_png(fetched["image_bytes"])
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "entry": None,
+                "reasons": [f"image normalization failed: {exc}"], "harvest": fetched}
     reg = register_reference(
         slug=query,
         title=fetched["title"],
         source_url=fetched["source_url"],
         license=fetched["license"],
-        reference_png=fetched["image_bytes"],
+        reference_png=image_bytes,
         domain=domain,
         subject=query,
         labels=fetched.get("labels", {}),
