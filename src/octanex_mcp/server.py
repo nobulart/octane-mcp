@@ -476,6 +476,41 @@ def build_mcp() -> Any:
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
 
+    # ----------------------------------------------------------------------
+    # WP6 — promoted recipe tools (first-class wrappers over checked-in recipes)
+    #
+    # These hide the underlying recipe slug so a downstream agent / Canvas UI can
+    # call by semantic name without knowing `examples/recipes/*` internals. Each
+    # is a thin wrapper over `queue_recipe` (offline-testable: it only writes
+    # command files to the workspace queue).
+    # ----------------------------------------------------------------------
+    _PLANET_RECIPES = {"earth": "photoreal-earth-space", "saturn": "saturn-moons-space"}
+
+    def _resolve_promoted_slug(recipe_kind: str, planet: Optional[str] = None) -> str:
+        if recipe_kind == "product_studio":
+            return "photoreal-product-studio"
+        if recipe_kind == "planet_scene":
+            return _PLANET_RECIPES.get((planet or "earth").lower(), "photoreal-earth-space")
+        if recipe_kind == "network":
+            return "network-graph"
+        raise ValueError(f"unknown promoted recipe kind: {recipe_kind!r}")
+
+    @mcp.tool()
+    def octane_build_product_studio(overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue the Photoreal Product Studio recipe as a first-class tool (WP6)."""
+        return _json(queue_recipe(_resolve_promoted_slug("product_studio"), overrides=overrides or {}))
+
+    @mcp.tool()
+    def octane_build_planet_scene(planet: str = "earth", overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue a photoreal planet scene (WP6). `planet='earth'` -> photoreal-earth-space, 'saturn' -> saturn-moons-space."""
+        slug = _resolve_promoted_slug("planet_scene", planet=planet)
+        return _json(queue_recipe(slug, overrides=overrides or {}))
+
+    @mcp.tool()
+    def octane_visualize_network(overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue the Knowledge Graph / network topology recipe as a first-class tool (WP6)."""
+        return _json(queue_recipe(_resolve_promoted_slug("network"), overrides=overrides or {}))
+
     return mcp
 
 

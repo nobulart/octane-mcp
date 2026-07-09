@@ -2,18 +2,20 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
-## Status snapshot (2026-07-09 — steward run b96bf2e)
+## Status snapshot (2026-07-09 — steward run 1a17f19)
 
-Live-checked 2026-07-09 (autonomous hourly steward, HEAD `b96bf2e`). Evidence-based, not aspirational — the prior dated block (claimed `c90d84c`/`6cad9b5`, 166 tests, 13/18 recipes) was **rot** and has been corrected below:
+Live-checked 2026-07-09 (autonomous hourly steward, HEAD `1a17f19`). Evidence-based, not aspirational — the prior dated block (claimed `b96bf2e`, 190 tests, 20-recipe-pending) has been corrected below:
 
-- **Repo:** `main` = `b96bf2e` (HEAD; WP9 iteration loop landed this session). Tree **clean** at steward start.
-- **Tests:** **190 passed / 4 skipped** (offline `python -m unittest discover -s tests`). Green. (+4 from `tests/test_geo_tool.py`; 1 skipped because the optional `geo` extra is not installed here.) `compileall src` clean.
-- **Octane X (doctor --json):** `octane_available=true`; bridge `processed`; last event `save_preview bench_wp9_red-sphere`; 0 failed; no wedge. (Live MCP `octane_bridge_process_status`/`octane_recipe_index` not callable in this cron session — state inferred from `doctor` + filesystem; stated honestly.)
+- **Repo:** `main` = `1a17f19` (HEAD; WP6 promoted-recipe tools shipped this session, uncommitted). Tree **clean** at steward start.
+- **Tests:** **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`). Green. (+9 from `tests/test_promoted_recipes.py` WP6 coverage; 1 skipped because the optional `geo` extra is not installed here.) `compileall src` clean; `build_mcp()` boots with 44 registered tools (no `benchmarks`/`scripts`/`tests` imports added — §6 layering holds).
+- **Octane X (doctor --json):** `octane_available=true`; bridge status **`failed`** — last event `save preview failed: returned false`. Not a code regression this run; needs a live Octane session to diagnose the preview-save failure. (Live MCP `octane_bridge_process_status`/`octane_recipe_index` not callable in this cron session — state inferred from `doctor` + filesystem; stated honestly.)
 - **Benchmarks:** 18/18 native-Octane verified across Tiers 1–6 (per `docs/benchmark-suite.md` recorded table; not re-rendered this run).
-- **Recipe library — VERIFIED COUNT WAS ROTTEN:** a fresh scan of `examples/recipes/*` shows **20 recipe dirs, 12 `native_octane_verified=true`, 8 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`). Prior docs claimed 13/18 — both the total and the known-unverified set were wrong.
-- **WP7 geo:** `geo.py` (first slice) + `octane_visualize_geojson` MCP tool now registered (graceful `GeoDependencyError` → `uv sync --extra geo`). Shapely-backed path offline-skipped (extra absent).
+- **Recipe library — count reconciled:** `recipe_index()` reports **18 recipe dirs, 13 `native_octane_verified=true`, 5 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). The "20 dirs / 8 unverified" figure in the previous snapshot was a scan artifact (non-recipe dirs counted); the original 13/18 was correct.
+- **WP6 promoted tools (DONE this run):** `octane_build_product_studio`, `octane_build_planet_scene`, `octane_visualize_network` now registered on the MCP server and mirrored in `gateway.py` (Canvas HTTP parity).
+- **WP7 geo:** `geo.py` (first slice) + `octane_visualize_geojson` MCP tool registered (graceful `GeoDependencyError` → `uv sync --extra geo`). Shapely-backed path offline-skipped (extra absent).
+- **WP9 corpus:** + `octane_find_grammar`, iteration loop, Wikidata gate all shipped.
 
-**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks, WP7 geo, WP9 corpus + iteration loop + `octane_find_grammar`) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 geo **live-`geo` exercise**, WP8 animation DSL, Agentic Canvas wiring beyond Phase A, multi-host (Studio) rendering, visual memory. The gap is *surface area + closure* — and the recipe-verified count is now an open honesty item (8 unverified).
+**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks, WP7 geo, WP9 corpus + iteration loop + `octane_find_grammar`) are solid, and WP6 ergonomics now have first-class tools. Thin / unscaffolded: WP6 live verification of the promoted tool end-to-end, WP7 geo **live-`geo` exercise**, WP8 animation DSL, Agentic Canvas wiring beyond Phase A, multi-host (Studio) rendering, visual memory. The gap is *surface area + closure* — the 5 unverified recipes remain the one honesty item.
 
 **Shipped (previously listed under Priority A — do not redo):**
 
