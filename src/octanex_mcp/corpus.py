@@ -3,7 +3,7 @@
 Sibling to ``recipes.py``: a *corpus entry* is the harvested counterpart to a
 *recipe*. Whereas a recipe ships a hand-authored command sequence, a corpus
 entry is harvested from a labeled, licensed reference image and derives its own
-acceptance spec from pixels (``benchmarks.acceptance.reference_to_acceptance``)
+acceptance spec from pixels (``octanex_mcp.acceptance.reference_to_acceptance``)
 — no vision model, no hand-authoring.
 
 Layout (per entry, ``corpus/<slug>/``):
@@ -15,7 +15,7 @@ Layout (per entry, ``corpus/<slug>/``):
     octane-preview.png native converged render (WP9 task 4)
 
 This module is pure-Python and offline-testable: it depends only on stdlib and
-``benchmarks.acceptance`` (which itself uses only ``octanex_mcp.review``).
+``octanex_mcp.acceptance`` (which itself uses only ``octanex_mcp.review``).
 Network access lives in ``scripts/harvest_commons.py`` and is injected at that
 layer, never here.
 """
@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
-from benchmarks.acceptance import filter_reference, reference_to_acceptance
+from octanex_mcp.acceptance import filter_reference, reference_to_acceptance
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORPUS_ROOT = REPO_ROOT / "corpus"
