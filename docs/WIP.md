@@ -9,11 +9,11 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 |------|-------|
 | Repo | `main` = `1a17f19` (HEAD; tree clean at steward start) |
 | Tests | **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. +9 from `tests/test_promoted_recipes.py` (WP6 tool coverage); 1 skipped (optional `geo` extra absent in this env) |
-| Octane X | bridge status **`failed`** (doctor: `octane_available=true`, last event `save preview failed: returned false`). Not a code regression — needs a live Octane session to investigate the preview-save failure; flag for the user. |
+| Octane X | running (user restarted it this session after a `failed`/not-running state; bridge recovery pending a live drain). Last prior event: `save preview failed: returned false`. |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
-| Recipe library | **18 recipe dirs, 13 `native_octane_verified=true`, 5 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). Reconciled this run: a prior scan miscounted `examples/recipes/*` (20 dirs) and wrongly listed `helicoid-spiral`/`earth-moon-space`/`math-surface` as unverified — those are not recipe dirs (`_recipe_dirs` excludes them) and `math-surface` is verified. Original 13/18 figure was correct; the "drift" was a scan artifact. |
+| Recipe library | **18 recipe dirs, 17 `native_octane_verified=true`, 1 unverified** (`avatar-guide`). Closed this run: 4 recipes (annotated-text-labels, architecture-flow, data-bars, document-ocr-layout) had existing native renders that PASS pixel acceptance; promoted from those real renders. `avatar-guide`'s prior render was near-black (failed QA) — being re-rendered live; if it passes it joins, else stays the lone unverified. Reconciled earlier: a prior scan miscounted `examples/recipes/*` (20 dirs) and wrongly listed `helicoid-spiral`/`earth-moon-space`/`math-surface` as unverified — those are not recipe dirs (`_recipe_dirs` excludes them) and `math-surface` is verified. |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)** |
-| Unscaffolded | WP6 promoted tools, WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
+| Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
