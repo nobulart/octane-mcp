@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.8.0
+version: 1.8.1
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -510,14 +510,20 @@ session, then drain.
 > idle-detection fix) are captured in
 > `references/wp4-create-light-and-render-start-hang.md`.
 
-## Live-verification gate: macOS TCC / Accessibility for Hermes.app
+## Live-verification gate: macOS TCC / Accessibility for the Hermes agent-runtime python
 
 A real Octane render — and therefore any honest `native_octane_verified` flip —
 requires the bridge to actually launch. That launch is gated by macOS
-Accessibility (TCC) on **`Hermes.app`**, NOT on Octane X. If the grant is missing
-or its token is stale, every launch fails with `osascript error -1719: assistive
-access denied`. This is invisible to the code; the bridge/queue/`request_render_restart`
-are all fine — only the OS permission stops the click.
+Accessibility (TCC) on **the process whose descendant runs `osascript`** — for this
+deployment that is the **Hermes agent-runtime python**
+(`/Users/craig/.hermes/hermes-agent/venv/bin/python`), **NOT `Hermes.app`**. If the
+grant is missing or its token is stale, every launch fails with
+`osascript error -1719: assistive access denied`. This is invisible to the code;
+the bridge/queue/`request_render_restart` are all fine — only the OS permission
+stops the click. Granting `Hermes.app` alone does NOT clear the `-1719` because the
+osascript caller is the agent-runtime python, not the desktop GUI. Fallback if the
+binary is awkward to select: grant the shell/terminal that launches Hermes (its
+launchd ancestor in the process tree).
 
 **Traps observed 2026-07-09:**
 - **`run_recipe(..., drain_timeout=N)` HANGS on TCC denial.** `verify_recipes`
@@ -526,28 +532,26 @@ are all fine — only the OS permission stops the click.
   own wall first — a 120 s terminal timeout fired before the 45 s drain returned).
   Never start a live sweep without first confirming TCC is granted.
 - **Reopening Octane X does NOT clear the -1719** — the block is on the process
-  running `osascript` (Hermes.app), not Octane.
+  running `osascript` (the agent-runtime python), not Octane.
 - **`bridge_status` can be hours-stale** during a TCC block (launch never ran).
   Trust the launch response's `tcc_blocked: true` field over cached `status.json`.
 
 **Fix (user action — agent cannot grant):** System Settings → Privacy & Security →
-Accessibility → remove `Hermes.app`
-(`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`),
-re-add + enable (refreshes a stale token), then restart Hermes + Octane. Confirm
-with a dry `octane_run_oneshot_bridge` → expect `ok: true`, not `tcc_blocked`.
+Accessibility → grant `/Users/craig/.hermes/hermes-agent/venv/bin/python`
+(re-add + enable refreshes a stale token if needed), then restart Hermes + Octane.
+Confirm with a dry `octane_run_oneshot_bridge` → expect `ok: true`, not
+`tcc_blocked`.
 
 Only after a green launch should you enqueue a recipe, run the oneshot bridge, and
 gate the `native_octane_verified` flip on a real pixel-QA pass. Condensed
 diagnostic + recovery: `references/live-verify-tcc-gate.md`.
 
-**Verified live 2026-07-09:** after re-adding `Hermes.app` to Accessibility
-(remove + re-add to refresh the TCC token), both `octane_run_oneshot_bridge` and
-`octane_start_persistent_bridge` returned `ok:true`. A full `data-bars` run then
-drained 8/8 commands (0 failed), `octane.render.start{renderTargetNode=rt}`
-returned `ok=true`, and `save_preview` completed at `beauty=5000` with a real
-multi-bar frame confirmed by vision. The crash-proof bridge fix + TCC grant is
-the proven end-to-end path. Full sequence + gotchas:
-`references/data-bars-verified-and-pitfalls.md`.
+**Proven end-to-end path:** a crash-proof bridge (`request_render_restart` wrapped
+in one pcall, `do_start` deferred to `save_preview`) plus the agent-runtime python
+TCC grant. A full `data-bars` run then drained 8/8 commands (0 failed),
+`octane.render.start{renderTargetNode=rt}` returned `ok=true`, and `save_preview`
+completed with a real multi-bar frame confirmed by vision. Full sequence +
+gotchas: `references/data-bars-verified-and-pitfalls.md`.
 
 ## Agentic Canvas Dashboard (thin native client)
 

@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.3.0
+version: 1.3.1
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -114,7 +114,7 @@ octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
 | Symptom / code | Class | Action |
 |---|---|---|
 | `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry once; if it persists, restart Octane. |
-| `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to **Hermes.app** (the process running `osascript`), not Octane. |
+| `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`), or the shell/terminal that launches Hermes. |
 | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
 | `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Scripts-menu click path instead. |
 | `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
