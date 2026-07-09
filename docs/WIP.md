@@ -11,21 +11,21 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 | Tests | **190 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. +4 from `tests/test_geo_tool.py`; 1 skipped (optional `geo` extra absent in this env) |
 | Octane X | running (doctor: `octane_available=true`, bridge `processed`, last event `save_preview bench_wp9_red-sphere`, no failed/wedge) |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
-| Recipe library | **DRIFTED** — fresh scan of `examples/recipes/*` shows **20 recipe dirs, 12 `native_octane_verified=true`, 8 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`). Docs previously claimed 13/18 — both the count and the known-unverified set were wrong |
+| Recipe library | **18 recipe dirs, 13 `native_octane_verified=true`, 5 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). Reconciled this run: a prior scan miscounted `examples/recipes/*` (20 dirs) and wrongly listed `helicoid-spiral`/`earth-moon-space`/`math-surface` as unverified — those are not recipe dirs (`_recipe_dirs` excludes them) and `math-surface` is verified. Original 13/18 figure was correct; the "drift" was a scan artifact. |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)** |
 | Unscaffolded | WP6 promoted tools, WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
-grammars, canvas UI, autonomous loop) and recipe-library verification (now **8**
-unverified recipes, incl. `earth-moon-space`/`helicoid-spiral`/`math-surface` not
-previously tracked) are the remaining work.
+grammars, canvas UI, autonomous loop) and the **5** remaining unverified recipes
+are the open work. The "8 unverified / count drift" claim was a scan artifact
+(see Recipe library row above) — the real gap was always the original 5.
 
 ## Backlog (from brainstorm 2026-07-09)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-1. **A — Recipe verification** (LOW effort / HIGH integrity): **fresh scan shows 8 unverified recipes** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`, `earth-moon-space`, `helicoid-spiral`, `math-surface`) — docs previously said 5. Live-verify each, flip `native_octane_verified`, append `docs/recipe-book.md`. *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task` over `examples/recipes/*`.
+1. **A — Recipe verification** (LOW effort / HIGH integrity): **5 unverified recipes** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). Live-verify each, flip `native_octane_verified`, append `docs/recipe-book.md`. *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task` over `examples/recipes/*` (the 20-dir / 8-unverified "drift" was a scan artifact — only these 5 are genuinely unverified).
 2. **B — Geo / terrain grammar** (HIGH strategic fit; **MCP tool SHIPPED this run**): `src/octanex_mcp/geo.py` has `elevation_grid_to_obj` + shapely-gated `geojson_to_obj` + `geo_asset_to_scene_commands`; `octane_visualize_geojson` now registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase A slice — shell + full-bleed
    viewport + intent command bar + `OCTANEX_RENDER_HOST` Studio flag
@@ -40,12 +40,14 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
 ## Recommended next move
 
-**A (recipe honesty) → then B live-`geo` path.** The recipe-verified figure rotted
-(13/18 claimed, reality is 12/20 with 8 unverified incl. `earth-moon-space`,
-`helicoid-spiral`, `math-surface` not previously tracked). Closing that honesty gap
-is the highest-integrity next move and needs only a live Octane sweep. B's tool is
-shipped + offline-green; the shapely live path needs a `uv sync --extra geo` env.
-C (Canvas) is a separate Swift/JS workstream.
+**A (recipe honesty) → then B live-`geo` path.** The 5 unverified recipes
+(`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`,
+`document-ocr-layout`) are the only remaining honesty gap; a live sweep via
+`verify_recipe_library(live=True, copy_back=True)` flips `native_octane_verified`
+on those that pass pixel QA. The earlier "12/20 / 8 unverified" drift was a scan
+artifact (non-recipe dirs counted). B's tool is shipped + offline-green; the
+shapely live path needs a `uv sync --extra geo` env. C (Canvas) is a separate
+Swift/JS workstream.
 
 ## In progress / this session
 
