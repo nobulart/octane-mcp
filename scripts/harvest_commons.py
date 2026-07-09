@@ -162,6 +162,11 @@ def commons_image_fetcher(query: str, *, width: int = 512,
         "ok": True,
         "image_bytes": image_bytes,
         "title": best["title"].replace("File:", "").rsplit(".", 1)[0],
+        # Full Commons file title (File: prefix + extension). The semantic gate
+        # queries the Commons categories API with this exact title; the stripped
+        # `title` above fails to resolve (missing page -> empty categories) which
+        # made the fail-closed gate reject every subject as "unverified".
+        "file_title": best["title"],
         "source_url": best["source_url"],
         "license": best["license"],
         "labels": labels,
@@ -224,7 +229,7 @@ def harvest_subject(query: str, *,
     # enters the corpus. Network is injectable (search/file_meta) for tests.
     from octanex_mcp.wikidata import subject_matches_query
     match = subject_matches_query(
-        query, fetched["title"], search=search, file_meta=file_meta,
+        query, fetched.get("file_title", fetched["title"]), search=search, file_meta=file_meta,
     )
     if not match["ok"]:
         return {"ok": False, "entry": None,
