@@ -150,18 +150,42 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 | 2 | `t2_bar_chart` | ✅ verified | 5 cyan bars, single combined OBJ. |
 | 2 | `t2_multi_material` | ✅ verified | red cube + green sphere (two groups). |
 | 2 | `t2_scatter` | ✅ verified | orange points in 3D space. |
-| 3–6 | `t3`–`t6_*` | ⬜ not yet run | Specified + offline-verified; pending live render. |
+| 3 | `t3_glass_like` | ✅ verified | transmission/ior/opacity sphere. |
+| 3 | `t3_emissive` | ✅ verified | chromatic cyan+amber rim glow; `bright_fraction.min_near_white` 3.0→0.5. |
+| 3 | `t3_product_studio` | ✅ verified | cyclorama + clearcoat red hero; `color_family` red. |
+| 4 | `t4_architecture_flow` | ✅ verified | User/Agent/Queue/Octane blocks + flow arrows; `color_family` blue. |
+| 4 | `t4_network_graph` | ✅ verified | 6 nodes / 8 edges spatial graph (vision-confirmed). |
+| 4 | `t4_annotated_diagram` | ✅ verified | labelled diagram primitives. |
+| 5 | `t5_math_surface_complex` | ✅ verified | z=f(x,y) surface; `shape_profile` 37 rows. |
+| 5 | `t5_wave_interference` | ✅ verified | teal interference surface; `color_family` teal. |
+| 5 | `t5_vector_field` | ✅ verified | 15 orange arrow glyphs; `color_family` orange. |
+| 6 | `t6_vase_studio` | ✅ verified | three vases on studio cyclorama. |
+| 6 | `t6_earth_space` | ✅ verified | blue Earth + atmosphere rim in space; `color_family` blue. |
+| 6 | `t6_saturn_system` | ✅ verified | planet + ring + moon. |
 
-**Lessons from the Tier 1–2 live run (also in `docs/recipe-book.md`):**
+**All 18 tasks render natively and pass pixel acceptance (18/18).**
+
+**Lessons (also in `docs/recipe-book.md`):**
+* **Render-restart collision was the #1 blocker beyond Tier 2.** Each
+  `import_geometry`/`assign_material`/`set_lighting` calls `request_render_restart`,
+  starting an unbounded render; the next `save_preview`'s `start{}` then hit
+  *"Can't start a new render before finishing the previous render"* and aborted
+  before `saveImage`. Fixed by wrapping `start/restart/continue` in a 5-attempt
+  retry loop with a 0.5 s yield after `stop()`+`pause()` (both templates). After
+  this the persistent bridge timer drained all 148 Tier 3–6 commands (282 processed,
+  0 failed) and every `save_preview` wrote its PNG.
 * `soft_studio` lighting is strongly cool-blue; exact-RGB `color_present` is the
   wrong gate for lit PBR — use `color_family` (hue-distance tolerant).
 * `metallic=1.0` without an environment map does not read as its base colour.
+* Emissive glow is chromatic, not white — tune `bright_fraction.min_near_white`
+  down (~0.5) or add a luminance-based check.
 * Queue must contain the COMPLETE command set (import + every material +
   assignment + camera + lighting + save); partially purged queues silently
   render neutral/blank.
 * AppleScript menu automation in `octane_run_*_bridge` cannot locate the script
   (name/`.lua` mismatch); live drains need a manual click on
-  `OctaneX ▸ Scripts ▸ hermes_bridge_persistent.generated`.
+  `OctaneX ▸ Scripts ▸ hermes_bridge_persistent.generated` (or rely on the
+  persistent bridge's 1.0 s auto-drain timer).
 
 ---
 

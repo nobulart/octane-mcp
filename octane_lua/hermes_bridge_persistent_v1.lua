@@ -558,13 +558,22 @@ local function request_render_restart(samples, width, height)
     -- bounded by wait_for_render_ready() polling the sample count to min_samples
     -- (with a wall-clock timeout), then the frame is grabbed. This avoids an
     -- unbounded render that would block every subsequent restart.
-    local ok, result = try_render_call("start()", function() return octane.render.start() end)
-    if ok then return true, "render start requested (main viewport; bounded by wait_for_render_ready)" end
-    ok, result = try_render_call("restart()", function() return octane.render.restart() end)
-    if ok then return true, "render restart requested" end
-    ok, result = try_render_call("continue()", function() return octane.render.continue() end)
-    if ok then return true, "render continue requested" end
-    return false, "render refresh failed; see bridge.log for attempted signatures"
+    -- Retry loop: Octane's stop() does not always halt the in-flight render
+    -- synchronously, so the immediate start() can still raise "Can't start a
+    -- new render before finishing the previous render". Yield briefly and
+    -- retry so the prior pass has actually ended before we (re)start ours.
+    local last_err = "no attempts made"
+    for attempt = 1, 5 do
+        local ok, result = try_render_call("start()", function() return octane.render.start() end)
+        if ok then return true, "render start requested (main viewport; bounded by wait_for_render_ready)" end
+        ok, result = try_render_call("restart()", function() return octane.render.restart() end)
+        if ok then return true, "render restart requested" end
+        ok, result = try_render_call("continue()", function() return octane.render.continue() end)
+        if ok then return true, "render continue requested" end
+        last_err = tostring(result)
+        sleep_seconds(0.5)
+    end
+    return false, "render refresh failed after retries; last: " .. last_err
 end
 
 local function render_stat_number(stats, key)

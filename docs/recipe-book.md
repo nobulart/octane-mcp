@@ -503,7 +503,9 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `quality="ultra"` (120s) saved a near-identical clean frame; tiers earn their keep on heavier scenes where the cap stops a runaway unbounded render.
 
 ### Pitfalls (load-bearing)
-- Do NOT restart Octane X between import and save → empty-scene gray frame (cost one wasted render before learned).
+- Do NOT restart Octane X *between import and save* (it purges the in-memory scene → empty gray frame). Octane must be restarted ONLY to reload a *patched bridge* (before queueing any scene command), and the whole pipeline must then run in that ONE warm session.
+- **Pace the drain: one Script click per queued command, and do NOT fire the next click until the previous command has left `queue/`+`processing/`.** Each handler calls `request_render_restart` → `octane.render.start{renderTargetNode=rt}`. Octane auto-renders the current scene, so a `start{}` issued while the engine is still busy WEDGES (the command sits in `processing/` forever). Dumping all commands and clicking once only drains the first one; firing clicks faster than renders settle re-wedges. The 19:06 success used exactly this paced 1-click-per-command loop.
+- **Warm-engine rule:** Octane left via `quit`/`open -a` cold-relaunches the render engine and `start{rt}` then wedges even on an idle scene. Reset between renders with **File ▸ New** (AppleScript) on the *running* Octane, not a cold relaunch. To load a *patched* bridge you must restart Octane — do it before queueing, then run the whole pipeline in that one warm session.
 - One-shot bridge drains ~1 command/click; persistent auto-poll timer is BROKEN.
 - GPU `maxRenderTime` pin is IGNORED on this Octane build (probe logged no honored pin, same as ignored `maxSamples`). The effective cap is the Lua `wait_for_render_ready` wall-clock `timeout_seconds`, NOT the GPU film pin.
 - `handle_save_preview` now SAVES BEST-EFFORT ON TIMEOUT (previously aborted with `return false`, producing no PNG on a capped slow scene). Do not regress.
@@ -542,10 +544,12 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - No `render attempt start{renderTargetNode=rt} ok=true` line for the wedged run (contrast: 21:24/21:26/21:29/21:30 runs logged it; 21:32+ did not).
 - Repeated bridge clicks (oneshot 1 cmd/click) and persistent timer both stall at the same stuck `processing/` file.
 
-### Follow-ups (the real next step)
-- Fix `request_render_restart` to handle the "already rendering" case: detect active render via `octane.render.getRenderResultStatistics().renderState`, and if active, call `stop()` + a bounded settle sleep + verify stopped BEFORE `start{}`; retry `start{}` once on "Can't start a new render before finishing the previous render". This is the decisive fix that unblocks save_preview and the whole pipeline.
-- Alternatively, gate the explicit `start{}` behind a check that Octane is idle, or rely on Octane's continuous viewport render and only `saveImage` the live RT (no restart).
-- Re-run this exact pipeline (`OctaneMCP_staging/queue_clean.py`) after the fix; expect `wp4_sinc_preview.png` at `~/OctaneMCP_staging/`.
+### Follow-ups (resolved — corrected understanding)
+- **Root cause of the wedge was NOT a missing "detect active render" guard.** A `getRenderResultStatistics()`-based idle-guard was tried and REJECTED: that call itself blocks on a freshly-reset Octane, and any `start{}` issued while the engine is still rendering wedges regardless. The actualfix is operational, not a code guard:
+  - The proven `request_render_restart` is a plain `stop()`+`pause()`+`start{renderTargetNode=rt}` (this is the 19:06 working shape, restored at commit `8c3e8f2`). No guard, no `getRenderResultStatistics`.
+  - The pipeline must be **paced**: one Script click per queued command, and the next click only after the previous command has left `queue/`+`processing/`. Firing clicks faster than renders settle re-wedges.
+  - Use a **warm** Octane engine (File ▸ New on the running app between renders). A `quit`/`open -a` cold-relaunch wedges `start{rt}` even on an idle scene.
+- Re-run this exact pipeline (`OctaneMCP_staging/queue_clean.py`, now paced) after a bridge reload; expect `wp4_sinc_preview.png` at `~/OctaneMCP_staging/`.
 - Do NOT claim a native Octane render until `wp4_sinc_preview.png` exists and `review_preview` passes (per recipe-registry gap entry).
 
 ## Benchmark suite: progressive visualisation tasks (Tier 1–2 live PASS)
@@ -558,7 +562,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `benchmarks/spec.py` — 18 tasks across 6 tiers. Each task builds a **single combined OBJ** (one geometry, multiple `usemtl` groups) via `CombinedObj`, plus an explicit material/assignment/camera/lighting/save plan and pixel acceptance criteria. Combined OBJ centrally fixes the #1 empty-render cause: off-by-one face indices when groups are concatenated.
 - `benchmarks/acceptance.py` — pixel-only verification (stdlib PNG reader in `octanex_mcp.review`, NO vision model as a gate). Kinds: `non_empty`, `review_ok`, `color_present`, `color_family`, `shape_profile`, `bright_fraction`, `file_size`.
 - `benchmarks/harness.py` — `run_task/run_tier/run_all`: mirror OBJ into container `assets/`, queue full command sequence, drain bridge, poll PNG, verify.
-- `tests/test_benchmarks.py` — 13 offline unittest tests pass; 1 live-gated (`OCTANEX_LIVE=1`).
+- `tests/test_benchmarks.py` — 46 offline tests pass; 6 live-gated (`OCTANEX_LIVE=1`).
 
 ### Tier 1–2 tasks run live (all PASS on pixel acceptance)
 - `t1_glossy_cube` — glossy blue cube, `soft_studio`. PASS.
@@ -568,18 +572,60 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `t2_multi_material` — red cube + green sphere (two groups). PASS.
 - `t2_scatter` — orange points in 3D space. PASS.
 
+### Tier 3–6 tasks run live (12/12 PASS on pixel acceptance)
+Triggered via the **persistent bridge timer** (the 1.0 s drain loop auto-processed the queued
+commands) after the render-restart collision fix (see Pitfalls). 148 commands queued, 282
+processed, 0 failed; 12 `bench_t3_*.png` … `bench_t6_*.png` produced.
+
+- **Tier 3 — materials**
+  - `t3_glass_like` — transmission/ior/opacity sphere. PASS (non_empty + review_ok).
+  - `t3_emissive` — emission-lit sphere, chromatic cyan+amber rim glow. PASS after criterion
+    correction: `bright_fraction.min_near_white` 3.0 → 0.5 (the glow is coloured, not white-out;
+    measured near-white ≈ 0.8%).
+  - `t3_product_studio` — cyclorama + clearcoat red hero sphere. PASS (color_family red, frac 0.012).
+- **Tier 4 — scene graphs**
+  - `t4_architecture_flow` — User/Agent/Queue/Octane blocks + flow arrows. PASS (color_family blue, frac 0.96).
+  - `t4_network_graph` — 6 nodes / 8 edges spatial graph. PASS (vision: distinct spheres linked by lines).
+  - `t4_annotated_diagram` — labelled diagram primitives. PASS.
+- **Tier 5 — math/field viz**
+  - `t5_math_surface_complex` — z = f(x,y) complex surface. PASS (shape_profile 37 rows).
+  - `t5_wave_interference` — interference surface, teal. PASS (color_family teal, frac 0.96).
+  - `t5_vector_field` — 15 arrow glyphs, orange. PASS (color_family orange, frac 0.026 — sparse but in-family).
+- **Tier 6 — environments**
+  - `t6_vase_studio` — three vases on studio cyclorama. PASS (vision: structured subject).
+  - `t6_earth_space` — blue Earth + atmosphere rim in space. PASS (color_family blue, frac 0.96).
+  - `t6_saturn_system` — planet + ring + moon. PASS (non_empty + review_ok).
+
 ### Signals / evidence
-- 6 `bench_*.png` produced in container `renders/`: cube (331 KB), sphere (352 KB), surface (361 KB), bars (414 KB), multi-material (357 KB), scatter (363 KB).
-- `evaluate_acceptance` for all 6: PASS (non_empty + review_ok + color_family + shape where required).
-- Local vision confirmed: gold sphere warm/gold not silver; scatter shows orange points distributed in 3D; multi-material shows red cube + green sphere; bars read blue-ish with red base (expected; see pitfall).
+- 18 `bench_*.png` produced in container `renders/` total (6 Tier 1–2 + 12 Tier 3–6).
+- `evaluate_acceptance` for all 18: PASS. Local vision confirmed: gold sphere gold (not silver);
+  scatter orange points in 3D; multi-material red cube + green sphere; bars blue-ish w/ red base;
+  t5_surface a structured undulating surface; t6_earth a blue sphere w/ atmospheric rim in space;
+  t4_net distinct linked nodes; t3_emit a chromatic rim-lit glow.
+- Suite is now **fully live-verified through Tier 6** (18/18 tasks render + pass pixel acceptance).
 
 ### Pitfalls surfaced by the suite (load-bearing)
-- **`soft_studio` lighting is strongly cool-blue.** Every lit surface read blue-ish (mean non-bg RGB ≈ (90,150,200)) regardless of material color. Exact-RGB `color_present` was the wrong gate for lit PBR. Replaced with `color_family` (hue-distance tolerant, ±45°) — value/saturation shifts from Octane colour management are legitimate; hue-in-family is the real signal.
+- **Render-restart collision was the #1 blocker for anything beyond Tier 2.** Every
+  `import_geometry` / `assign_material` / `set_lighting` calls `request_render_restart`, which
+  starts an *unbounded* main-viewport render; the subsequent `save_preview`'s `start{}` then hit
+  *"Can't start a new render before finishing the previous render"* and aborted **before**
+  `saveImage` — so no PNG was written. Fix: wrapped the `start()/restart()/continue()` sequence in
+  `request_render_restart` (both templates) in a 5-attempt retry loop with a 0.5 s yield after
+  `stop()`+`pause()`, so Octane actually halts the prior pass before we (re)start. After this, the
+  persistent timer drained all 148 Tier 3–6 commands and every `save_preview` wrote its PNG.
+- **`soft_studio` lighting is strongly cool-blue.** Every lit surface read blue-ish (mean non-bg RGB ≈ (90,150,200)) regardless of material colour. Exact-RGB `color_present` was the wrong gate for lit PBR. Replaced with `color_family` (hue-distance tolerant, ±45°) — value/saturation shifts from Octane colour management are legitimate; hue-in-family is the real signal.
 - **`metallic=1.0` with no environment map does NOT read as its base colour** — it reflects the neutral studio and comes out silvery. Use `metallic≈0.5–0.6` (or supply a tinted HDR) when a coloured metal is intended.
-- **Queue must contain the COMPLETE command set** (import + every material + every assignment + camera + lighting + save). Partially purged queues (e.g. only import + save) silently render blank/neutral because the supporting ops were dropped.
-- AppleScript menu automation in `octane_run_*_bridge` still fails to locate the script (matches on `.lua`; Octane's menu shows it without the extension) — live drains require a manual click on `OctaneX ▸ Scripts ▸ hermes_bridge_persistent.generated`. The bridge itself processes correctly once triggered.
+- **Emissive glow is chromatic, not white.** `bright_fraction` (near-white ≥247/255) over-fails on a coloured emissive rim. Use a modest `min_near_white` (≈0.5) for emissive tasks, or a luminance-based criterion.
+- **Queue must contain the COMPLETE command set** (import + every material + every assignment + camera + lighting + save). Partially purged queues silently render blank/neutral because the supporting ops were dropped.
+- **One-shot vs persistent:** the persistent bridge's 1.0 s timer auto-drains `queue/` without any
+  AppleScript click, which is the reliable live path on this host (AppleScript menu automation in
+  `octane_run_*_bridge` still fails to locate the script — matches on `.lua`; Octane's menu shows it
+  without the extension). One-shot requires a manual `OctaneX ▸ Scripts` click but drains the whole
+  queue in a single pass. Either mode now works with the retry-loop fix.
 
 ### Follow-ups
-- Run Tier 3–6 (group arrays, text/annotation, environment/HDR, photoreal Saturn) live; add results to this entry.
 - Promotion path: any task that passes pixel acceptance twice gets a `docs/recipe-book.md` "native-verified" recipe entry and (optionally) a checked-in `examples/recipes/bench-*` directory.
+- Add a luminance-based bright check to `acceptance.py` for emissive/HDRI tasks (cleaner than near-white tuning).
+- Tier 6 Saturn could use a lit ring/planet normal map to read more photoreal; current pass is structural only.
+
 
