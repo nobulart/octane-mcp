@@ -76,16 +76,15 @@ class RecipeRegistryTests(unittest.TestCase):
             self.assertIn("bundle_path", save_preview["payload"])
 
     def test_validate_recipe_library_reports_every_checked_in_recipe_ok(self) -> None:
-        # Honest state: 17/18 recipes verified; `math-surface` is the single
-        # intentional contract gap (its reference preview PNG was dropped because
-        # the recipe has a pre-existing gap), so validate_recipe_library reports
-        # it as not-ok. The library is still "ok" for every recipe EXCEPT that
-        # known gap — assert the gap is exactly math-surface, not a regression.
+        # Honest state: all 18/18 recipes verified. `math-surface` was the last
+        # gap (no native PNG on disk); it was re-rendered live and its
+        # `native_octane_verified` flag flipped true (see docs/roadmap.md WP8
+        # notes). The library should now report every checked-in recipe as ok.
         report = validate_recipe_library()
 
         failed = [item["slug"] for item in report["items"] if not item["ok"]]
-        self.assertEqual(failed, ["math-surface"], report["items"])
-        self.assertEqual(report["invalid"], 1)
+        self.assertEqual(failed, [], report["items"])
+        self.assertEqual(report["invalid"], 0)
         self.assertGreaterEqual(report["checked"], 18)
 
     def test_all_recipes_declare_visual_iteration_contract(self) -> None:

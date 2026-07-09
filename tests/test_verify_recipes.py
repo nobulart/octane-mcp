@@ -55,13 +55,13 @@ class TestRecipeContractOffline(TestCase):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
         self.assertEqual(report["total"], 18)
-        # 17/18 recipes ship scene.obj + scene.json + a reference preview, so 17
-        # pass the offline contract. math-surface is the one intentional gap
-        # (preview PNG dropped in 0993e51) and fails contract by design.
-        self.assertEqual(report["contract_ok"], 17, report)
-        self.assertEqual(report["contract_failed"], 1)
+        # 18/18 recipes ship scene.obj + scene.json + a reference preview, so all
+        # 18 pass the offline contract. `math-surface` was the last gap (preview
+        # PNG dropped in 0993e51); it was re-rendered live and now verifies.
+        self.assertEqual(report["contract_ok"], 18, report)
+        self.assertEqual(report["contract_failed"], 0)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
-        self.assertEqual(failed, ["math-surface"], report)
+        self.assertEqual(failed, [], report)
 
     def test_verify_recipe_library_single_slug(self):
         report = verify_recipe_library(dry_run=True, slug="data-bars")

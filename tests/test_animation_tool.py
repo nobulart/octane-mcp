@@ -64,6 +64,16 @@ class BuildAnimationCommandsTests(unittest.TestCase):
         for p in payloads:
             self.assertEqual(p["quality"], "high")
 
+    def test_output_dir_override_is_absolute(self) -> None:
+        manifest = orbit_manifest(fps=2, duration=1.0, segments=4)
+        cmds = build_animation_commands(manifest, output_dir="/abs/renders")
+        previews = [c["payload"]["path"] for c in cmds if c["op"] == "save_preview"]
+        for p in previews:
+            self.assertTrue(p.startswith("/abs/renders/frame_"), p)
+        # Default (no override) is the relative "renders" (caller must absolutize).
+        cmds2 = build_animation_commands(manifest)
+        self.assertTrue(cmds2[1]["payload"]["path"].startswith("renders/frame_"))
+
 
 class AnimationToolTests(unittest.TestCase):
     def test_tool_registers_on_server(self) -> None:

@@ -24,7 +24,7 @@ console-script server launches with repo root off ``sys.path``.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 __all__ = [
@@ -147,6 +147,7 @@ def build_animation_commands(
     timeout_seconds: int = 10,
     quality: Optional[str] = None,
     max_render_time: Optional[int] = None,
+    output_dir: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Queue-ready per-frame command envelopes for the full bake plan.
 
@@ -161,7 +162,17 @@ def build_animation_commands(
     can request ``"high"`` / ``"ultra"`` convergence tiers uniformly. The
     resolution is done by the *caller* (the tool passes the resolved envelope),
     keeping this helper free of the models import and server-boot layering clean.
+
+    ``output_dir`` overrides ``manifest.output_dir``. **Use a *relative* path
+    such as ``"renders"``** — that is what the Octane Lua bridge's ``saveImage``
+    resolves correctly under the workspace ``OctaneMCP/renders`` dir (proven live:
+    the ``octane_save_preview`` tool writes ``octane-preview.png`` this way). An
+    *absolute* ``/…/OctaneMCP/renders/…`` path is re-based by Octane's ``saveImage``
+    to the sandbox ``Data/renders/``, dropping the ``OctaneMCP`` segment and losing
+    the frames. The MCP tools intentionally leave this as the relative default.
     """
+    if output_dir is not None:
+        manifest = replace(manifest, output_dir=output_dir)
     paths = frame_paths(manifest, count=max(1, int(round(manifest.duration * manifest.fps))))
     commands: List[Dict[str, object]] = []
     for (i, _t, cam_cmd), path in zip(build_bake_plan(manifest), paths):

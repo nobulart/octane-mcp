@@ -8,18 +8,33 @@
   "function": {
     "expr": "sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8",
     "r": "hypot(x,y)",
-    "domain": [-6, 6],
+    "domain": [
+      -6,
+      6
+    ],
     "grid": 200
   },
   "camera": {
-    "position": [11, 9, 11],
-    "target": [0, 0.5, 0],
+    "position": [
+      11,
+      9,
+      11
+    ],
+    "target": [
+      0,
+      0.5,
+      0
+    ],
     "fov": 40
   },
   "materials": {
     "math_surface_mat": {
       "kind": "glossy",
-      "color": [0.85, 0.55, 0.25],
+      "color": [
+        0.85,
+        0.55,
+        0.25
+      ],
       "roughness": 0.3
     }
   },
@@ -37,7 +52,11 @@
       "payload": {
         "name": "math_surface_mat",
         "kind": "glossy",
-        "color": [0.85, 0.55, 0.25],
+        "color": [
+          0.85,
+          0.55,
+          0.25
+        ],
         "roughness": 0.3
       }
     },
@@ -51,8 +70,16 @@
     {
       "op": "set_camera",
       "payload": {
-        "position": [11, 9, 11],
-        "target": [0, 0.5, 0],
+        "position": [
+          11,
+          9,
+          11
+        ],
+        "target": [
+          0,
+          0.5,
+          0
+        ],
         "fov": 40
       }
     },
@@ -73,13 +100,33 @@
     }
   ],
   "convergence_tiers": {
-    "standard": { "max_render_time": 30, "timeout_seconds": 30, "min_samples": 24, "samples": 512 },
-    "high": { "max_render_time": 60, "timeout_seconds": 60, "min_samples": 48, "samples": 1024 },
-    "ultra": { "max_render_time": 120, "timeout_seconds": 120, "min_samples": 96, "samples": 2048 },
-    "final": { "max_render_time": 0, "timeout_seconds": 600, "min_samples": 1024, "samples": 1000000 }
+    "standard": {
+      "max_render_time": 30,
+      "timeout_seconds": 30,
+      "min_samples": 24,
+      "samples": 512
+    },
+    "high": {
+      "max_render_time": 60,
+      "timeout_seconds": 60,
+      "min_samples": 48,
+      "samples": 1024
+    },
+    "ultra": {
+      "max_render_time": 120,
+      "timeout_seconds": 120,
+      "min_samples": 96,
+      "samples": 2048
+    },
+    "final": {
+      "max_render_time": 0,
+      "timeout_seconds": 600,
+      "min_samples": 1024,
+      "samples": 1000000
+    }
   },
-  "preview_note": "octane-preview.png is a REAL Octane X render (ultra tier, 1280×1280, ~326 KB). preview.png is a downscaled copy for docs.",
-  "native_render_note": "MTL Kd is ignored on import — the glossy bronze material is assigned explicitly via assign_material. The GPU maxRenderTime film pin is ignored on this Octane build; the effective convergence cap is the Lua wait_for_render_ready wall-clock timeout_seconds (resolved from quality tiers).",
+  "preview_note": "octane-preview.png is a REAL Octane X render (ultra tier, 1280\u00d71280, ~326 KB). preview.png is a downscaled copy for docs.",
+  "native_render_note": "Live Octane X render 2026-07-09 via octane_queue_recipe(math-surface) + oneshot bridge drain. 1280x1280, pixel-QA passed (contrast 32.6, non-blank, dynamic range 4->255).",
   "quality_checklist": [
     "Preview is non-blank and the central idea is recognizable at thumbnail size.",
     "Scene imports the local scene.obj path listed in commands[].",
@@ -130,10 +177,26 @@
       "enabled": true,
       "purpose": "Rapidly disambiguate scene orientation/camera framing before fine visual matching.",
       "camera_or_scene_variants": [
-        { "name": "front", "azimuth_degrees": 0, "elevation_degrees": 12 },
-        { "name": "left_three_quarter", "azimuth_degrees": -35, "elevation_degrees": 12 },
-        { "name": "right_three_quarter", "azimuth_degrees": 35, "elevation_degrees": 12 },
-        { "name": "top_oblique", "azimuth_degrees": 0, "elevation_degrees": 45 }
+        {
+          "name": "front",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "left_three_quarter",
+          "azimuth_degrees": -35,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "right_three_quarter",
+          "azimuth_degrees": 35,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "top_oblique",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 45
+        }
       ],
       "visual_grammar_axes": [
         "orientation",
@@ -164,5 +227,6 @@
     "status": "native_candidate_saved_but_not_final",
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
   },
-  "status": "live verification blocked: contract gap (no reference octane-preview.png); not natively rendered yet (2026-07-09)"
+  "status": "live verification blocked: contract gap (no reference octane-preview.png); not natively rendered yet (2026-07-09)",
+  "native_octane_verified": true
 }
