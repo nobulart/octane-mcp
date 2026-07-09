@@ -7,13 +7,13 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `5d928ac`, clean, up to date with `origin/main` |
-| Tests | 116 passed / 1 skipped (offline `python -m unittest discover -s tests`) — green |
+| Repo | `main` = `8eeca59`, ahead 3 of `origin/main` (not pushed) |
+| Tests | 136 passed / 1 skipped (offline `python -m unittest discover -s tests`) — green |
 | Octane X | running; persistent bridge; 135 processed / 0 failed; no wedge |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
-| Recipe library | 18 recipes; 2 verified, 16 target/reference only |
+| Recipe library | 18 recipes; 2 verified, 16 target/reference only (offline contract harness passes 18/18; live verify pending) |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry |
-| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, `apps/octanex-canvas/` (not built), Studio multi-host, visual memory |
+| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
@@ -72,9 +72,37 @@ _No open build — direction A committed; see Done recently._
   under the canonical command — previously his 14 were silently 0 under unittest.
   Minor cosmetic `ResourceWarning` (unclosed listening socket in gateway teardown)
   pre-exists and is out of scope.
-
-## Done recently
-
 - `5d928ac` fix(bridge): render-restart retry loop unblocks Tier 3–6 renders; 18/18 benchmarks live.
 - `760e34b` docs(canvas): ticket-ready implementation roadmap + proposal cross-link.
 - `fc566cf` feat(benchmarks): progressive visualisation suite + Tier 1–2 live verification.
+
+## Proposed next steps (reviewer recommendations)
+
+Prioritised against the roadmap's open work packages + brainstorm backlog. Each
+item states the concrete first action so a smaller model (or Plato) can pick it up.
+
+1. **Run direction A live — close the 16-recipe honesty gap.** Highest integrity
+   payoff; harness is built and contract-OK. First action: execute against a
+   running Octane session, batch the 6 network/data-viz recipes first
+   (`network-graph`, `pca-3d`, `correlation-heatmap`, `scatter-plot`, `bar-chart`,
+   `histogram`) to validate the live path fast, then the rest. Promote only those
+   that pass pixel QA (`copy_back=True`).
+2. **WP6 recipe promotion (B of brainstorm).** Wrap the 3 strongest verified
+   recipes as first-class tools: `octane_build_product_studio`,
+   `octane_build_planet_scene`, `octane_visualize_network`. Files:
+   `src/octanex_mcp/recipes.py`, `server.py`, `tests/test_recipes.py`.
+3. **WP7 geo/terrain grammar (C of brainstorm).** GeoJSON/DEM → combined OBJ behind
+   `uv sync --extra geo` (shapely), with graceful "extra missing" failure per the
+   dependency policy. Highest research fit (ECDO/TPW/impact-structure).
+4. **Canvas Phase B wiring (builds on Plato's Phase A).** Connect the gateway's
+   `read_status()` + `/mcp/call` to a live dashboard: intent command bar →
+   `octane_build_concept` / `octane_queue_recipe`, status pill from `render_stage`.
+   Files: `apps/octanex-canvas/web/*`, `gateway.py`.
+5. **WP8 animation DSL (F of brainstorm).** Camera-orbit keyframe manifest +
+   optional ffmpeg encode; bounded first slice only.
+6. **Texture gen (G of brainstorm).** image-gen → `texture_path`/`normal_path` on
+   materials, closing the "texture approximated with geometry" recipe pitfall.
+
+**Recommended sequence:** (1) first — it is the only remaining honesty gap and is
+already coded. Then (2) or (3) for ergonomics/research leverage; (4) is a parallel
+Swift/JS workstream Plato can own. (5)/(6) are later.

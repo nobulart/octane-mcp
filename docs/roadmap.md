@@ -6,13 +6,13 @@ This roadmap is a practical implementation guide for smaller coding models worki
 
 Live-checked 2026-07-09 (Hermes review session). Evidence-based, not aspirational:
 
-- **Repo:** `main` = `5d928ac`, tree clean, up to date with `origin/main`.
-- **Tests:** 116 passed / 1 skipped (offline `python -m unittest discover -s tests`). Green.
-- **Octane X:** running; persistent bridge active; **135 commands processed, 0 failed**; status `released`; no wedge.
+- **Repo:** `main` = `8eeca59`, ahead 3 of `origin/main` (not pushed); tree includes merged Agentic Canvas Phase A + recipe-verification harness.
+- **Tests:** 136 passed / 1 skipped (offline `python -m unittest discover -s tests`). Green. (Note: 14 of these are Plato's Canvas tests, converted from pytest-style to `unittest.TestCase` this session to match the repo's `python -m unittest` policy.)
+- **Octane X:** running; persistent bridge active; **135 commands processed, 0 failed** (2026-07-09 check); status `released`; no wedge.
 - **Benchmarks:** **18/18 native-Octane verified** across Tiers 1–6. The T3–6 render-restart collision is fixed in both bridge templates.
-- **Recipe library:** 18 recipes registered; only **2** `native_octane_verified=true` (`math-surface`, `photoreal-vase-studio`). The other 16 ship *target/reference* PNGs, not verified native Octane output.
+- **Recipe library:** 18 recipes registered; only **2** `native_octane_verified=true` (`math-surface`, `photoreal-vase-studio`). The other 16 ship *target/reference* PNGs. An offline contract-check harness now exists (`benchmarks/verify_recipes.py`) — all 18 pass the contract check — but the **live native verification of the remaining 16 has not been executed**.
 
-**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 science/geo grammar, WP8 animation DSL, the **Agentic Canvas Swift app** (`apps/octanex-canvas/` not yet built), multi-host (Studio) rendering, visual memory. The gap is *surface area + closure*, not reliability.
+**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 science/geo grammar, WP8 animation DSL, **Agentic Canvas wiring beyond Phase A** (HTTP gateway + web bundle + Swift host merged this session; direction-B dashboard integration still open), multi-host (Studio) rendering, visual memory. The gap is *surface area + closure*, not reliability.
 
 **Shipped (previously listed under Priority A — do not redo):**
 
