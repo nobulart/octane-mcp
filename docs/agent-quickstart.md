@@ -10,6 +10,17 @@ MCP tool -> JSON file in queue/ -> Octane Lua bridge -> Octane scene -> optional
 
 The MCP server does **not** directly control Octane's GUI. It writes safe command files. Octane executes them only after a Lua bridge script is running inside Octane X.
 
+## Render-time expectations
+
+Octane X converges fast. Do not assume a render needs minutes.
+
+- **Simple scenes** (a few meshes, modest geometry): a perfectly recognisable preview can land in **under 1 second**.
+- **Complex scenes** (many meshes, PBR materials, volumetrics): excellent results in **under 15 seconds**, converging to a full solution after a few minutes.
+- **Previews of simple scenes:** **10–15 s** of render time is more than sufficient — do not burn minutes waiting for full convergence when a quick preview already proves the scene.
+- Use longer budgets only when the recipe explicitly needs high sample counts (e.g. photoreal/denoiser passes) or when pixel acceptance on a quick frame fails and you need a cleaner one.
+
+Practical effect on verification: a legitimate native render can finish in well under 20 s. A sweep/promotion guard that rejects passes under a fixed wall-clock threshold (e.g. "rendered in < 20 s = stale") is **wrong** for this renderer and must instead rely on fresh-file mtime + real pixel metrics.
+
 ## First checks
 
 1. If this is a fresh checkout, run `PYTHONPATH= uv run octanex-mcp init` and `PYTHONPATH= uv run octanex-mcp doctor` from the repo.

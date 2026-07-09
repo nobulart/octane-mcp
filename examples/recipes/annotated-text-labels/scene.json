@@ -257,7 +257,7 @@
     "Materials named in OBJ usemtl statements are documented in scene.mtl and scene.json.",
     "Native Octane output must be saved as octane-preview.png before claiming native render success."
   ],
-  "native_octane_verified": false,
+  "native_octane_verified": true,
   "target_preview": "preview.png",
   "visual_iteration_protocol": {
     "model": "ollama:glm-ocr",
@@ -345,5 +345,6 @@
     ],
     "status": "pending_native_octane_iteration",
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
-  }
+  },
+  "status": "native_octane_verified (verify_recipes, 2026-07-09)"
 }

@@ -12,6 +12,7 @@ where ``report`` is a list of per-criterion result dicts.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -179,8 +180,21 @@ def _check_file_size(path: Path, crit: dict[str, Any]) -> dict[str, Any]:
     return {"passed": ok, "bytes": size, "min_bytes": crit.get("min_bytes", 1000)}
 
 
-def evaluate_acceptance(path: str | Path, criteria: list[dict[str, Any]]) -> dict[str, Any]:
+def evaluate_acceptance(
+    path: str | Path,
+    criteria: list[dict[str, Any]],
+    *,
+    wait_seconds: float = 20.0,
+    poll: float = 0.25,
+) -> dict[str, Any]:
     """Evaluate a list of acceptance criteria against a saved PNG.
+
+    Octane's ``saveImage`` returns before the PNG is fully flushed to disk, so a
+    caller that reads immediately can hit a truncated-IDAT decode error
+    (``Error -5 ... incomplete or truncated stream``) even though the final file
+    is valid. We therefore retry the decode until the file stabilizes or
+    ``wait_seconds`` elapses; only a persistent decode failure is reported as an
+    error.
 
     Returns:
         {"passed": bool, "path": str, "decoded": bool, "checks": [per-criterion dict]}
@@ -193,13 +207,22 @@ def evaluate_acceptance(path: str | Path, criteria: list[dict[str, Any]]) -> dic
             result["checks"].append(c)
         return result
 
-    try:
-        width, height, pixels = _decode(p)
-    except Exception as exc:  # noqa: BLE001 - report any decode failure
+    width = height = pixels = None
+    last_exc: Exception | None = None
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        try:
+            width, height, pixels = _decode(p)
+            last_exc = None
+            break
+        except Exception as exc:  # noqa: BLE001 - transient until flush completes
+            last_exc = exc
+            time.sleep(poll)
+    if pixels is None:
         result["decoded"] = False
-        result["error"] = str(exc)
+        result["error"] = str(last_exc)
         for crit in criteria:
-            result["checks"].append({"kind": crit.get("kind"), "passed": False, "error": str(exc)})
+            result["checks"].append({"kind": crit.get("kind"), "passed": False, "error": str(last_exc)})
         return result
 
     result["decoded"] = True

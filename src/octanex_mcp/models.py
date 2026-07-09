@@ -21,6 +21,7 @@ MAX_RENDER_DIMENSION = 8192
 # timeout_seconds (Lua poll ceiling). Both act as caps; whichever is hit
 # first stops the render. min_samples / samples are targets only.
 QUALITY_TIERS: dict[str, dict[str, Any]] = {
+    "preview": {"max_render_time": 10, "timeout_seconds": 10, "min_samples": 16, "samples": 256},
     "standard": {"max_render_time": 30, "timeout_seconds": 30, "min_samples": 24, "samples": 512},
     "high": {"max_render_time": 60, "timeout_seconds": 60, "min_samples": 48, "samples": 1024},
     "ultra": {"max_render_time": 120, "timeout_seconds": 120, "min_samples": 96, "samples": 2048},

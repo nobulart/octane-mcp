@@ -298,7 +298,7 @@ def build_mcp() -> Any:
         """Queue a render-ready preview image save command.
 
         Convergence ceiling: pass ``quality`` to pick a preset tier
-        (standard=30s, high=60s, ultra=120s, final=unlimited). Either the
+        (preview=10s, standard=30s, high=60s, ultra=120s, final=unlimited). Either the
         Octane film ``maxRenderTime`` or the Lua ``timeout_seconds`` poll acts
         as the cap; the render stops at whichever is hit first and the frame is
         saved (best-effort on timeout). Raw ``samples``/``min_samples``/

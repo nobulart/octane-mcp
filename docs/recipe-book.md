@@ -38,6 +38,21 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - If using the persistent bridge, treat status `released` after `start_render` as intentional, not a crash.
 - If preview saving fails, verify the render file exists before reporting success.
 
+## Pitfall: a sweep must reset the Octane scene between recipes
+
+- **Outcome:** pitfall
+- **Recorded:** 2026-07-09
+- **Context:** A sequential recipe sweep queued `network-graph` right after manual `data-bars` runs. The Octane scene graph still held stale `data-bars` nodes, and `request_render_restart` (which calls `octane.render.start{rt}`) wedged silently on the mixed state — the bridge log stopped after `set_render_resolution ok=true` with no "HARD ERROR caught" line, the queue never drained past `import_geometry`, and the run hung.
+
+### Steps that avoided it
+- Reset the scene before each recipe: **File → New** on a *running* Octane engine (the warm-engine rule — a cold quit/open re-wedges `start{}`). Do not rely on `octane.render.stop()`/`pause()` alone.
+- Clear the container `queue/`, `processed/`, `failed/` and delete any pre-existing `renders/recipe_<slug>_octane-preview.png` so a pass can only be credited to a freshly written file (mtime > run start).
+- Trust real pixel metrics (`nonbg_pct`, `edge_energy`, per-check `mean_dev`), never a fast wall-clock pass — Octane can render a simple scene in under a second.
+
+### Follow-ups
+- A sweep driver must reset the scene graph between recipes; otherwise stale nodes wedge `request_render_restart`.
+- Promotion guards must use fresh-file mtime + pixel metrics, not a minimum render-seconds threshold (a legitimate simple-scene render can finish in < 20 s).
+
 ## Documentation and recipe-book initialization
 
 - **Outcome:** success
@@ -506,7 +521,16 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ### Pitfalls (load-bearing)
 - Do NOT restart Octane X *between import and save* (it purges the in-memory scene → empty gray frame). Octane must be restarted ONLY to reload a *patched bridge* (before queueing any scene command), and the whole pipeline must then run in that ONE warm session.
-- **Pace the drain: one Script click per queued command, and do NOT fire the next click until the previous command has left `queue/`+`processing/`.** Each handler calls `request_render_restart` → `octane.render.start{renderTargetNode=rt}`. Octane auto-renders the current scene, so a `start{}` issued while the engine is still busy WEDGES (the command sits in `processing/` forever). Dumping all commands and clicking once only drains the first one; firing clicks faster than renders settle re-wedges. The 19:06 success used exactly this paced 1-click-per-command loop.
+- **Drain pacing (post deferred-start fix, 2026-07-09):** Scene-assembly handlers
+  (`import_geometry`, `create_material`, `set_camera`, `set_lighting`, `create_light`)
+  now call `request_render_restart(..., do_start=false)` — they only WIRE the scene
+  (RT/camera/materials) and return immediately. They do NOT call `octane.render.start{}`.
+  Only `handle_save_preview` passes `do_start=true` and performs the single real
+  `start{}` + `wait_for_render_ready` + `saveImage`. This removed the per-command
+  blocking-start wedge that previously stranded the queue. A batch sweep therefore
+  drains the 7 assembly commands in one oneshot click, then `save_preview` does the
+  ~10 s render. Re-click the oneshot if `save_preview` is stranded (queue non-empty
+  after the first click) — but there is no longer a wedge from start{} blocking.
 - **Warm-engine rule:** Octane left via `quit`/`open -a` cold-relaunches the render engine and `start{rt}` then wedges even on an idle scene. Reset between renders with **File ▸ New** (AppleScript) on the *running* Octane, not a cold relaunch. To load a *patched* bridge you must restart Octane — do it before queueing, then run the whole pipeline in that one warm session.
 - One-shot bridge drains ~1 command/click; persistent auto-poll timer is BROKEN.
 - GPU `maxRenderTime` pin is IGNORED on this Octane build (probe logged no honored pin, same as ignored `maxSamples`). The effective cap is the Lua `wait_for_render_ready` wall-clock `timeout_seconds`, NOT the GPU film pin.
@@ -535,24 +559,23 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `handle_create_light` rewritten: `environment`/`sun_light` → create/connect `NT_ENV_DAYLIGHT` env node (reuses the proven `handle_set_lighting` path); `area`/`point`/`spot`/`directional`/`emissive` → create an emissive-material proxy (`NT_MAT_EMISSIVE`, defensive nil-check) with an honest `emissive light proxy` log.
 - Added `expand_path()` helper so `save_preview` paths with `~` resolve to `$HOME` (Octane Lua `os`/`saveImage` do not expand `~`; without it `mkdir`/save target the literal `~/...` path and the save returns false).
 
-### Blocker: `request_render_restart` → `octane.render.start` HANGS
+### Blocker: `request_render_restart` → `octane.render.start` HANGS (RESOLVED 2026-07-09 by code fix)
 - On the 12:50 run (fresh idle Octane) the same `request_render_restart` (`stop()`+`pause()`+`start{}`) returned and the PNG saved.
 - In this session `octane.render.start{renderTargetNode=rt}` BLOCKS indefinitely on a fresh Octane launch (no `render attempt start` log line appears; the command sits in `processing/` forever). Octane X auto-starts rendering the default scene on launch, so the explicit `start` collides with an already-active render and wedges.
-- This hangs EVERY command that calls `request_render_restart` (import_geometry, assign_material, create_light, set_camera, set_lighting, save_preview) — the one-shot/persistent loop never advances past the first stuck command.
+- This hung EVERY command that called `request_render_restart` (import_geometry, assign_material, create_light, set_camera, set_lighting, save_preview) — the one-shot/persistent loop never advanced past the first stuck command.
 - `set_render_resolution` non-fatal `setPinValue failed pin=filmResolution/...` noise is expected (line 510) — not the cause.
+- **RESOLVED:** `request_render_restart(samples, width, height, do_start)` now takes `do_start` (default true). Scene-assembly handlers pass `do_start=false` so they only wire the RT/camera/materials and return immediately — NO `octane.render.start{}`. Only `handle_save_preview` passes `do_start=true`, performing the single real `start{}` + `wait_for_render_ready` + `saveImage`. This removed the per-command blocking-start wedge entirely (verified: an 18-recipe sweep now drains and renders each in one oneshot click + at most one re-click for a stranded `save_preview`).
 
 ### Signals / evidence
 - `bridge.log` shows `import_geometry` → `film resolution requested 1280x1280 ok=true` then silence; command ID remains in `processing/`.
 - No `render attempt start{renderTargetNode=rt} ok=true` line for the wedged run (contrast: 21:24/21:26/21:29/21:30 runs logged it; 21:32+ did not).
-- Repeated bridge clicks (oneshot 1 cmd/click) and persistent timer both stall at the same stuck `processing/` file.
 
 ### Follow-ups (resolved — corrected understanding)
-- **Root cause of the wedge was NOT a missing "detect active render" guard.** A `getRenderResultStatistics()`-based idle-guard was tried and REJECTED: that call itself blocks on a freshly-reset Octane, and any `start{}` issued while the engine is still rendering wedges regardless. The actualfix is operational, not a code guard:
-  - The proven `request_render_restart` is a plain `stop()`+`pause()`+`start{renderTargetNode=rt}` (this is the 19:06 working shape, restored at commit `8c3e8f2`). No guard, no `getRenderResultStatistics`.
-  - The pipeline must be **paced**: one Script click per queued command, and the next click only after the previous command has left `queue/`+`processing/`. Firing clicks faster than renders settle re-wedges.
+- **Root cause of the wedge was the per-command blocking `octane.render.start{}`.** A `getRenderResultStatistics()`-based idle-guard was tried and REJECTED: that call itself blocks on a freshly-reset Octane, and any `start{}` issued while the engine is still rendering wedges regardless. The fix is now CODE (deferred `do_start`), not just operational pacing:
+  - Scene-assembly handlers call `request_render_restart(64, nil, nil, false)`.
+  - `handle_save_preview` calls `request_render_restart(samples, w, h)` (do_start defaults true).
   - Use a **warm** Octane engine (File ▸ New on the running app between renders). A `quit`/`open -a` cold-relaunch wedges `start{rt}` even on an idle scene.
-- Re-run this exact pipeline (`OctaneMCP_staging/queue_clean.py`, now paced) after a bridge reload; expect `wp4_sinc_preview.png` at `~/OctaneMCP_staging/`.
-- Do NOT claim a native Octane render until `wp4_sinc_preview.png` exists and `review_preview` passes (per recipe-registry gap entry).
+- Do NOT claim a native Octane render until the PNG exists and `review_preview` passes (per recipe-registry gap entry).
 
 ## Benchmark suite: progressive visualisation tasks (Tier 1–2 live PASS)
 

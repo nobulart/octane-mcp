@@ -1,0 +1,1001 @@
+[
+  {
+    "slug": "network-graph",
+    "title": "Knowledge Graph Topology",
+    "domain": "Graphs/knowledge",
+    "started_at": "2026-07-09T12:48:31Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 117.8,
+          "nonbg_pct": 77.72,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          119.8,
+          154.7,
+          195.0
+        ],
+        "nonbg_pct": 99.6,
+        "edge_energy": 0.637
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_network-graph_octane-preview.png",
+    "clicks": 2,
+    "render_seconds": 12.0,
+    "finished_at": "2026-07-09T12:48:49Z"
+  },
+  {
+    "slug": "data-bars",
+    "title": "3D KPI Bar Chart",
+    "domain": "Data visualization",
+    "started_at": "2026-07-09T12:48:49Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 117.98,
+          "nonbg_pct": 77.12,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          108.2,
+          150.1,
+          196.1
+        ],
+        "nonbg_pct": 95.16,
+        "edge_energy": 1.166
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_data-bars_octane-preview.png",
+    "clicks": 7,
+    "render_seconds": 122.3,
+    "finished_at": "2026-07-09T12:50:57Z"
+  },
+  {
+    "slug": "annotated-text-labels",
+    "title": "Annotated Text Labels",
+    "domain": "Annotation/text rendering",
+    "started_at": "2026-07-09T12:50:57Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 120.6,
+          "nonbg_pct": 72.47,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          120.4,
+          147.5,
+          178.9
+        ],
+        "nonbg_pct": 98.91,
+        "edge_energy": 1.997
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_annotated-text-labels_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 81.1,
+    "finished_at": "2026-07-09T12:52:24Z"
+  },
+  {
+    "slug": "architecture-flow",
+    "title": "MCP Architecture Flow",
+    "domain": "Architecture/explanation",
+    "started_at": "2026-07-09T12:52:24Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 95.24,
+          "nonbg_pct": 65.16,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          102.9,
+          140.0,
+          182.8
+        ],
+        "nonbg_pct": 97.95,
+        "edge_energy": 0.444
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_architecture-flow_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 66.1,
+    "finished_at": "2026-07-09T12:53:36Z"
+  },
+  {
+    "slug": "avatar-guide",
+    "title": "Hermes Avatar Guide",
+    "domain": "Agent communication",
+    "started_at": "2026-07-09T12:53:36Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 127.08,
+          "nonbg_pct": 53.63,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          124.9,
+          150.6,
+          180.6
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 0.835
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_avatar-guide_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 76.1,
+    "finished_at": "2026-07-09T12:54:58Z"
+  },
+  {
+    "slug": "document-ocr-layout",
+    "title": "Document OCR Layout Inspection",
+    "domain": "Document AI/OCR",
+    "started_at": "2026-07-09T12:54:58Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 101.98,
+          "nonbg_pct": 71.61,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          110.2,
+          144.7,
+          184.2
+        ],
+        "nonbg_pct": 99.75,
+        "edge_energy": 1.367
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_document-ocr-layout_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 76.1,
+    "finished_at": "2026-07-09T12:56:20Z"
+  },
+  {
+    "slug": "geospatial-terrain",
+    "title": "Terrain and Site Markers",
+    "domain": "Geospatial/science",
+    "started_at": "2026-07-09T12:56:20Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 85.97,
+          "nonbg_pct": 76.23,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          89.4,
+          145.0,
+          180.0
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 0.586
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_geospatial-terrain_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 71.0,
+    "finished_at": "2026-07-09T12:57:37Z"
+  },
+  {
+    "slug": "image-heightfield-mask",
+    "title": "Image Heightfield and Mask Inspection",
+    "domain": "Image processing/vision",
+    "started_at": "2026-07-09T12:57:37Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 114.41,
+          "nonbg_pct": 78.49,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          112.9,
+          143.5,
+          178.2
+        ],
+        "nonbg_pct": 98.41,
+        "edge_energy": 2.842
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_image-heightfield-mask_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 81.1,
+    "finished_at": "2026-07-09T12:59:04Z"
+  },
+  {
+    "slug": "math-surface",
+    "title": "Photoreal mathematical 3D surface (sinc + azimuthal ridge)",
+    "domain": "Mathematics",
+    "started_at": "2026-07-09T12:59:04Z",
+    "queued": false,
+    "preview_exists": false,
+    "acceptance": null,
+    "promoted": false,
+    "error": "queue error: contract failed: no preview.png / photoreal-preview.png / octane-preview.png reference",
+    "notes": [],
+    "preview_path": "None"
+  },
+  {
+    "slug": "photoreal-earth-space",
+    "title": "Photoreal Earth in Space",
+    "domain": "Photoreal/PBR space rendering",
+    "started_at": "2026-07-09T12:59:04Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 136.28,
+          "nonbg_pct": 99.25,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          71.0,
+          154.7,
+          241.5
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 0.351
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_photoreal-earth-space_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 51.0,
+    "finished_at": "2026-07-09T12:59:58Z"
+  },
+  {
+    "slug": "photoreal-product-studio",
+    "title": "Photoreal Product Studio",
+    "domain": "Photoreal/PBR rendering",
+    "started_at": "2026-07-09T12:59:58Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 113.62,
+          "nonbg_pct": 52.48,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          76.5,
+          76.8,
+          75.0
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 0.858
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_photoreal-product-studio_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 66.0,
+    "finished_at": "2026-07-09T13:01:08Z"
+  },
+  {
+    "slug": "photoreal-vase-studio",
+    "title": "Photoreal Multi-Vase Studio",
+    "domain": "Photoreal/PBR rendering",
+    "started_at": "2026-07-09T13:01:08Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 152.51,
+          "nonbg_pct": 85.56,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          164.9,
+          159.1,
+          161.6
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 1.177
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_photoreal-vase-studio_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 96.1,
+    "finished_at": "2026-07-09T13:02:49Z"
+  },
+  {
+    "slug": "physics-orbits",
+    "title": "Orbital Trajectories",
+    "domain": "Physics/simulation",
+    "started_at": "2026-07-09T13:02:49Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 117.08,
+          "nonbg_pct": 74.6,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          116.3,
+          152.3,
+          194.1
+        ],
+        "nonbg_pct": 99.9,
+        "edge_energy": 0.522
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_physics-orbits_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 71.0,
+    "finished_at": "2026-07-09T13:04:06Z"
+  },
+  {
+    "slug": "saturn-moons-space",
+    "title": "Saturn and Moons in Space",
+    "domain": "Photoreal/PBR space rendering",
+    "started_at": "2026-07-09T13:04:06Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 187.32,
+          "nonbg_pct": 82.07,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          164.0,
+          165.3,
+          158.4
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 1.388
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_saturn-moons-space_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 56.0,
+    "finished_at": "2026-07-09T13:05:05Z"
+  },
+  {
+    "slug": "transformer-attention-map",
+    "title": "Transformer Attention Map",
+    "domain": "LLM interpretability",
+    "started_at": "2026-07-09T13:05:05Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 102.38,
+          "nonbg_pct": 77.32,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          103.8,
+          139.8,
+          180.1
+        ],
+        "nonbg_pct": 99.42,
+        "edge_energy": 1.708
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_transformer-attention-map_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 71.0,
+    "finished_at": "2026-07-09T13:06:22Z"
+  },
+  {
+    "slug": "vector-field",
+    "title": "Rotating Vector Field",
+    "domain": "Math/physics",
+    "started_at": "2026-07-09T13:06:22Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 138.66,
+          "nonbg_pct": 73.3,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          131.0,
+          156.3,
+          187.8
+        ],
+        "nonbg_pct": 100.0,
+        "edge_energy": 0.749
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_vector-field_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 81.0,
+    "finished_at": "2026-07-09T13:07:49Z"
+  },
+  {
+    "slug": "vision-feedback-loop",
+    "title": "Render/Vision Feedback Loop",
+    "domain": "Agent workflow",
+    "started_at": "2026-07-09T13:07:49Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 88.91,
+          "nonbg_pct": 67.29,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          98.8,
+          137.6,
+          181.8
+        ],
+        "nonbg_pct": 99.02,
+        "edge_energy": 1.085
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_vision-feedback-loop_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 66.0,
+    "finished_at": "2026-07-09T13:09:01Z"
+  },
+  {
+    "slug": "wave-interference-field",
+    "title": "Wave Interference Field",
+    "domain": "Math/physics",
+    "started_at": "2026-07-09T13:09:01Z",
+    "queued": true,
+    "preview_exists": true,
+    "acceptance": {
+      "passed": true,
+      "exists": true,
+      "decoded": true,
+      "checks": [
+        {
+          "passed": true,
+          "mean_dev": 121.45,
+          "nonbg_pct": 79.48,
+          "thresholds": {
+            "min_mean_dev": 2.0,
+            "min_nonbg": 2.0
+          },
+          "kind": "non_empty"
+        },
+        {
+          "passed": true,
+          "issues": [],
+          "fail_on": [
+            "likely object clipped at frame edge",
+            "likely object too small",
+            "mostly near-black",
+            "mostly near-white",
+            "very low contrast"
+          ],
+          "triggered": [],
+          "ok": true,
+          "kind": "review_ok"
+        }
+      ],
+      "error": null,
+      "png_stats": {
+        "mean_rgb": [
+          123.8,
+          151.5,
+          183.6
+        ],
+        "nonbg_pct": 99.95,
+        "edge_energy": 0.86
+      }
+    },
+    "promoted": true,
+    "error": null,
+    "notes": [
+      "promoted: PNG + native_octane_verified=true"
+    ],
+    "preview_path": "/Users/craig/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/recipe_wave-interference-field_octane-preview.png",
+    "clicks": 1,
+    "render_seconds": 86.1,
+    "finished_at": "2026-07-09T13:10:33Z"
+  }
+]
