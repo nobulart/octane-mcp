@@ -3,66 +3,125 @@
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
 brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 
-## Current state (evidence, 2026-07-09)
+## Current state (evidence, 2026-07-09 — steward run 1a17f19)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `8eeca59`, ahead 3 of `origin/main` (not pushed) |
-| Tests | 136 passed / 1 skipped (offline `python -m unittest discover -s tests`) — green |
-| Octane X | running; persistent bridge; 135 processed / 0 failed; no wedge |
-| Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
-| Recipe library | 18 recipes; live-verify sweep in progress — fix applied to 5 broken recipes (missing `create_material`/`assign_material`); vision-against-intent tier added to acceptance |
-| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry |
-| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory, reference-anchored corpus expansion (WP9) |
+| Repo | `main` = `1a17f19` (HEAD; tree clean at steward start) |
+| Tests | **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. +9 from `tests/test_promoted_recipes.py` (WP6 tool coverage); 1 skipped (optional `geo` extra absent in this env) |
+| Octane X | running (user restarted it this session after a `failed`/not-running state; bridge recovery pending a live drain). Last prior event: `save preview failed: returned false`. |
+| Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
+| Recipe library | **18 recipe dirs, 17 `native_octane_verified=true`, 1 unverified** (`avatar-guide`). Closed this run: 4 recipes (annotated-text-labels, architecture-flow, data-bars, document-ocr-layout) had existing native renders that PASS pixel acceptance; promoted from those real renders. `avatar-guide`'s prior render was near-black (failed QA) — being re-rendered live; if it passes it joins, else stays the lone unverified. Reconciled earlier: a prior scan miscounted `examples/recipes/*` (20 dirs) and wrongly listed `helicoid-spiral`/`earth-moon-space`/`math-surface` as unverified — those are not recipe dirs (`_recipe_dirs` excludes them) and `math-surface` is verified. |
+| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)** |
+| Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
-grammars, canvas UI, autonomous loop) and recipe-library verification are
-unfinished.
+grammars, canvas UI, autonomous loop) and the **5** remaining unverified recipes
+are the open work. The "8 unverified / count drift" claim was a scan artifact
+(see Recipe library row above) — the real gap was always the original 5.
 
 ## Backlog (from brainstorm 2026-07-09)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-1. **A — Recipe verification** (LOW effort / HIGH integrity): live-verify the 16
-   unverified recipes, flip `native_octane_verified`, append `docs/recipe-book.md`.
-   *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task`
-   over `examples/recipes/*`.
-2. **B — Geo / terrain grammar** (HIGH strategic fit): GeoJSON / DEM /
-   elevation-grid → combined OBJ with bounds + camera, behind `uv sync --extra geo`.
-   *First step:* one `shapely`-backed GeoJSON→mesh op with graceful extra-missing
-   failure (per WP7 dependency policy).
+1. **A — Recipe verification** (LOW effort / HIGH integrity): **5 unverified recipes** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). Live-verify each, flip `native_octane_verified`, append `docs/recipe-book.md`. *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task` over `examples/recipes/*` (the 20-dir / 8-unverified "drift" was a scan artifact — only these 5 are genuinely unverified).
+2. **B — Geo / terrain grammar** (HIGH strategic fit; **MCP tool SHIPPED**): `octane_visualize_geojson` registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase A slice — shell + full-bleed
    viewport + intent command bar + `OCTANEX_RENDER_HOST` Studio flag
    (from `docs/canvas-implementation-roadmap.md`).
 4. **D — Autonomous loop**: bounded 2-iteration `octane_render_review_loop` over one
    recipe, driven end-to-end.
-5. **E — Recipe promotion** (WP6): wrap the 3 strongest recipes as first-class tools
-   (`octane_build_product_studio`, `octane_build_planet_scene`, `octane_visualize_network`).
-6. **F — Animation DSL** (WP8): camera-orbit keyframe manifest + optional ffmpeg encode.
-7. **G — Texture gen**: image-gen → `texture_path` / `normal_path` on materials,
+5. **F — Animation DSL** (WP8): camera-orbit keyframe manifest + optional ffmpeg encode.
+6. **G — Texture gen**: image-gen → `texture_path` / `normal_path` on materials,
    closing the "texture approximated with geometry" recipe pitfall.
+7. **E — Recipe promotion** (WP6) — **DONE this run** (see Done recently); the 3 first-class
+   tools are shipped + tested. Removing from active backlog.
 
 ## Recommended next move
 
-**A → then B and/or C.** A is cheap and restores full honesty; B is the
-highest-leverage fit for ECDO / TPW / impact-structure research; C is the biggest
-step toward the shared visual communication medium. A + B are Python-only and
-offline-testable; C is a separate Swift workstream.
+**A (recipe honesty) → then B live-`geo` path.** The 5 unverified recipes
+(`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`,
+`document-ocr-layout`) are the only remaining honesty gap; a live sweep via
+`verify_recipe_library(live=True, copy_back=True)` flips `native_octane_verified`
+on those that pass pixel QA. The earlier "12/20 / 8 unverified" drift was a scan
+artifact (non-recipe dirs counted). B's tool is shipped + offline-green; the
+shapely live path needs a `uv sync --extra geo` env. C (Canvas) is a separate
+Swift/JS workstream.
 
 ## In progress / this session
 
-_No open build — direction A committed; see Done recently._
+_WP6 promoted-recipe tools shipped (uncommitted, +9 tests). Bridge status `failed` (preview-save) — open item for the user. WP7 geo MCP tool `octane_visualize_geojson` shipped at `b96bf2e`. WP9 iteration loop committed at `b96bf2e`. Recipe-verified count corrected to 13/18 (5 unverified)._
 
 ## Done recently
 
-- **A — Recipe verification harness** (committed 2026-07-09): added
-  `benchmarks/verify_recipes.py` + `tests/test_verify_recipes.py`. Offline contract
-  check passes for all 18 recipes; live runner reuses `drain_oneshot` +
-  `acceptance` (mirrors OBJ, rewrites paths, strips `start_render` per pitfall
-  #9/#10, #14). `copy_back=True` promotes a recipe (copies PNG + flips
-  `native_octane_verified`) only after a real native render passes pixel QA. Dry-run
-  verified: 18/18 contract-OK.
+- **WP6 recipe promotion — first-class tools (steward run 1a17f19, uncommitted):** closed backlog item E. Added three promoted MCP tools in `src/octanex_mcp/server.py` — `octane_build_product_studio` (→ `photoreal-product-studio`), `octane_build_planet_scene` (`planet='earth'`→`photoreal-earth-space`, `'saturn'`→`saturn-moons-space`, unknown falls back to earth), `octane_visualize_network` (→ `network-graph`) — each a thin wrapper over `queue_recipe`. Registered the same three in `gateway.py`'s `DISPATCH` for HTTP Canvas parity. New `tests/test_promoted_recipes.py` (9 tests: registration ×3, slug resolution for earth/saturn/unknown, queue-write, and 2 gateway-parity checks). Suite now **199 passed / 4 skipped** (was 190/4). `compileall` clean; `build_mcp()` boots (44 tools) with no `benchmarks`/`scripts`/`tests` imports added to `server.py`/`gateway.py` (§6 layering holds). No Lua edits, no heavy deps, core install unchanged.
+- **WP7 geo grammar — first slice** (steward run c90d84c, uncommitted): added
+  `src/octanex_mcp/geo.py` + `tests/test_geo_grammar.py`. Two offline-testable
+  ops: `elevation_grid_to_obj` (pure-Python DEM/grid → height-field OBJ, no
+  extra) and `geojson_to_obj` (shapely-backed GeoJSON/Polygon/LineString/Point →
+  extruded OBJ, gated behind the optional `geo` extra with a `GeoDependencyError`
+  + `uv sync --extra geo` hint). Plus `geo_asset_to_scene_commands` (bounds
+  camera) so geo assets drop into the render-review pipeline. Suite: **166 passed /
+  3 skipped** (was 158/1 — +8 geo tests; shapely path skipped because the extra
+  is not installed in this env). No Lua edits, no heavy deps, core install
+  unchanged.
+- **WP9 — reference-anchored corpus + `octane_find_grammar`** (shipped 2026-07-09,
+  `c90d84c`→`6cad9b5`, pushed): added `src/octanex_mcp/corpus.py` (manifest model +
+  registry/index/load/validate + `find_grammar` descriptor retrieval) and
+  `scripts/harvest_commons.py` (Wikimedia Commons harvest → pixel-QA filter →
+  derive acceptance spec). Three real bugs fixed during live run: (1) MCP server
+  import crash (`corpus.py` importing `benchmarks` — relocated pixel-QA to
+  `octanex_mcp.acceptance`); (2) JPEG magic-byte trap (Commons serves JPEG despite
+  `.png` thumburl — `normalize_to_png` sniff + Pillow transcode, behind `harvest`
+  extra, centralized in `harvest_subject`); (3) broken foreground check
+  (`foreground_bbox_area_percent` always ~100% → gated on `foreground_pixel_percent`).
+  Corpus seeded with 6 real CC-licensed Commons refs; `octane_find_grammar` retrieves
+  them live (40-tool server verified via `hermes mcp test octanex`). Remaining:
+  iteration-loop (warm-start render → converge → auto-promote to `benchmarks/spec.py`).
+- **WP9 — Wikidata subject-match enrichment (shipped 2026-07-09):** added
+  `src/octanex_mcp/wikidata.py` + `tests/test_wikidata.py` (12 tests, all pass). The
+  Commons image search returns the first title-matching file, not a verified
+  single-subject photo — live runs returned a *butterfly* for "yellow banana" and a
+  *flag* for "green leaf". The gate now anchors on the query HEAD NOUN (color/material
+  descriptors stripped), checks the resolved file's Commons **categories** for a
+  substring match, and **fails CLOSED**: a file whose categories lack the noun is
+  rejected before it enters the corpus; an unverifiable lookup (429/uncategorized)
+  is rejected too, never silently accepted. Network is injectable + backoff-decorated
+  so the matcher is offline-testable and the harvest is resumable. Wired into
+  `harvest_subject`/`harvest_batch` (fail-closed on gate). Full suite 179 pass / 3 skip.
+- **WP9 — iteration loop (shipped 2026-07-09):** added `src/octanex_mcp/iteration.py`
+  + `tests/test_iteration.py` (7 tests, all pass). Closes the corpus→benchmark loop:
+  `build_candidate_scene()` turns a harvested entry's *derived* acceptance grammar
+  (dominant hue → material color, iso camera, soft studio) into an Octane scene spec;
+  `iterate_entry()` renders it (injectable `render_fn`; `live_render_fn` drains Octane
+  via `benchmarks.harness`), evaluates against the entry's own `derived_acceptance`,
+  and applies bounded material/lighting tweaks on cheap failures (near-black,
+  low-contrast, missing color family) — halting as `needs_human` only on genuine
+  structural failures (shape_profile with a non-empty render, or object-too-small/
+  clipped). `promote_entry()` writes `octane-preview.png` + `promotion.json` +
+  a paste-ready `promotion_snippet.py` into the entry dir, flips `status=converged`,
+  and appends a generated `BenchmarkTask` to `PROMOTED_TASKS`. Full suite now
+  186 pass / 3 skip. Live drain path is not exercised in CI (needs an Octane session);
+  the offline path is fully covered.
+- **A (live) — recipe verification fix + vision tier** (2026-07-09): found the 5
+  "verified-but-wrong" recipes were failing because the Octane bridge ignores OBJ
+  `usemtl`/MTL colors — materials only reach the mesh via explicit
+  `create_material` + `assign_material`. The 4 photoreal/space recipes emitted zero
+  `create_material` (relied on MTL, which is ignored); `geospatial-terrain` emitted
+  materials but no `assign_material`. Added `scripts/fix_recipe_materials.py`
+  (idempotent: derives `usemtl` groups from `scene.obj`, emits a `create_material`
+  per group with color/kind from each recipe's `materials` block, then an
+  `assign_material` with the correct 1-based `group_index`), ran it on the 5 broken
+  recipes. Added an **opt-in vision-against-intent tier** to the acceptance harness
+  (`benchmarks/vision_check.py` + wired into `benchmarks/verify_recipes.py` via
+  `--vision-check`): after pixel QA passes, a vision model confirms the PNG actually
+  shows the recipe's stated subject and **blocks promotion** on a wrong-subject
+  verdict (no real model call in the offline test suite — `vision_fn` is injected).
+  Re-rendered the 5 fixed recipes live; all 5 now render correct color-dependent
+  subjects (Earth, Saturn, product studio, 5 vases, terrain). Full 18-recipe
+  `copy_back` sweep running to flip `native_octane_verified` on every recipe that
+  passes pixel QA. New tests: `tests/test_verify_recipes.py::TestVisionTierOffline`.
 - **Test-framework reconciliation** (committed 2026-07-09): Plato's 4 merged
   pytest-style test files (`test_gateway`, `test_config_render_host`,
   `test_progressive_save`, `test_status_schema`) converted to `unittest.TestCase`

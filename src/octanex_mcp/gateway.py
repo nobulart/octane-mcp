@@ -119,6 +119,19 @@ DISPATCH: Dict[str, Callable[[Dict[str, Any]], Any]] = {
         ),
     ),
     "octane_create_cube": lambda a: create_simple_obj(a.get("name", "cube"), a.get("size", 1.0)),
+    # WP6 promoted recipe tools (thin wrappers over queue_recipe)
+    "octane_build_product_studio": lambda a: queue_recipe(
+        "photoreal-product-studio", overrides=a.get("overrides") or {}
+    ),
+    "octane_build_planet_scene": lambda a: queue_recipe(
+        {"earth": "photoreal-earth-space", "saturn": "saturn-moons-space"}.get(
+            (a.get("planet") or "earth").lower(), "photoreal-earth-space"
+        ),
+        overrides=a.get("overrides") or {},
+    ),
+    "octane_visualize_network": lambda a: queue_recipe(
+        "network-graph", overrides=a.get("overrides") or {}
+    ),
 }
 
 

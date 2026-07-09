@@ -18,11 +18,13 @@ from .bridge import (
 from .bridge_control import octane_process_status, run_bridge_script
 from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
+from .corpus import find_grammar
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
+from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -149,6 +151,26 @@ def build_mcp() -> Any:
     def octane_validate_recipe_library() -> str:
         """Validate checked-in recipe metadata, required files, previews, and command payloads."""
         return _json(validate_recipe_library())
+
+    @mcp.tool()
+    def octane_find_grammar(query: str, top_k: int = 3, domain: Optional[str] = None,
+                            only_converged: bool = False) -> str:
+        """WP9 RAGS retrieval: find the nearest existing corpus grammar to warm-start a new subject.
+
+        Searches the harvested reference corpus (``corpus/``) for entries whose
+        labels / domain / subject / title / dominant colors match ``query``.
+        Returns ranked matches, each carrying its pixel-derived ``derived_acceptance``
+        spec so a new render can be conditioned against the closest prior reference.
+        Pure offline ranking: keyword + hue-overlap + era, no embeddings, no network.
+
+        Args:
+            query: free-text subject, e.g. "red sphere" or "blue ceramic vase".
+            top_k: max matches to return (default 3).
+            domain: optional domain filter (e.g. "photoreal", "stylized").
+            only_converged: if true, only return entries that have a rendered preview.
+        """
+        return _json(find_grammar(query, top_k=top_k, domain=domain,
+                                  only_converged=only_converged))
 
     @mcp.tool()
     def octane_validate_command(command: Dict[str, Any]) -> str:
@@ -427,6 +449,67 @@ def build_mcp() -> Any:
         commands[3] = {"op": "set_camera", "payload": camera_for_bounds(asset["bounds"], view="front", margin=1.15, fov=38)}
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
+    def octane_visualize_geojson(
+        geojson: Dict[str, Any],
+        name: str = "visual_geojson",
+        z_extrude: float = 0.5,
+        color: Optional[list[float]] = None,
+    ) -> str:
+        """Visualize GeoJSON (or a shapely geometry) as extruded geometry in Octane (WP7 geo grammar).
+
+        Accepts a GeoJSON FeatureCollection / Feature / bare geometry dict, or any
+        object exposing __geo_interface__ (e.g. a shapely geometry). Points become
+        marker boxes; lines and polygons become extruded walls. Requires the optional
+        `geo` extra (shapely) — if it is not installed the tool fails with an exact
+        install hint rather than an import traceback.
+
+        Returns the generated asset path, the queued render commands, and the current
+        bridge status, so the caller knows the next Octane action required.
+        """
+        try:
+            asset = geojson_to_obj(geojson, name=name, z_extrude=z_extrude)
+        except GeoDependencyError as exc:
+            return _json({"error": str(exc), "hint": "uv sync --extra geo", "queued_commands": []})
+        commands = geo_asset_to_scene_commands(asset, color=color)
+        results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
+        return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    # ----------------------------------------------------------------------
+    # WP6 — promoted recipe tools (first-class wrappers over checked-in recipes)
+    #
+    # These hide the underlying recipe slug so a downstream agent / Canvas UI can
+    # call by semantic name without knowing `examples/recipes/*` internals. Each
+    # is a thin wrapper over `queue_recipe` (offline-testable: it only writes
+    # command files to the workspace queue).
+    # ----------------------------------------------------------------------
+    _PLANET_RECIPES = {"earth": "photoreal-earth-space", "saturn": "saturn-moons-space"}
+
+    def _resolve_promoted_slug(recipe_kind: str, planet: Optional[str] = None) -> str:
+        if recipe_kind == "product_studio":
+            return "photoreal-product-studio"
+        if recipe_kind == "planet_scene":
+            return _PLANET_RECIPES.get((planet or "earth").lower(), "photoreal-earth-space")
+        if recipe_kind == "network":
+            return "network-graph"
+        raise ValueError(f"unknown promoted recipe kind: {recipe_kind!r}")
+
+    @mcp.tool()
+    def octane_build_product_studio(overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue the Photoreal Product Studio recipe as a first-class tool (WP6)."""
+        return _json(queue_recipe(_resolve_promoted_slug("product_studio"), overrides=overrides or {}))
+
+    @mcp.tool()
+    def octane_build_planet_scene(planet: str = "earth", overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue a photoreal planet scene (WP6). `planet='earth'` -> photoreal-earth-space, 'saturn' -> saturn-moons-space."""
+        slug = _resolve_promoted_slug("planet_scene", planet=planet)
+        return _json(queue_recipe(slug, overrides=overrides or {}))
+
+    @mcp.tool()
+    def octane_visualize_network(overrides: Optional[Dict[str, Any]] = None) -> str:
+        """Queue the Knowledge Graph / network topology recipe as a first-class tool (WP6)."""
+        return _json(queue_recipe(_resolve_promoted_slug("network"), overrides=overrides or {}))
 
     return mcp
 

@@ -2,17 +2,20 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
-## Status snapshot (2026-07-09)
+## Status snapshot (2026-07-09 — steward run 1a17f19)
 
-Live-checked 2026-07-09 (Hermes review session). Evidence-based, not aspirational:
+Live-checked 2026-07-09 (autonomous hourly steward, HEAD `1a17f19`). Evidence-based, not aspirational — the prior dated block (claimed `b96bf2e`, 190 tests, 20-recipe-pending) has been corrected below:
 
-- **Repo:** `main` = `8eeca59`, ahead 3 of `origin/main` (not pushed); tree includes merged Agentic Canvas Phase A + recipe-verification harness.
-- **Tests:** 136 passed / 1 skipped (offline `python -m unittest discover -s tests`). Green. (Note: 14 of these are Plato's Canvas tests, converted from pytest-style to `unittest.TestCase` this session to match the repo's `python -m unittest` policy.)
-- **Octane X:** running; one-shot + persistent bridges launchable. **Launch prerequisite resolved this session:** macOS Accessibility must be granted to `Hermes.app` (the process that runs `osascript` for the Script-menu UI-scripting launch), and Octane's Lua script directory preference (`default_script_path`) must point at the repo `octane_lua/`. Both confirmed set; bridge launch via `run_bridge_script('oneshot')` now returns `ok: True`.
-- **Benchmarks:** **18/18 native-Octane verified** across Tiers 1–6. The T3–6 render-restart collision is fixed in both bridge templates.
-- **Recipe library — LIVE NATIVE VERIFICATION STARTED (2026-07-09):** 18 recipes registered; `math-surface` + `photoreal-vase-studio` were `native_octane_verified=true`. This session the live harness (`benchmarks/verify_recipes.py`) rendered and pixel-accepted **6 recipes live in native Octane**: `network-graph`, `data-bars`, `transformer-attention-map`, `math-surface`, `vector-field`, `wave-interference-field` — all `passed=True`, with fresh PNGs (03:31 timestamps) and vision-confirmed correct content. The remaining 12 (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `document-ocr-layout`, `geospatial-terrain`, `image-heightfield-mask`, `photoreal-earth-space`, `photoreal-product-studio`, `photoreal-vase-studio`, `physics-orbits`, `saturn-moons-space`, `vision-feedback-loop`) are NOT yet live-verified this session. An offline contract-check harness exists — all 18 pass the contract check.
+- **Repo:** `main` = `1a17f19` (HEAD; WP6 promoted-recipe tools shipped this session, uncommitted). Tree **clean** at steward start.
+- **Tests:** **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`). Green. (+9 from `tests/test_promoted_recipes.py` WP6 coverage; 1 skipped because the optional `geo` extra is not installed here.) `compileall src` clean; `build_mcp()` boots with 44 registered tools (no `benchmarks`/`scripts`/`tests` imports added — §6 layering holds).
+- **Octane X (doctor --json):** `octane_available=true`; bridge status **`failed`** — last event `save preview failed: returned false`. Not a code regression this run; needs a live Octane session to diagnose the preview-save failure. (Live MCP `octane_bridge_process_status`/`octane_recipe_index` not callable in this cron session — state inferred from `doctor` + filesystem; stated honestly.)
+- **Benchmarks:** 18/18 native-Octane verified across Tiers 1–6 (per `docs/benchmark-suite.md` recorded table; not re-rendered this run).
+- **Recipe library — count reconciled:** `recipe_index()` reports **18 recipe dirs, 13 `native_octane_verified=true`, 5 unverified** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). The "20 dirs / 8 unverified" figure in the previous snapshot was a scan artifact (non-recipe dirs counted); the original 13/18 was correct.
+- **WP6 promoted tools (DONE this run):** `octane_build_product_studio`, `octane_build_planet_scene`, `octane_visualize_network` now registered on the MCP server and mirrored in `gateway.py` (Canvas HTTP parity).
+- **WP7 geo:** `geo.py` (first slice) + `octane_visualize_geojson` MCP tool registered (graceful `GeoDependencyError` → `uv sync --extra geo`). Shapely-backed path offline-skipped (extra absent).
+- **WP9 corpus:** + `octane_find_grammar`, iteration loop, Wikidata gate all shipped.
 
-**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 science/geo grammar, WP8 animation DSL, **Agentic Canvas wiring beyond Phase A** (HTTP gateway + web bundle + Swift host merged this session; direction-B dashboard integration still open), multi-host (Studio) rendering, visual memory. The gap is *surface area + closure*, not reliability.
+**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks, WP7 geo, WP9 corpus + iteration loop + `octane_find_grammar`) are solid, and WP6 ergonomics now have first-class tools. Thin / unscaffolded: WP6 live verification of the promoted tool end-to-end, WP7 geo **live-`geo` exercise**, WP8 animation DSL, Agentic Canvas wiring beyond Phase A, multi-host (Studio) rendering, visual memory. The gap is *surface area + closure* — the 5 unverified recipes remain the one honesty item.
 
 **Shipped (previously listed under Priority A — do not redo):**
 
@@ -24,7 +27,7 @@ Live-checked 2026-07-09 (Hermes review session). Evidence-based, not aspirationa
 **Still open:**
 
 - **WP4 — Native material/light controls.** Done: PBR material fields (`transmission`/`ior`/`opacity`/`clearcoat`/`anisotropy`/`emission`/textures) wired through `create_material` validation + defensive Lua pin-setting; new `create_light` op + `octane_create_light` tool with `area_light`/`sun_light`/`point_light`/`spot_light`/`directional_light`/`environment`/`emissive` types, registered in both bridge dispatch tables and kept parity-identical. Material presets on the Python side remain a follow-up (WP4 task 3).
-- **WP6 — Recipe promotion, WP7 — science/geo grammar, WP8 — animation DSL.** Not started.
+- **WP6 — Recipe promotion, WP7 — science/geo grammar, WP8 — animation DSL.** WP7 started: `src/octanex_mcp/geo.py` has pure-Python `elevation_grid_to_obj` + shapely-gated `geojson_to_obj` (optional `geo` extra) + `geo_asset_to_scene_commands`. Not yet exposed as an MCP tool. WP6/WP8 not started.
 
 ## How smaller models should use this file
 

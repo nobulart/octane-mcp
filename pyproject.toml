@@ -12,6 +12,10 @@ dependencies = [
 science = ["numpy", "trimesh", "networkx"]
 fields = ["scipy"]
 geo = ["shapely"]
+# Image-format normalization for the WP9 Commons harvest (JPEG thumbnails ->
+# PNG so the stdlib pixel-QA pipeline can read them). Keep it out of the core
+# server deps: the MCP server only needs the already-normalized corpus.
+harvest = ["pillow"]
 
 [project.scripts]
 octanex-mcp = "octanex_mcp.server:main"
