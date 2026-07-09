@@ -18,6 +18,7 @@ from .bridge import (
 from .bridge_control import octane_process_status, run_bridge_script
 from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
+from .corpus import find_grammar
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
@@ -149,6 +150,26 @@ def build_mcp() -> Any:
     def octane_validate_recipe_library() -> str:
         """Validate checked-in recipe metadata, required files, previews, and command payloads."""
         return _json(validate_recipe_library())
+
+    @mcp.tool()
+    def octane_find_grammar(query: str, top_k: int = 3, domain: Optional[str] = None,
+                            only_converged: bool = False) -> str:
+        """WP9 RAGS retrieval: find the nearest existing corpus grammar to warm-start a new subject.
+
+        Searches the harvested reference corpus (``corpus/``) for entries whose
+        labels / domain / subject / title / dominant colors match ``query``.
+        Returns ranked matches, each carrying its pixel-derived ``derived_acceptance``
+        spec so a new render can be conditioned against the closest prior reference.
+        Pure offline ranking: keyword + hue-overlap + era, no embeddings, no network.
+
+        Args:
+            query: free-text subject, e.g. "red sphere" or "blue ceramic vase".
+            top_k: max matches to return (default 3).
+            domain: optional domain filter (e.g. "photoreal", "stylized").
+            only_converged: if true, only return entries that have a rendered preview.
+        """
+        return _json(find_grammar(query, top_k=top_k, domain=domain,
+                                  only_converged=only_converged))
 
     @mcp.tool()
     def octane_validate_command(command: Dict[str, Any]) -> str:

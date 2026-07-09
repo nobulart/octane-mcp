@@ -71,6 +71,26 @@ res = register_reference(
 assert res["ok"], res["reasons"]
 ```
 
+## Retrieval (warm-start a new subject)
+
+`find_grammar(query, *, top_k=3, domain=None, only_converged=False)` ranks
+corpus entries by a lightweight, offline, deterministic score:
+
+- **keyword overlap** over labels / domain / subject / title / era (dominant);
+- **hue overlap** when the query names a color and the entry's derived
+  `color_families` sit within ±35° of it;
+- **era** as a tie-breaker when the query explicitly names it.
+
+It returns the best match plus `derived_acceptance` (the pixel-derived
+acceptance spec) for each match, so a new render can be conditioned against the
+closest prior reference. Exposed as the MCP tool `octane_find_grammar`.
+
+```python
+from octanex_mcp.corpus import find_grammar
+res = find_grammar("red sphere", top_k=3)
+print(res["best"]["slug"], res["best"]["derived_acceptance"])
+```
+
 ## Acceptance criteria (WP9)
 
 - A harvested reference yields a self-describing acceptance spec with **no

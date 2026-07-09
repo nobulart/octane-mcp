@@ -17,6 +17,7 @@ from octanex_mcp.corpus import (
     CORPUS_ROOT,
     CorpusEntry,
     corpus_index,
+    find_grammar,
     iter_corpus,
     load_entry,
     register_reference,
@@ -262,6 +263,63 @@ class HarvestOfflineTests(unittest.TestCase):
         self.assertEqual(report["total"], 2)
         self.assertEqual(report["accepted"], 1)
         self.assertEqual(report["rejected"], 1)
+
+
+def _blue_on_dark() -> list[list[tuple[int, int, int]]]:
+    rows = [[(10, 10, 12)] * 64 for _ in range(48)]
+    for y in range(12, 36):
+        for x in range(24, 40):
+            rows[y][x] = (30, 60, 210)
+    return rows
+
+
+class FindGrammarTests(unittest.TestCase):
+    def _seed(self, tmp: Path) -> Path:
+        corpus_root = tmp / "corpus"
+        # red sphere: label "red" + subject "sphere"
+        p_red = tmp / "red.png"
+        write_rgb_png(p_red, _red_on_dark())
+        register_reference(slug="red-sphere", title="Red Sphere", source_url="https://e/r",
+                           license="CC-BY", reference_png=p_red, corpus_root=corpus_root,
+                           domain="photoreal", subject="sphere", labels={"subject": "sphere", "color": "red"})
+        # blue vase: label "blue" + subject "vase"
+        p_blue = tmp / "blue.png"
+        write_rgb_png(p_blue, _blue_on_dark())
+        register_reference(slug="blue-vase", title="Blue Vase", source_url="https://e/b",
+                           license="CC-BY", reference_png=p_blue, corpus_root=corpus_root,
+                           domain="photoreal", subject="vase", labels={"subject": "vase", "color": "blue"})
+        return corpus_root
+
+    def test_finds_nearest_by_subject(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cr = self._seed(Path(tmp))
+            res = find_grammar("sphere", corpus_root=cr)
+            self.assertEqual(res["match_count"], 1)
+            self.assertEqual(res["best"]["slug"], "red-sphere")
+
+    def test_hue_overlap_promotes_color_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cr = self._seed(Path(tmp))
+            res = find_grammar("red ball", corpus_root=cr)
+            self.assertEqual(res["best"]["slug"], "red-sphere")
+            # the red-sphere entry should outrank the blue one
+            slugs = [m["slug"] for m in res["matches"]]
+            self.assertIn("red-sphere", slugs)
+
+    def test_domain_filter_narrows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cr = self._seed(Path(tmp))
+            res = find_grammar("sphere", domain="stylized", corpus_root=cr)
+            self.assertEqual(res["match_count"], 0)
+            res2 = find_grammar("sphere", domain="photoreal", corpus_root=cr)
+            self.assertGreaterEqual(res2["match_count"], 1)
+
+    def test_no_match_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cr = self._seed(Path(tmp))
+            res = find_grammar("nonexistent-xyz", corpus_root=cr)
+            self.assertEqual(res["match_count"], 0)
+            self.assertIsNone(res["best"])
 
 
 if __name__ == "__main__":

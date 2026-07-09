@@ -271,3 +271,141 @@ def corpus_index(corpus_root: Path = CORPUS_ROOT) -> dict[str, Any]:
             for e in entries
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# WP9 — retrieve the nearest existing grammar as a warm start for a new subject.
+#
+# Lightweight, offline, deterministic ranking over corpus entries. No embeddings,
+# no network: matches are scored by keyword overlap (labels / domain / subject /
+# title), color-family hue overlap (from the pixel-derived spec), and era. Returns
+# ranked entries with their derived acceptance spec so a new render can be
+# conditioned against the closest prior reference.
+# ---------------------------------------------------------------------------
+import math
+
+# Weighting of the three match signals. Keyword hits dominate; hue overlap and
+# era tie-break between otherwise-similar entries.
+_W_KEYWORD = 3.0
+_W_HUE = 1.5
+_W_ERA = 1.0
+
+
+def _hue_ring_dist(a: float, b: float) -> float:
+    """Circular hue distance in degrees (0..180)."""
+    d = abs(((a - b + 180.0) % 360.0) - 180.0)
+    return d
+
+
+def _entry_hues(entry: CorpusEntry) -> list[float]:
+    out: list[float] = []
+    for fam in entry.derived.get("color_families") or []:
+        h = fam.get("target_hue")
+        if isinstance(h, (int, float)):
+            out.append(float(h))
+    return out
+
+
+def _keyword_tokens(entry: CorpusEntry) -> set[str]:
+    toks: set[str] = set()
+    for raw in (entry.subject, entry.title, entry.domain, entry.era):
+        if raw:
+            toks.update(t.strip().lower() for t in re.split(r"[\s_\-/]+", str(raw)) if t.strip())
+    for k, v in entry.labels.items():
+        toks.add(str(k).lower().strip())
+        if isinstance(v, str):
+            toks.update(t.strip().lower() for t in re.split(r"[\s_\-/]+", v) if t.strip())
+        elif isinstance(v, (list, tuple)):
+            for vi in v:
+                toks.add(str(vi).lower().strip())
+    return {t for t in toks if t}
+
+
+def _score(entry: CorpusEntry, query: str) -> float:
+    q_tokens = {t.strip().lower() for t in re.split(r"[\s_\-/]+", query) if t.strip()}
+    if not q_tokens:
+        return 0.0
+    entry_tokens = _keyword_tokens(entry)
+    overlap = q_tokens & entry_tokens
+    keyword_score = _W_KEYWORD * (len(overlap) / max(1.0, len(q_tokens)))
+
+    # Hue overlap: partial credit when the query names a color and the entry's
+    # derived color families sit within tolerance of that hue.
+    hue_score = 0.0
+    entry_hues = _entry_hues(entry)
+    if entry_hues:
+        color_words = {
+            "red": 0.0, "orange": 30.0, "yellow": 60.0, "green": 120.0,
+            "cyan": 180.0, "blue": 240.0, "violet": 270.0, "magenta": 300.0,
+            "purple": 280.0, "white": None, "black": None, "grey": None, "gray": None,
+        }
+        q_hues = [h for w, h in color_words.items() if w in q_tokens and h is not None]
+        if q_hues:
+            best = 0.0
+            for qh in q_hues:
+                for eh in entry_hues:
+                    if _hue_ring_dist(qh, eh) <= 35.0:
+                        best = max(best, 1.0 - _hue_ring_dist(qh, eh) / 35.0)
+            hue_score = _W_HUE * best
+
+    # Era only counts as a tie-breaker when the query explicitly names it.
+    era_score = 0.0
+    if entry.era and entry.era.strip().lower() in q_tokens:
+        era_score = _W_ERA
+
+    return keyword_score + hue_score + era_score
+
+
+def find_grammar(query: str, *, top_k: int = 3,
+                 domain: str | None = None,
+                 only_converged: bool = False,
+                 corpus_root: Path = CORPUS_ROOT) -> dict[str, Any]:
+    """Retrieve the nearest existing grammar(s) for ``query`` as a warm start.
+
+    Returns a ranked list of matches, each carrying enough to condition a new
+    render: the derived acceptance spec, dominant colors, and provenance.
+    """
+    entries = iter_corpus(corpus_root)
+    if domain:
+        entries = [e for e in entries if e.domain == domain]
+    if only_converged:
+        entries = [e for e in entries if e.preview_png.exists()]
+
+    scored = []
+    for e in entries:
+        s = _score(e, query)
+        if s <= 0.0:
+            continue
+        scored.append((s, e))
+    scored.sort(key=lambda se: se[0], reverse=True)
+
+    matches = []
+    for s, e in scored[:top_k]:
+        matches.append({
+            "slug": e.slug,
+            "title": e.title,
+            "domain": e.domain,
+            "subject": e.subject,
+            "era": e.era,
+            "status": e.status,
+            "converged": e.preview_png.exists(),
+            "score": round(s, 3),
+            "labels": e.labels,
+            "derived_acceptance": e.derived_acceptance,
+            "dominant_hues": e.derived.get("dominant_hues"),
+            "color_families": e.derived.get("color_families"),
+            "source_url": e.source_url,
+            "license": e.license,
+        })
+
+    best = matches[0] if matches else None
+    return {
+        "query": query,
+        "domain_filter": domain,
+        "only_converged": only_converged,
+        "corpus_count": len(iter_corpus(corpus_root)),
+        "match_count": len(matches),
+        "best": best,
+        "matches": matches,
+    }
+
