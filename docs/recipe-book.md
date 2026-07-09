@@ -687,4 +687,21 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - Bridge fix: make `activate_render_target` actually select the RT as the active render target (e.g. `octane.render.setActiveRenderTarget` / nodegraph select), so the manual UI reselection is unnecessary.
 - Note: avatar-guide OBJ uses `usemtl` groups but the recipe has no `assign_material` op, so the mesh renders with the RT default material (cool palette) — consistent with the geometric-guide intent; not a defect.
 
+---
+
+## RT-selection limitation — manual reselect still required (2026-07-09)
+
+- **Outcome:** pitfall (documented, NOT fixed)
+- **Context:** After the 8-step protocol builds + drains a scene, the render does NOT begin until the "Hermes Render Target" node is **manually re-selected in the Octane UI**. The bridge's `activate_render_target` calls `octane.project.setSelection{rt}` but that only selects the node in the graph — it does NOT make the RT the *active* render target the engine renders to / `saveImage()` reads.
+
+### Empirical probe (safe, non-wedging)
+- `activate_render_target` now probes 5 setter candidates, each `pcall`-wrapped, non-fatal: `octane.render.setRenderTargetNode`, `octane.project.setRenderTargetNode`, `octane.project.setActiveRenderTarget`, `octane.render.setRenderTarget`, `octane.project.setRenderTarget`.
+- **Result on this Octane X build: ALL 5 fail silently** (no "activated render target via <setter>" line in `bridge.log`; `getRenderTargetNode` exists as a getter but no public setter is exposed). The RT node's own pins (camera/env/mesh/filmSettings/etc.) contain no "active" flag either.
+- The probe is left in place: if a future Octane build exposes a setter, the bridge will auto-use it and log which one worked — no code change needed.
+
+### Conclusion
+- This is a **genuine Octane X API limitation**, not a bridge defect we can code around blindly. `octane.render.start{renderTargetNode=rt}` is documented to WEDGE forever, so it is unsafe. The only reliable mechanism to make our RT active is the manual UI reselection.
+- **Protocol impact:** the 8-step render protocol MUST include an explicit manual "re-select the Hermes Render Target node in the UI" step after starting the renderer, before the frame will render. Until Otoy exposes a setter, this remains a required human step.
+- Do NOT claim the RT auto-activates — it does not on this build.
+
 

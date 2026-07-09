@@ -465,6 +465,29 @@ local function activate_render_target(rt)
         ok = pcall(function() octane.project.select(rt) end)
         activated = activated or ok
     end
+    -- Selecting the RT node in the graph is NOT sufficient on this Octane build:
+    -- the engine renders whatever RT is *active in the main viewport*, and
+    -- setSelection alone does not switch that. The user previously had to
+    -- manually re-select the RT node in the UI before the engine would render
+    -- it. There is no documented public setter for the active RT, so we probe
+    -- the most likely setter names (each pcall-wrapped, non-fatal) and log
+    -- which one actually switches the active target. This is how we learn the
+    -- working API without risking the render-wedge that start{rt} causes.
+    local setter_candidates = {
+        { "octane.render.setRenderTargetNode(rt)", function() return octane.render.setRenderTargetNode(rt) end },
+        { "octane.project.setRenderTargetNode(rt)", function() return octane.project.setRenderTargetNode(rt) end },
+        { "octane.project.setActiveRenderTarget(rt)", function() return octane.project.setActiveRenderTarget(rt) end },
+        { "octane.render.setRenderTarget(rt)", function() return octane.render.setRenderTarget(rt) end },
+        { "octane.project.setRenderTarget(rt)", function() return octane.project.setRenderTarget(rt) end },
+    }
+    for _, cand in ipairs(setter_candidates) do
+        local ok, result = pcall(cand[2])
+        if ok and result ~= false then
+            activated = true
+            append_log("activated render target via " .. cand[1] .. " result=" .. tostring(result))
+            break
+        end
+    end
     if activated then append_log("activated render target " .. tostring(rt)) end
     return activated
 end
