@@ -95,6 +95,30 @@
       }
     },
     {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "geospatial-terrain",
+        "material_name": "earth",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "geospatial-terrain",
+        "material_name": "water",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "geospatial-terrain",
+        "material_name": "gold",
+        "group_index": 3
+      }
+    },
+    {
       "op": "set_camera",
       "payload": {
         "position": [

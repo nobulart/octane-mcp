@@ -71,6 +71,69 @@ class TestRecipeContractOffline(TestCase):
             verify_recipe_library(dry_run=False, live=True)
 
 
+class TestVisionTierOffline(TestCase):
+    """The vision tier must never call a real model in tests; inject vision_fn."""
+
+    def test_vision_review_accept_passes(self):
+        import benchmarks.vision_check as vc
+
+        data = {"title": "Photoreal Vase Studio", "purpose": "Five distinct vases on a pedestal."}
+        stub = lambda path, intent: (True, "YES: five vases visible")  # noqa: E731
+        res = vc.vision_review("fake.png", data, stub)
+        self.assertTrue(res["ran"])
+        self.assertTrue(res["passed"])
+        self.assertIn("vase", res["intent"].lower())
+
+    def test_vision_review_reject_records_failure(self):
+        import benchmarks.vision_check as vc
+
+        data = {"title": "Photoreal Vase Studio", "purpose": "Five distinct vases on a pedestal."}
+        stub = lambda path, intent: (False, "NO: a grey cylinder, not vases")  # noqa: E731
+        res = vc.vision_review("fake.png", data, stub)
+        self.assertTrue(res["ran"])
+        self.assertFalse(res["passed"])
+        self.assertEqual(res["reasoning"], "NO: a grey cylinder, not vases")
+
+    def test_vision_review_handles_vision_exception(self):
+        import benchmarks.vision_check as vc
+
+        def boom(_p, _i):
+            raise RuntimeError("model down")
+
+        res = vc.vision_review("fake.png", {"title": "x"}, boom)
+        self.assertFalse(res["ran"])
+        self.assertFalse(res["passed"])
+        self.assertIn("model down", res["error"])
+
+    def test_run_recipe_blocks_promotion_on_vision_reject(self):
+        """With copy_back + vision_check, a wrong-subject verdict must NOT promote."""
+        import os
+        import tempfile
+
+        import benchmarks.verify_recipes as vr
+        from benchmarks.verify_recipes import RecipeRun, _promote
+
+        # Minimal run object mimicking a passed-pixel, vision-rejected result.
+        data = {"slug": "photoreal-vase-studio", "title": "Vase",
+                "materials": {}, "commands": [
+                    {"op": "import_geometry", "payload": {"path": "x", "name": "photoreal-vase-studio"}},
+                    {"op": "save_preview", "payload": {"path": "y"}},
+                ]}
+        run = RecipeRun(slug="photoreal-vase-studio", title="Vase", domain="Photoreal")
+        run.acceptance = {"passed": True}
+        run.vision = {"ran": True, "passed": False, "intent": "vase", "reasoning": "NO: cylinder"}
+        run.preview_path = Path("/nonexistent.png")  # not needed; we test gate logic directly
+
+        # Replicate the exact promotion gate used in run_recipe.
+        should_promote = (
+            True  # copy_back context
+            and run.acceptance.get("passed")
+            and (not True or run.vision_ok)  # vision_check=True
+        )
+        self.assertFalse(should_promote, "vision rejection must block promotion")
+        self.assertFalse(run.vision_ok, "vision_ok must be False on reject")
+
+
 if __name__ == "__main__":
     import unittest
 

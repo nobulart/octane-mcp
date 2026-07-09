@@ -11,9 +11,9 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 | Tests | 136 passed / 1 skipped (offline `python -m unittest discover -s tests`) — green |
 | Octane X | running; persistent bridge; 135 processed / 0 failed; no wedge |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
-| Recipe library | 18 recipes; 2 verified, 16 target/reference only (offline contract harness passes 18/18; live verify pending) |
+| Recipe library | 18 recipes; live-verify sweep in progress — fix applied to 5 broken recipes (missing `create_material`/`assign_material`); vision-against-intent tier added to acceptance |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry |
-| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
+| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory, reference-anchored corpus expansion (WP9) |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
@@ -75,6 +75,24 @@ _No open build — direction A committed; see Done recently._
 - `5d928ac` fix(bridge): render-restart retry loop unblocks Tier 3–6 renders; 18/18 benchmarks live.
 - `760e34b` docs(canvas): ticket-ready implementation roadmap + proposal cross-link.
 - `fc566cf` feat(benchmarks): progressive visualisation suite + Tier 1–2 live verification.
+- **A (live) — recipe verification fix + vision tier** (2026-07-09): found the 5
+  "verified-but-wrong" recipes were failing because the Octane bridge ignores OBJ
+  `usemtl`/MTL colors — materials only reach the mesh via explicit
+  `create_material` + `assign_material`. The 4 photoreal/space recipes emitted zero
+  `create_material` (relied on MTL, which is ignored); `geospatial-terrain` emitted
+  materials but no `assign_material`. Added `scripts/fix_recipe_materials.py`
+  (idempotent: derives `usemtl` groups from `scene.obj`, emits a `create_material`
+  per group with color/kind from each recipe's `materials` block, then an
+  `assign_material` with the correct 1-based `group_index`), ran it on the 5 broken
+  recipes. Added an **opt-in vision-against-intent tier** to the acceptance harness
+  (`benchmarks/vision_check.py` + wired into `benchmarks/verify_recipes.py` via
+  `--vision-check`): after pixel QA passes, a vision model confirms the PNG actually
+  shows the recipe's stated subject and **blocks promotion** on a wrong-subject
+  verdict (no real model call in the offline test suite — `vision_fn` is injected).
+  Re-rendered the 5 fixed recipes live; all 5 now render correct color-dependent
+  subjects (Earth, Saturn, product studio, 5 vases, terrain). Full 18-recipe
+  `copy_back` sweep running to flip `native_octane_verified` on every recipe that
+  passes pixel QA. New tests: `tests/test_verify_recipes.py::TestVisionTierOffline`.
 
 ## Proposed next steps (reviewer recommendations)
 
@@ -102,6 +120,11 @@ item states the concrete first action so a smaller model (or Plato) can pick it 
    optional ffmpeg encode; bounded first slice only.
 6. **Texture gen (G of brainstorm).** image-gen → `texture_path`/`normal_path` on
    materials, closing the "texture approximated with geometry" recipe pitfall.
+7. **H — Reference-anchored corpus expansion** (new brainstorm direction):
+   `reference_to_acceptance()` + `scripts/harvest_commons.py` + `corpus.py` +
+   `corpus/<slug>/` manifest. Pure-Python, offline-testable, builds on the
+   existing `octane_render_review_loop` (WP5). Highest compounding leverage once
+   A's verification harness pattern is proven.
 
 **Recommended sequence:** (1) first — it is the only remaining honesty gap and is
 already coded. Then (2) or (3) for ergonomics/research leverage; (4) is a parallel

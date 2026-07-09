@@ -496,7 +496,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Steps
 - Generate the surface OBJ in Python (`scripts/gen_math_surface.py`): z = sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8, r=hypot(x,y), x,y∈[-6,6], 200×200 grid, single `usemtl` group → ~40k verts / 79k tris. Copy into the container workspace `OctaneMCP/assets/` (sandboxed Octane only reads container FS).
 - Queue the full pipeline in ONE live Octane session (do NOT restart Octane between import and save): import_geometry(name `math_surface`) → create_material(glossy, color [0.85,0.55,0.25], roughness 0.3) → assign_material → set_camera(fov 40, pos [11,9,11], target [0,0.5,0]) → set_lighting(soft_studio) → save_preview(quality="high"|"ultra").
-- Drain with the one-shot bridge (repeat the click until `queue/` is empty — one command per click).
+- Drain with the one-shot bridge (a single click drains the *entire* command queue — no per-command clicks; the old "one command per click" model was a symptom of the masked TCC `-1719` denial, now fixed).
 - Produced `math_surface_high.png` (325,995 B, 21:52) and `math_surface_ultra.png` (326,230 B, 22:02).
 
 ### Signals / evidence
@@ -629,5 +629,38 @@ processed, 0 failed; 12 `bench_t3_*.png` … `bench_t6_*.png` produced.
 - Promotion path: any task that passes pixel acceptance twice gets a `docs/recipe-book.md` "native-verified" recipe entry and (optionally) a checked-in `examples/recipes/bench-*` directory.
 - Add a luminance-based bright check to `acceptance.py` for emissive/HDRI tasks (cleaner than near-white tuning).
 - Tier 6 Saturn could use a lit ring/planet normal map to read more photoreal; current pass is structural only.
+
+## Recipe library: 5 color-dependent recipes rendered wrong (MTL colors ignored)
+
+- **Outcome:** failure → fixed
+- **Recorded:** 2026-07-09
+- **Context:** Live verification of the 18-recipe library found 5 recipes that passed pixel QA but rendered the *wrong subject* (grey cylinder instead of vases, white voxel grid instead of Earth, etc.). The other 13 passed on silhouette alone because their meaning does not depend on color.
+
+### Root cause
+The Octane bridge's `handle_import_geometry` **ignores OBJ `usemtl`/MTL `Kd` colors**. Materials only reach the mesh via explicit `create_material` + `assign_material` commands (see the per-group-material lesson above). The 5 failures were authored to trust OBJ/MTL color:
+- `photoreal-earth-space`, `saturn-moons-space`, `photoreal-product-studio`, `photoreal-vase-studio` emitted **zero** `create_material` commands → every `usemtl` group fell back to Octane's default white/grey material.
+- `geospatial-terrain` emitted `create_material` but **no `assign_material`** → created materials were never bound to the mesh groups (assign_material is used by 0/18 recipes).
+
+### Fix
+Added `scripts/fix_recipe_materials.py` (idempotent, deterministic):
+- Reads `usemtl` group order from `scene.obj`.
+- Emits a `create_material` per group using the color/kind from each recipe's `materials` block (scene/environment groups not in `materials` default to neutral grey).
+- Emits an `assign_material` per group with the correct 1-based `group_index` (ordinal of first `usemtl` appearance = Octane's material-pin order).
+- Preserves all other `commands` (`import_geometry`, `set_camera`, `set_lighting`, `save_preview`) and every other scene.json field (visual_iteration_protocol, final_bundle, etc.).
+
+Run on the 5 broken recipes. Re-rendered live: all 5 now show correct color-dependent subjects (blue Earth, ringed Saturn, glass+gold product studio, 5 distinct vases, green/blue terrain).
+
+### Acceptance hardening
+Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_empty`). Added an **opt-in vision-against-intent tier** (`benchmarks/vision_check.py`, wired into `benchmarks/verify_recipes.py` via `--vision-check`): after pixel QA passes, a vision model confirms the PNG shows the recipe's stated `intent` and **blocks promotion** on a wrong-subject verdict. The vision call is injected (`vision_fn`) so the offline suite never hits a real model.
+
+### Signals / evidence
+- `assign_material` used by 0/18 recipes before fix; OBJ `usemtl` groups map 1:1 to materials the recipes specify (13 passing recipes already had `create_material` per group → they colored correctly).
+- Live re-render + local `vision_analyze`: 5/5 fixed subjects correct.
+- New tests `tests/test_verify_recipes.py::TestVisionTierOffline` (4 cases) pass offline; parity suite still green.
+
+### Follow-ups
+- Run `fix_recipe_materials.py --all` when regenerating example recipes so material binding is never lost again.
+- Consider teaching `generate_recipe_examples.py` to emit `create_material` + `assign_material` directly (single source of truth), removing the post-hoc fix step.
+- The vision tier's live shim (`_live_vision_shim`) currently imports `hermes_tools.vision_analyze`, which is not available inside `uv run`; for autonomous live runs, call the vision tool from the agent runtime and pass it as `vision_fn`.
 
 

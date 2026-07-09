@@ -69,12 +69,19 @@ class RecipeRun:
     queued: int = 0
     preview_path: Path | None = None
     acceptance: dict[str, Any] | None = None
+    vision: dict[str, Any] | None = None
     contract_ok: bool = False
     contract_errors: list[str] = field(default_factory=list)
     contract_warnings: list[str] = field(default_factory=list)
     error: str | None = None
     duration_seconds: float = 0.0
     notes: list[str] = field(default_factory=list)
+
+    @property
+    def vision_ok(self) -> bool | None:
+        if self.vision is None:
+            return None
+        return bool(self.vision.get("ran")) and bool(self.vision.get("passed"))
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -88,7 +95,9 @@ class RecipeRun:
             "contract_errors": self.contract_errors,
             "contract_warnings": self.contract_warnings,
             "passed": bool(self.acceptance and self.acceptance.get("passed")),
+            "vision_ok": self.vision_ok,
             "acceptance": self.acceptance,
+            "vision": self.vision,
             "error": self.error,
             "duration_seconds": round(self.duration_seconds, 2),
             "notes": self.notes,
@@ -176,6 +185,8 @@ def run_recipe(
     drain_timeout: float = 120.0,
     quality: str | None = None,
     copy_back: bool = False,
+    vision_check: bool = False,
+    vision_fn: Any = None,
 ) -> RecipeRun:
     """Run one recipe's scene.json end-to-end (or up to the dry_run boundary).
 
@@ -184,6 +195,12 @@ def run_recipe(
     drains, and evaluates the rendered PNG with pixel acceptance. ``copy_back``
     copies the container PNG into the recipe dir and flips ``native_octane_verified``
     — opt-in only, never silent.
+
+    ``vision_check`` adds an opt-in, secondary semantic tier (see
+    ``benchmarks.vision_check``): after pixel acceptance passes, a (injected)
+    vision model confirms the PNG actually shows the recipe's stated subject. It
+    never overrides pixel acceptance on its own, but **blocks promotion** when it
+    reports a wrong-subject render — the gap that let grey-cylinder "vases" through.
     """
     start = time.time()
     recipe_dir = _find_recipe_dir(slug)
@@ -262,9 +279,29 @@ def run_recipe(
     if run.preview_path and run.preview_path.exists():
         criteria = derive_criteria(slug, data)
         run.acceptance = acceptance.evaluate_acceptance(run.preview_path, criteria)
-        if copy_back and run.acceptance.get("passed"):
+
+        # Opt-in semantic tier: confirm the render actually shows the recipe's
+        # stated subject. Runs ONLY after pixel acceptance passes (a blank frame
+        # is already disqualified by the primary tier). Blocks promotion on a
+        # wrong-subject verdict; recorded as extra evidence otherwise.
+        if vision_check and run.acceptance.get("passed"):
+            from benchmarks.vision_check import _live_vision_shim, vision_review
+
+            fn = vision_fn or _live_vision_shim
+            run.vision = vision_review(run.preview_path, data, fn)
+            if not run.vision_ok:
+                run.notes.append(
+                    f"vision tier REJECTED subject (intent: {run.vision.get('intent')}; "
+                    f"{run.vision.get('reasoning')})"
+                )
+
+        if copy_back and run.acceptance.get("passed") and (not vision_check or run.vision_ok):
             _promote(recipe_dir, data, run.preview_path)
             run.notes.append("promoted: PNG copied to recipe dir + native_octane_verified=true")
+        elif copy_back and not run.acceptance.get("passed"):
+            run.notes.append("NOT promoted: pixel acceptance failed")
+        elif copy_back and vision_check and not run.vision_ok:
+            run.notes.append("NOT promoted: vision tier rejected subject")
     else:
         run.error = "preview not written by bridge"
         run.acceptance = acceptance.evaluate_acceptance(run.preview_path or Path("/nonexistent.png"), derive_criteria(slug, data))
@@ -292,11 +329,15 @@ def verify_recipe_library(
     drain_timeout: float = 120.0,
     copy_back: bool = False,
     slug: str | None = None,
+    vision_check: bool = False,
+    vision_fn: Any = None,
 ) -> dict[str, Any]:
     """Verify the recipe library.
 
     dry_run=True: offline contract check only (default).
     live=True (requires ``OCTANEX_LIVE=1``): mirror + queue + drain + pixel-accept.
+    vision_check=True: additionally run the opt-in semantic vision tier after pixel
+    acceptance (live only; see benchmarks.vision_check).
     """
     if live and os.environ.get("OCTANEX_LIVE") != "1":
         raise RuntimeError("live verification requires OCTANEX_LIVE=1 (and a running Octane X)")
@@ -314,7 +355,7 @@ def verify_recipe_library(
         data = _read_scene_json(recipe_dir / "scene.json")
         s = str(data.get("slug") or recipe_dir.name)
         if live:
-            runs.append(run_recipe(s, container=container, dry_run=False, drain_timeout=drain_timeout, copy_back=copy_back))
+            runs.append(run_recipe(s, container=container, dry_run=False, drain_timeout=drain_timeout, copy_back=copy_back, vision_check=vision_check, vision_fn=vision_fn))
         else:
             r = RecipeRun(slug=s, title=str(data.get("title") or s), domain=str(data.get("domain") or data.get("category") or "uncategorized"))
             ok, errs, warns, _ = _check_contract(s, recipe_dir, data)
@@ -345,6 +386,8 @@ def _main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="offline contract check only (default)")
     ap.add_argument("--slug", help="verify a single recipe by slug")
     ap.add_argument("--copy-back", action="store_true", help="copy rendered PNG into recipe dir + flip verified flag (live only)")
+    ap.add_argument("--vision-check", action="store_true",
+                    help="opt-in semantic vision tier after pixel acceptance (live only; blocks promotion on wrong-subject)")
     ap.add_argument("--drain-timeout", type=float, default=120.0)
     args = ap.parse_args()
 
@@ -354,6 +397,7 @@ def _main() -> None:
         live=live,
         slug=args.slug,
         copy_back=args.copy_back,
+        vision_check=args.vision_check,
         drain_timeout=args.drain_timeout,
     )
     print(json.dumps(report, indent=2))

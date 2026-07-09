@@ -115,7 +115,7 @@ Make OctaneX MCP an agent-readable, agent-editable visual workbench:
 1. Native Octane timeline controls.
 2. Renderer-agnostic scene backend abstraction.
 3. Blender/Houdini/Unreal backends.
-4. Visual memory and semantic recipe retrieval.
+4. Visual memory and semantic recipe retrieval. (Concretized by WP9 — reference-anchored corpus expansion with `octane_find_grammar` retrieval.)
 5. Multi-agent designer/critic/renderer workflows.
 
 ---
@@ -702,6 +702,111 @@ PYTHONPATH= uv run python -m compileall src
 
 ---
 
+# Work package 9 — Reference-anchored visual-grammar corpus expansion
+
+## Goal
+
+Turn the built-in vision loop into an *expansion engine*: harvest clearly labeled,
+licensed reference imagery (Wikimedia Commons, structured via Wikidata), convert
+each reference into a self-describing visual-grammar entry, and let the existing
+render → pixel-QA → patch loop converge it into a reusable grammar that also
+auto-registers as a benchmark. This makes every harvested image both a *test* and
+a *reusable grammar*, compounding without a human authoring OBJ or acceptance
+lists by hand.
+
+Protocol (Reference-Anchored Grammar Synthesis, "RAGS"):
+
+```
+Wikimedia Commons (image + Wikidata labels)
+        │  harvest + pixel-filter
+        ▼
+corpus/<slug>/reference.png + manifest.json   ← labeled, licensed, provenance
+        │  derive acceptance spec from PIXELS (not vision model)
+        ▼
+grammar_spec.yaml  (parametric OBJ generator)
+        │  build → queue → drain → save_preview
+        ▼
+candidate.png ──► pixel-QA + local-vision diff vs reference
+        │                │
+        │         gap > budget?
+        │         ├── yes → bounded patch to grammar → repeat (≤ N iters)
+        │         └── no  → promote: corpus entry "converged", becomes benchmark + few-shot prior
+        ▼
+expanded visual grammar corpus (self-compounding)
+```
+
+## Files to inspect first
+
+- `src/octanex_mcp/review.py`
+- `benchmarks/acceptance.py`
+- `benchmarks/spec.py`
+- `benchmarks/verify_recipes.py`
+- `src/octanex_mcp/recipes.py`
+- `scripts/glm_ocr_visual_review.py`
+- `docs/visual-iteration-protocol.md`
+- `docs/visual-grammar.md`
+
+## Current state
+
+Implemented (reuse, do not re-implement):
+
+- Pixel-QA in `review.py`: mean/contrast/near-black/near-white, edge density, foreground % + bbox, diagnosis with `likely_causes` + `recommended_actions`.
+- Acceptance gate in `acceptance.py`: `non_empty`, `review_ok`, `color_family`, `color_present`, `shape_profile`, `bright_fraction`, `file_size` — evaluated on pixels only, never a vision model (chess-pawn regression).
+- Benchmark spec in `spec.py`: `CombinedObj` (one combined mesh, per-group materials) + `_mat()` + `BenchmarkTask`.
+- Recipe verification in `verify_recipes.py`: offline contract + live render + opt-in `copy_back` promotion.
+- Local vision patch suggester in `glm_ocr_visual_review.py` (reference vs candidate JSON schema diff).
+- Iteration protocol in `docs/visual-iteration-protocol.md` (reference → candidate → render → review → patch → repeat).
+- `octane_render_review_loop()` (WP5) exists but does not auto-apply patches or promote into a corpus.
+
+Missing or incomplete:
+
+- No pixel-derived acceptance deriver (criteria are hand-authored per benchmark/spec).
+- No reference-harvest agent or corpus data model.
+- The loop produces patch *plans* but nothing applies them end-to-end or promotes the result.
+- Persistent-bridge auto-poll timer is broken; one-shot needs manual Script-menu clicks, so autonomous/overnight expansion stalls (recipe-book follow-up).
+- Single-mesh render target (pitfall #13/#19): multi-OBJ scenes must merge into one combined OBJ — favors single-subject references.
+- Vision models hallucinate (chess-pawn); must remain a patch *suggester only*, with the pixel gate as truth.
+
+## Tasks
+
+1. Add `reference_to_acceptance(reference_png)` in `acceptance.py` (pixel-only deriver):
+   - dominant hue families (k-means on non-background pixels) → `color_family` targets + tolerances;
+   - foreground bbox bounds + edge-density band → `shape_profile` tolerances;
+   - near-black/white budget → lighting/exposure guardrails.
+   Returns an `acceptance` list usable directly by `evaluate_acceptance()`.
+2. Add `scripts/harvest_commons.py`:
+   - query Commons API / Wikidata SPARQL by category; pull image + structured labels (subject, material, era, domain tags);
+   - write a `corpus/<slug>/` entry;
+   - **pixel harvest-filter**: reject low-contrast, blown-out, watermarked, or busy references using `review_preview`-style stats before they enter the corpus (no vision model).
+3. Add `src/octanex_mcp/corpus.py` + `corpus/<slug>/` manifest model (sibling to `recipes.py`):
+   - `corpus/<slug>/reference.png`, `manifest.json` (Wikidata labels, domain/era tags, source URL, license, derived acceptance spec), `grammar_spec.yaml`, `iterations/`, `octane-preview.png`;
+   - index/load/validate helpers + tests.
+4. Build on `octane_render_review_loop()` (WP5): add automatic patch application + continued iteration, and promotion of converged entries into the corpus (mirrors `verify_recipes._promote`, never silent).
+5. Add a bridge file-trigger watchdog (in-bridge "drain queue on file signal") so a loop can push a queue and poll `status.json` without `osascript` menu traversal — unblocks unattended/overnight expansion and dodges the TCC/Accessibility fragility.
+6. Make `grammar_spec.yaml` texture-ready: deposit the (downsampled) harvested reference texture into `assets/` and attach it to `texture_path`/`normal_path` the moment the bridge supports it (converges with direction G).
+7. Auto-register every converged corpus entry's `acceptance` spec + reference as a `benchmarks/spec.py` task, so corpus growth *becomes* benchmark growth.
+8. Add an `octane_find_grammar(subject)` retrieval tool (Priority C4): tag every entry with domain + descriptor vectors; retrieve the nearest existing grammar as a warm start for new subjects.
+
+## Acceptance criteria
+
+- A harvested reference yields a self-describing acceptance spec with no hand-authoring and no vision model.
+- Corpus entries carry provenance (source URL, license, Wikidata labels).
+- The harvest filter rejects low-contrast / blown-out / watermarked / busy references via pixel stats.
+- `reference_to_acceptance()` output is consumed by `evaluate_acceptance()` and covered by tests.
+- Converged entries auto-register as benchmark tasks and pass acceptance.
+- The loop never marks a corpus entry verified without pixel acceptance passing.
+- `corpus.py` has registry/index/load/validate tests.
+
+## Suggested verification
+
+```bash
+PYTHONPATH= uv run python -m unittest tests.test_acceptance tests.test_review tests.test_recipes
+PYTHONPATH= uv run python -m unittest discover -s tests
+PYTHONPATH= uv run python -m compileall src
+```
+
+---
+
 # Cross-cutting guardrails
 
 These apply to every work package:
@@ -816,6 +921,22 @@ Stop when orbit reveal is reproducible through MCP tooling.
 
 ---
 
+## PR 9 — Reference-anchored corpus expansion seed
+
+Focus:
+
+- `reference_to_acceptance()` in `benchmarks/acceptance.py`
+- `scripts/harvest_commons.py`
+- `src/octanex_mcp/corpus.py` + `corpus/<slug>/` manifest model
+- corpus tests
+
+Stop when a harvested, pixel-filtered Wikimedia Commons reference writes a
+corpus manifest that carries an automatically derived acceptance spec —
+pure-Python and offline-testable (no bridge/Octane changes, no GPU), the same
+profile as PR 1/PR 7.
+
+---
+
 # Development brainstorm (2026-07-09 review)
 
 Captured during a Hermes status review of the live project state (tests green,
@@ -866,6 +987,20 @@ explanations; lower urgency than A–C.
 Feed image-gen output into `texture_path` / `normal_path` on `octane_create_material`.
 Closes the "ribbed/brush texture approximated with geometry" pitfall noted in
 recipe metadata.
+
+**H — Reference-anchored visual-grammar corpus expansion (new).**
+Use the built-in vision loop + licensed Wikimedia Commons imagery (structured
+labels via Wikidata) to auto-expand the visual-grammar corpus. Protocol
+"Reference-Anchored Grammar Synthesis (RAGS)": harvest labeled Commons images →
+pixel-filter into a corpus → derive acceptance from reference pixels (not a vision
+model) → parametric grammar spec → build/queue/drain/render → pixel-QA + local
+vision diff → bounded auto-patch loop → promote converged entry as reusable
+grammar + auto-benchmark. Builds on the existing `octane_render_review_loop()`
+(WP5) by adding automatic patch application and corpus promotion.
+*First step:* `reference_to_acceptance()` in `benchmarks/acceptance.py` (pixel-only
+deriver) + `scripts/harvest_commons.py` + `src/octanex_mcp/corpus.py` +
+`corpus/<slug>/` manifest. Pure-Python, offline-testable — a natural follow-on
+after A's harness pattern is proven.
 
 **Recommended next move:** do **A first** (cheap, restores full honesty, de-risks
 everything else), then **B** (geo grammar — highest-leverage fit for the research)
