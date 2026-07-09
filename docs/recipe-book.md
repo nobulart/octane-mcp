@@ -663,4 +663,28 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - Consider teaching `generate_recipe_examples.py` to emit `create_material` + `assign_material` directly (single source of truth), removing the post-hoc fix step.
 - The vision tier's live shim (`_live_vision_shim`) currently imports `hermes_tools.vision_analyze`, which is not available inside `uv run`; for autonomous live runs, call the vision tool from the agent runtime and pass it as `vision_fn`.
 
+---
+
+## avatar-guide — live native verification (2026-07-09)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-09 (local)
+- **Context:** Final unverified recipe. Closed by rendering live in Octane X via the 8-step render protocol (launch → reset → flush stale queue → build+queue scene → start renderer → drain → reselect RT → save).
+
+### Steps
+- Mirror `scene.obj` into container `assets/recipe_avatar-guide.obj`; rewrite `import_geometry` path to container FS; **drop the `start_render` op** (handler already calls `request_render_restart` → collision).
+- Queue: import + 5 `create_material` (base/navy/cyan/gold/violet) + `set_camera` + `set_lighting` (soft_studio) + `save_preview` → container `renders/recipe_avatar-guide_octane-preview.png`.
+- One-shot bridge drains (queue 9→0); `bridge.log` shows RT activated, `restart() ok=true`, render active.
+- **Critical:** after start, the render did NOT begin until the "Hermes Render Target" node was **manually re-selected in the UI**. `octane.project.setSelection{rt}` (bridge `activate_render_target`) is insufficient on this build — the RT must be made the active render target explicitly.
+- Re-queue `save_preview` + drain → `saveImage ... ok=true ... exists=true`, PNG written (607 KB).
+
+### Signals / evidence
+- Pixel QA: 1280×1280, mean RGB (124.9, 150.6, 180.6), mean_dev 78.2, near-black frac 0.000 → lit, structured, not blank.
+- `vision_analyze` (auxiliary vision model, active LLM has no native vision): confirmed a coherent 3D-rendered geometric avatar face (slate-blue palette, raised eye/mouth blocks, floor shadow) — subject correct.
+- `native_octane_verified=true` set in `scene.json`; PNG copied to `examples/recipes/avatar-guide/octane-preview.png`. Library now **18/18**.
+
+### Follow-ups
+- Bridge fix: make `activate_render_target` actually select the RT as the active render target (e.g. `octane.render.setActiveRenderTarget` / nodegraph select), so the manual UI reselection is unnecessary.
+- Note: avatar-guide OBJ uses `usemtl` groups but the recipe has no `assign_material` op, so the mesh renders with the RT default material (cool palette) — consistent with the geometric-guide intent; not a defect.
+
 

@@ -164,5 +164,6 @@
     "status": "native_candidate_saved_but_not_final",
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
   },
+  "native_octane_verified": true,
   "status": "native_octane_verified (ultra tier, 2026-07-08)"
 }
