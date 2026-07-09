@@ -354,14 +354,16 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ### Steps
 - Added bridge process/status helpers that report Octane X PID, generated script paths, script readiness, status.json contents, and heartbeat age.
-- Added AppleScript-backed helpers to attempt running `hermes_bridge_oneshot.generated.lua` or `hermes_bridge_persistent.generated.lua` from Octane X's Scripts menu.
+- Added AppleScript-backed helpers to attempt running `hermes_bridge_oneshot.generated.lua` or `hermes_bridge_persistent.generated.lua` from Octane X's Script menu (singular "Script", not "Scripts").
 - Added MCP tools and CLI commands for status, one-shot, and persistent bridge control.
 - Verified the already-open persistent bridge can process a queued ping and write result metadata.
+
+> **2026-07-09 correction:** the "structured failure because the generated script name was not found in the exposed Scripts menu" was a *masked* error. The real cause was macOS TCC/Accessibility for `Hermes.app` not being granted, so `osascript` failed with `-1719` and the menu could not even be inspected. The generated AppleScript's `try` block swallowed the `-1719` and emitted a fake "script not found" (`-2700`). This is now fixed: `run_bridge_script` surfaces the real `-1719` and flags `tcc_blocked: true` with the exact grant step. The "not found" framing is obsolete — once Accessibility is granted and Octane's `default_script_path` points at `octane_lua/`, the one-shot appears as `hermes_bridge_oneshot.generated` in the Script menu and launches with one click (which drains the whole queue).
 
 ### Signals / evidence
 - `octanex-mcp bridge-status --json` reported Octane X running, both generated scripts present, and persistent bridge status `idle`.
 - A queued ping returned a successful bridge result: `pong bridge-management-smoke`.
-- Direct AppleScript menu launch currently returns a structured failure because the generated script name was not found in the exposed Scripts menu; this is reported rather than hidden.
+- Direct AppleScript menu launch returned a structured failure at the time because the generated script name appeared "not found" in the exposed Script menu — **this was the masked `-1719`/TCC denial (see 2026-07-09 correction above), not a real menu-path problem.** Once Accessibility is granted it launches cleanly.
 
 ### Follow-ups
 - Confirm the exact Octane X menu hierarchy/script display names, or add a lower-level GUI/menu probe once Accessibility permission is reliable.

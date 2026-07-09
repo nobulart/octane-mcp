@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.1.0
+version: 1.2.0
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -83,6 +83,17 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
    Completion: Octane X's Script menu shows `hermes_bridge_oneshot.generated` and `hermes_bridge_persistent.generated`. Restart Octane X if the scripts do not appear after changing the preference.
 
+   > **If the Script menu is absent**, do NOT assume the preference is wrong first — without the Accessibility grant below you cannot even *inspect* the menu (every probe returns `-1719`), so the menu looks missing. Fix the permission, then re-check.
+
+4. **macOS Accessibility for `Hermes.app` (launch prerequisite — the #1 fresh-setup blocker).** The bridge is launched by UI-scripting Octane X's Script menu via `osascript`, which the **Hermes runtime process** spawns. macOS evaluates the Accessibility (TCC) entitlement on the *process that runs `osascript`* — i.e. `Hermes.app` — **not** on Octane X. If it is missing, every launch fails with **`osascript error -1719`** ("not allowed assistive access") and the bridge never runs.
+
+   - Grant once: **System Settings → Privacy & Security → Accessibility → + → `/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`** → enable.
+   - Restart Hermes (or the process tree) after granting so the entitlement is picked up.
+   - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` should return the menu list (including `"Script"`) instead of `-1719`.
+   - `run_bridge_script('oneshot')` now surfaces this directly: on `-1719` it returns `tcc_blocked: true` with the exact fix above, instead of the old misleading "script not found" `-2700`.
+
+   This is distinct from the Octane X **Automation** permission; both may be needed, but TCC/Accessibility for `Hermes.app` is the one that blocks the launch. (Discovered + fixed 2026-07-09: a generated AppleScript `try` was swallowing the `-1719` and emitting a fake `-2700`.)
+
 ## Standard Agent Loop
 
 1. Verify the toolchain before any render:
@@ -127,13 +138,17 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
 4. Drain the queue in Octane X.
 
-   Prefer `hermes_bridge_oneshot.generated` for multi-command scene batches because it exits and lets Octane repaint. Use the persistent bridge only when you need an open window that keeps polling. Reliable trigger:
+   Prefer `hermes_bridge_oneshot.generated` for multi-command scene batches because it exits and lets Octane repaint. Use the persistent bridge only when you need an open window that keeps polling.
 
+   **Preferred trigger (code path, handles TCC):** `drain_oneshot()` in `src/octanex_mcp/bridge_control.py` clicks Octane X's **Script** menu item (`hermes_bridge_oneshot.generated`) via System Events UI scripting and waits for the queue to drain. The MCP `octane_run_oneshot_bridge` tool calls this. It returns `{"ok": true}` on success or `{"tcc_blocked": true, "error": "-1719 ..."}` if macOS Accessibility is missing for `Hermes.app` (see Setup step 4).
+
+   **Raw AppleScript fallback** (only if the MCP server is down):
    ```bash
-   osascript -e 'tell application "Octane X" to run script file "MacintoshHD:Users:craig:octanex-mcp:octane_lua:hermes_bridge_oneshot.generated.lua"'
+   osascript -e 'tell application "System Events" to tell process "Octane X" to click menu item "hermes_bridge_oneshot.generated" of menu 1 of menu bar item "Script" of menu bar 1'
    ```
+   The menu is named **"Script"** (singular), not "Scripts". Do **not** use `tell app "Octane X" to run script file ...` — that path is unreliable here; UI-script the menu item instead.
 
-   **Use `run script file` (Scripts menu / osascript), not `open location`** — `open location` can leave the viewport stale. AppleScript control of Octane X requires automation permission (System Settings -> Privacy -> Automation -> Octane X); verify with `osascript -e 'tell application "Octane X" to get name'`.
+   **One click drains the ENTIRE queue** (the oneshot processes every queued command in timestamp order, then renders and returns). Do NOT loop "one click per command" — that was an outdated note. Poll `…/OctaneMCP/queue/` once after the click; it should be empty (verified live: an 8-command recipe rendered + saved in a single drain).
 
    Completion: queued commands move to `processed/` or `failed/`, and `results/*.json` records each outcome. Check `queue/` is empty, not just `processed_count` climbing.
 
@@ -234,14 +249,14 @@ render that never finishes:
   trigger — it processes every queued command in timestamp order, then returns.
   Do not rely on the persistent bridge to auto-drain.
 
-**Drain-loop detail (easy to get wrong):** the one-shot bridge drains only
-**~1 command per click** — the broken persistent timer means nothing keeps the
-queue warm, so after each click poll `…/OctaneMCP/queue/` and **repeat the click
-until `queue/` is empty** (watch the file count, not just `processed_count`). A
-6-command pipeline needed ~6 clicks. If `octane_run_oneshot_bridge` throws
-`ClosedResourceError` (transient MCP blip), fall back to the raw osascript
-menu-click above — same effect, no MCP server — and do NOT keep re-calling the
-MCP tool until the server self-recovers (~45–75 s).
+**Drain detail (corrected 2026-07-09):** the one-shot bridge drains the
+**entire queue in one click** — it processes every queued command in timestamp
+order, then renders and returns. (An earlier note claimed "~1 command per click /
+repeat until empty"; that is wrong for the current oneshot and was removed — one
+click + a single queue-empty poll is sufficient.) If
+`octane_run_oneshot_bridge` throws `ClosedResourceError` (transient MCP blip),
+fall back to the raw osascript menu-click above — same effect, no MCP server —
+and do NOT keep re-calling the MCP tool until the server self-recovers (~45–75 s).
 - If the raw osascript `run script file` returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is in a non-receptive state (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, the only recovery is restarting Octane X (purges the loaded scene — re-queue the full pipeline) or reusing an already-produced render if one exists.
 
 - **`set_render_resolution` logs non-fatal `setPinValue failed pin=filmResolution/
@@ -354,6 +369,36 @@ PY
 (The `env -u PYTHONPATH` is required only because the Hermes runtime's
 `PYTHONPATH` forces a broken venv; use any venv that has Pillow. The technique
 is documented in the recipe book under "Multi-group colored mesh".)
+
+## Live Recipe Verification (benchmarks/verify_recipes.py)
+
+To verify a recipe actually renders in native Octane (not just passes the offline
+contract check), use the harness — it mirrors the OBJ into the container, rewrites
+import/save paths to the container FS, drains, and pixel-accepts the PNG:
+
+```bash
+OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --slug network-graph
+# or the library sweep (all 18):
+OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live
+```
+
+**Two non-obvious traps this harness now handles (learned 2026-07-09):**
+
+- **Render-wait budget, not a hardcoded poll.** The PNG-write wait must honor the
+  render budget (`drain_timeout`), NOT a short fixed poll. An earlier 15 s hard
+  cap returned before the render converged and accepted a blank/partial frame as
+  "passed". The fix waits `max(30, drain_timeout)` seconds for the PNG.
+- **Wait for a FRESH PNG.** Before each run, delete any existing
+  `recipe_<slug>_octane-preview.png` so the acceptance check cannot pass on a
+  stale frame from a previous run. Per-recipe unique filenames prevent collision
+  across a batch.
+- **Verify recipe slugs before batching.** The recipe registry slugs are not
+  always the obvious names (e.g. `data-bars`, not `bar-chart`; there is no
+  `histogram`/`scatter-plot`/`correlation-heatmap`/`pca-3d`). Enumerate real
+  slugs first: `uv run python -c "from octanex_mcp.recipes import _recipe_dirs; from pathlib import Path; print([d.name for d in _recipe_dirs(Path('examples/recipes'))])"`.
+
+Completion: `acceptance.passed == True` on a fresh PNG, confirmed by a
+`vision_analyze` spot-check before declaring the recipe verified.
 
 ## Verification Checklist
 

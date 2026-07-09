@@ -118,8 +118,10 @@ Use Octane X's configured Scripts menu to run one of the generated bridge files:
 
 | Mode | Script | Usage |
 | --- | --- | --- |
-| One-shot | `hermes_bridge_oneshot.generated.lua` | Preferred batch path. Drains queued commands and exits so Octane can repaint/render. |
+| One-shot | `hermes_bridge_oneshot.generated.lua` | Preferred batch path. Drains the **entire** queued command set in one run, renders, and exits so Octane can repaint. |
 | Persistent | `hermes_bridge_persistent.generated.lua` | Opens a small bridge window for manual `Process next` / `Drain queue` use. |
+
+> **One click = whole queue.** The one-shot bridge drains *all* queued commands in a single run (verified live: an 8-command recipe rendered + saved from one drain). Do not loop "one click per command".
 
 For agent workflows, queue commands from MCP, ask the user to run the one-shot script inside Octane X, then inspect `processed/`, `failed/`, `results/`, `status.json`, and any saved preview before reporting success.
 
@@ -144,7 +146,7 @@ These helpers open Octane X if needed and use AppleScript/System Events to click
 
 Known limitations:
 
-- macOS may require Accessibility permission for the calling app/terminal before `osascript` can inspect menus.
-- If Octane X's Scripts menu does not expose the generated file names, the helper reports a structured failure instead of pretending the bridge ran.
+- **macOS Accessibility (TCC) for `Hermes.app` is the #1 launch blocker.** `osascript` is spawned by the Hermes runtime process, so macOS evaluates the Accessibility entitlement on `Hermes.app` (`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`), **not** on Octane X or Terminal. If missing, every launch fails with `osascript error -1719` and the bridge never runs. Grant it once in System Settings → Privacy & Security → Accessibility, then restart Hermes. `run_bridge_script` now returns `tcc_blocked: true` with this exact fix instead of a misleading "script not found" error.
+- If Octane X's **Script** menu (singular) does not expose the generated file names, the helper reports a structured failure instead of pretending the bridge ran. The menu is named "Script", not "Scripts".
 - If the persistent bridge is already open, queued commands can still process through that window/timer even when menu automation is unavailable.
 

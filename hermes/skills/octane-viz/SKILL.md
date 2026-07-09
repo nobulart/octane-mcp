@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -81,21 +81,28 @@ Map prompts to tools:
 ### 2. Drain the queue in Octane X
 
 The bridge uses the **one-shot bridge** mode (`hermes_bridge_oneshot.generated`). Run it from
-Octane X's Scripts menu, or trigger it:
+Octane X's Script menu, or trigger it.
 
+**Preferred (code path, handles TCC):** `drain_oneshot()` in `src/octanex_mcp/bridge_control.py`
+clicks Octane X's **Script** menu item via System Events UI scripting. The MCP tool
+`octane_run_oneshot_bridge` calls it; it returns `{"ok": true}` or
+`{"tcc_blocked": true}` if macOS Accessibility is missing for `Hermes.app`
+(see `octanex-mcp` skill, Setup step 4 — the #1 fresh-setup blocker: `osascript`
+fails `-1719` until `Hermes.app` is granted Accessibility in System Settings).
+
+**Raw AppleScript fallback** (MCP server down): UI-script the menu item — the menu
+is **"Script"** (singular), not "Scripts"; do NOT use `run script file ...`:
 ```bash
-osascript -e 'tell application "Octane X" to run script file "MacintoshHD:Users:craig:octanex-mcp:octane_lua:hermes_bridge_oneshot.generated.lua"'
+osascript -e 'tell application "System Events" to tell process "Octane X" to click menu item "hermes_bridge_oneshot.generated" of menu 1 of menu bar item "Script" of menu bar 1'
 ```
 
 Run the one-shot bridge after queueing the scene AND again after queueing the preview save.
 
-**Drain-loop detail (easy to get wrong):** the one-shot bridge drains only
-**~1 command per click** — the persistent auto-poll timer is broken, so nothing
-keeps the queue warm. After each click, poll `…/OctaneMCP/queue/` and **repeat
-the click until `queue/` is empty** (watch the file count, not just
-`processed_count`). A 6-command pipeline needs ~6 clicks. If the MCP tool
-`octane_run_oneshot_bridge` throws `ClosedResourceError`, fall back to the raw
-osascript menu-click above (same effect, no MCP server).
+**Drain detail (corrected 2026-07-09):** one click drains the **entire queue** then
+renders and returns — do NOT loop "one click per command". Poll `…/OctaneMCP/queue/`
+once after the click; it should be empty. If `octane_run_oneshot_bridge` throws
+`ClosedResourceError`, fall back to the raw osascript menu-click above (same effect,
+no MCP server). Visit `octanex-mcp` for the full launch + TCC prerequisites.
 - If that raw osascript `run script file` returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is non-receptive (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, restart Octane X (purges the loaded scene — re-queue) or reuse an existing render.
 
 **CRITICAL — never restart Octane X between `import_geometry` and `save_preview`.**
