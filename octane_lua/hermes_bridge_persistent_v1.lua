@@ -214,15 +214,22 @@ local function update_label(text)
     if count_label then pcall(function() count_label:updateProperties{ text="processed=" .. tostring(processed_count) .. " failed=" .. tostring(failed_count) } end) end
 end
 
-local function write_status(state, extra)
+local function write_status(state, extra, stage_info)
+    -- stage_info (optional table) carries the dashboard's honest render pipeline
+    -- state. Unknown numeric fields are emitted as JSON null (never a fake 0%).
+    local stage = (stage_info and stage_info.render_stage) or (state or "ok")
     local text = "{\n" ..
         "  \"bridge_seen\": true,\n" ..
         "  \"bridge\": \"hermes_bridge_persistent_v1.lua\",\n" ..
         "  \"mode\": \"persistent_window\",\n" ..
         "  \"status\": \"" .. json_escape(state or "ok") .. "\",\n" ..
+        "  \"render_stage\": \"" .. json_escape(stage) .. "\",\n" ..
         "  \"updated_at\": \"" .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. "\",\n" ..
         "  \"octane_available\": " .. tostring(octane ~= nil) .. ",\n" ..
         "  \"octane_node_available\": " .. tostring(octane ~= nil and octane.node ~= nil) .. ",\n" ..
+        "  \"samples_done\": " .. ((stage_info and stage_info.samples_done ~= nil) and tostring(stage_info.samples_done) or "null") .. ",\n" ..
+        "  \"samples_target\": " .. ((stage_info and stage_info.samples_target ~= nil) and tostring(stage_info.samples_target) or "null") .. ",\n" ..
+        "  \"last_preview_path\": " .. ((stage_info and stage_info.last_preview_path) and ("\"" .. json_escape(stage_info.last_preview_path) .. "\"") or "null") .. ",\n" ..
         "  \"processed_count\": " .. tostring(processed_count) .. ",\n" ..
         "  \"failed_count\": " .. tostring(failed_count) .. ",\n" ..
         "  \"root\": \"" .. json_escape(ROOT) .. "\""
@@ -804,6 +811,19 @@ local function handle_start_render(cmd)
     return request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
 end
 
+local function candidates_png_type()
+    -- First available PNG save-type constant, for the progressive pre-grab.
+    if octane.imageSaveType then
+        if octane.imageSaveType.PNG8 ~= nil then return octane.imageSaveType.PNG8 end
+        if octane.imageSaveType.PNG16 ~= nil then return octane.imageSaveType.PNG16 end
+    end
+    if octane.imageSaveFormat then
+        if octane.imageSaveFormat.PNG_8 ~= nil then return octane.imageSaveFormat.PNG_8 end
+        if octane.imageSaveFormat.PNG_16 ~= nil then return octane.imageSaveFormat.PNG_16 end
+    end
+    return nil
+end
+
 local function handle_save_preview(cmd)
     if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only" end
     local path = expand_path(cmd.path or DEFAULT_PREVIEW)
@@ -817,6 +837,24 @@ local function handle_save_preview(cmd)
     if not refreshed then return false, tostring(refresh_msg) end
     local ready, ready_msg = wait_for_render_ready(cmd.min_samples or 16, cmd.timeout_seconds or 10)
     append_log("pre-save render readiness ok=" .. tostring(ready) .. " msg=" .. tostring(ready_msg))
+    write_status("processing", "rendering preview", { render_stage = "rendering", samples_target = cmd.samples or 64 })
+
+    -- Optional progressive preview: grab a low-SPP frame IMMEDIATELY from the
+    -- already-live render (no extra request_render_restart, which would wedge a
+    -- running engine) so the dashboard can show motion early. The full pass
+    -- below then lands the final frame. Honesty: progressive_path is only
+    -- emitted when the caller actually requested progressive mode.
+    if cmd.progressive then
+        local prog_path = expand_path(cmd.progressive_path or (dirname(path) .. "/preview_progressive.png"))
+        os.execute("mkdir -p '" .. dirname(prog_path):gsub("'", "'\\''") .. "'")
+        local prog_ok, prog_err = pcall(function() return octane.render.saveImage(prog_path, candidates_png_type()) end)
+        if prog_ok then
+            write_status("processing", "progressive frame saved", { render_stage = "rendering", samples_target = cmd.samples or 64, last_preview_path = prog_path })
+            append_log("progressive preview saved " .. tostring(prog_path))
+        else
+            append_log("progressive preview skipped: " .. tostring(prog_err))
+        end
+    end
 
     local candidates = {}
     if octane.imageSaveType then
@@ -938,7 +976,9 @@ local function process_file(path, id)
         processed_count = processed_count + 1
         write_result(cmd, true, message, path, dst, (os.clock() - started) * 1000)
         append_log("persistent processed id=" .. tostring(cmd.id) .. " message=" .. tostring(message))
-        write_status("processed", tostring(cmd.op) .. " " .. tostring(message))
+        local preview_path = (cmd.op == "save_preview") and (cmd.path or DEFAULT_PREVIEW) or nil
+        local spp = (cmd.op == "save_preview") and (cmd.samples or 64) or nil
+        write_status("processed", tostring(cmd.op) .. " " .. tostring(message), { render_stage = "ready", samples_done = spp, samples_target = spp, last_preview_path = preview_path })
         if cmd.op == "start_render" then
             request_bridge_close("render restarted; bridge released intentionally so Octane can continue rendering the updated scene")
         end
@@ -948,7 +988,7 @@ local function process_file(path, id)
         local err = ok and message or handled
         write_result(cmd, false, err, path, dst, (os.clock() - started) * 1000)
         append_log("persistent failed id=" .. tostring(cmd.id) .. " error=" .. tostring(err))
-        write_status("failed", tostring(err))
+        write_status("failed", tostring(err), { render_stage = "error" })
         return false, err
     end
 end
@@ -956,7 +996,7 @@ end
 local function process_next_command()
     local path, id = next_queue_file()
     if not path then
-        write_status("idle", "no queued command")
+        write_status("idle", "no queued command", { render_stage = "idle" })
         return false, "no queued command"
     end
     return process_file(path, id)
@@ -972,7 +1012,7 @@ local function drain_some(limit)
         process_file(path, id)
         did = did + 1
     end
-    if did == 0 then write_status("idle", "waiting for commands") end
+    if did == 0 then write_status("idle", "waiting for commands", { render_stage = "idle" }) end
     return did
 end
 
@@ -1020,7 +1060,7 @@ local function start_timer()
 end
 
 append_log("persistent bridge starting")
-write_status("starting", "creating bridge window")
+write_status("starting", "creating bridge window", { render_stage = "queued" })
 
 local timer_started = start_timer()
 local process_button = octane.gui.create{ type=octane.gui.componentType.BUTTON, text="Process next", width=140, height=24, callback=function() process_next_command() end }
@@ -1034,14 +1074,14 @@ local mode_label = octane.gui.create{ type=octane.gui.componentType.LABEL, text=
 local group = octane.gui.create{ type=octane.gui.componentType.GROUP, children={ mode_label, status_label, count_label, process_button, drain_button, close_button }, rows=6, cols=1, padding={12}, border=false }
 local window = octane.gui.create{ type=octane.gui.componentType.WINDOW, width=420, height=220, children={group}, text="Hermes Octane MCP Bridge" }
 bridge_window = window
-write_status("running", timer_started and "persistent timer active" or "manual bridge window active")
+write_status("running", timer_started and "persistent timer active" or "manual bridge window active", { render_stage = "queued" })
 window:showWindow()
 running = false
 if bridge_timer then pcall(function() bridge_timer:stop() end); pcall(function() octane.timer.stop(bridge_timer) end) end
 if close_requested then
-    write_status("released", "render started; bridge intentionally exited so Octane can render the updated scene")
+    write_status("released", "render started; bridge intentionally exited so Octane can render the updated scene", { render_stage = "rendering" })
     append_log("persistent bridge released after render start")
 else
-    write_status("closed", "bridge window closed")
+    write_status("closed", "bridge window closed", { render_stage = "idle" })
     append_log("persistent bridge closed")
 end
