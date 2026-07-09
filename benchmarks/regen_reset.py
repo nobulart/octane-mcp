@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from octanex_mcp.config import resolve_config  # noqa: E402
-from octanex_mcp.bridge_control import bridge_script, render_run_bridge_applescript  # noqa: E402
+from octanex_mcp.bridge_control import reset_octane_scene, run_bridge_script  # noqa: E402
 from octanex_mcp.recipes import RECIPES_ROOT, _recipe_dirs, _read_scene_json  # noqa: E402
 from benchmarks.verify_recipes import run_recipe  # noqa: E402
 
@@ -42,23 +42,24 @@ def octane_running() -> bool:
 
 
 def file_new_reset() -> None:
-    """Warm-engine reset: File > New on the running Octane process."""
-    script = (
-        'tell application "System Events" to tell process "Octane X" '
-        'to click menu item "New" of menu "File" of menu bar 1'
-    )
-    subprocess.run(["osascript", "-e", script], check=False)
+    """Warm-engine reset: File > New on the running Octane process.
+
+    Uses the shared, hardened helper (TCC-classified errors, no duplicated
+    inline AppleScript). The in-memory project + scripts are cleared; Octane
+    then spins up a fresh (empty) project and auto-renders a frame.
+    """
+    reset = reset_octane_scene()
+    if not reset.get("ok"):
+        print(f"    [warn] File>New reset failed: {reset.get('error')}", file=sys.stderr)
     # Let the new (empty) project spin up and auto-render a frame.
     time.sleep(8)
 
 
 def relaunch_bridge() -> None:
     cfg = resolve_config()
-    from octanex_mcp.bridge_control import bridge_script
-
-    script = bridge_script(cfg, "oneshot")
-    applescript = render_run_bridge_applescript(cfg, script)
-    subprocess.run(["osascript", "-e", applescript], check=False)
+    result = run_bridge_script("oneshot", config=cfg)
+    if not result.get("ok"):
+        print(f"    [warn] oneshot relaunch failed: {result.get('error')}", file=sys.stderr)
     # Give the Lua bridge time to register before we queue commands.
     time.sleep(3)
 

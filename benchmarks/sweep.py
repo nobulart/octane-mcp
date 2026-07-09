@@ -11,8 +11,12 @@ Design notes
   "drain failed" if the queue has not fully emptied within drain_timeout, but a
   slow native render keeps processing after Python returns, so the PNG may still
   appear later. Instead we queue with drain=False, click the one-shot bridge
-  (which drains the whole queue autonomously in Lua), then poll for the PNG.
-* The one-shot drain is re-nudged if the queue is non-empty after a stall window.
+  ONCE (the Lua drain loop processes the entire queue and runs the final
+  save_preview render in a single pass), then poll for the PNG.
+* The one-shot drain is NOT re-clicked on a timer. A second click while
+  save_preview's render is active is ignored, and re-clicking after the queue
+  empties would restart/kill that render. We only re-click on a genuine failed
+  click (TCC-denied / app-busy), capped.
 * Per-recipe results are flushed to --results incrementally so a crash mid-sweep
   loses at most the in-flight recipe.
 
@@ -31,7 +35,7 @@ import time
 from pathlib import Path
 
 from octanex_mcp.bridge import Workspace, resolve_config
-from octanex_mcp.bridge_control import run_bridge_script
+from octanex_mcp.bridge_control import reset_octane_scene, run_bridge_script
 from octanex_mcp.recipes import _find_recipe_dir, _read_scene_json, _recipe_dirs
 
 import benchmarks.acceptance as acceptance
@@ -71,51 +75,25 @@ def _queue_count() -> int:
     return len(glob.glob(os.path.join(CONTAINER, "queue", "*.json")))
 
 
-def _click_oneshot(timeout_seconds: int = 40) -> None:
+def _click_oneshot(timeout_seconds: int = 40) -> dict | None:
+    """Run the one-shot bridge once. Returns the run_bridge_script result dict
+    (so callers can branch on ok/tcc_blocked/busy) or None on unexpected error."""
     try:
-        run_bridge_script("oneshot", timeout_seconds=timeout_seconds)
+        return run_bridge_script("oneshot", timeout_seconds=timeout_seconds)
     except Exception as exc:  # noqa: BLE001
         print(f"  [warn] oneshot click failed: {exc!r}")
+        return None
 
 
 def _reset_octane_scene() -> dict:
     """Reset Octane X to a fresh scene via File > New (warm-engine rule).
 
     A sequential sweep must NOT carry stale scene-graph nodes between recipes;
-    request_render_restart wedges on mixed state otherwise. This UI-scripts
-    Octane's File menu (Hermes.app needs Accessibility/TCC, same as the bridge).
+    request_render_restart wedges on mixed state otherwise. This uses the
+    shared, hardened AppleScript helper (TCC-classified errors, no dup script).
     Returns {ok, error}.
     """
-    script = (
-        'tell application "System Events"\n'
-        '  if not (exists process "Octane X") then error "Octane X not running"\n'
-        '  tell process "Octane X"\n'
-        '    set frontmost to true\n'
-        '    try\n'
-        '      set _probe to count of menu bar items of menu bar 1\n'
-        '    on error errMsg number errNum\n'
-        '      if errNum is -1719 then error "assistive access denied (-1719)" number errNum\n'
-        '      error errMsg number errNum\n'
-        '    end try\n'
-        '    click menu item "New" of menu 1 of menu bar item "File" of menu bar 1\n'
-        '  end tell\n'
-        'end tell\n'
-    )
-    import subprocess
-
-    try:
-        proc = subprocess.run(
-            ["osascript", "-e", script],
-            capture_output=True, text=True, timeout=20,
-        )
-        if proc.returncode == 0:
-            return {"ok": True}
-        err = (proc.stderr or proc.stdout or "").strip()
-        if "-1719" in err:
-            return {"ok": False, "error": "assistive access denied (-1719): grant Accessibility to Hermes.app"}
-        return {"ok": False, "error": err or f"osascript rc={proc.returncode}"}
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    return reset_octane_scene()
 
 
 def sweep_one(slug: str, *, png_wait: int, quality: str | None) -> dict:
@@ -162,14 +140,18 @@ def sweep_one(slug: str, *, png_wait: int, quality: str | None) -> dict:
         waited = 0.0
         last_click = time.time()
         fresh = False
-        max_clicks = 30
+        max_clicks = 6
         clicks = 0
-        # Drain loop: the one-shot bridge reliably drains only ~1 command per
-        # launch, then exits. So we re-click aggressively (every ~6s) while the
-        # queue is non-empty, until it empties. Once qc==0 we STOP clicking and
-        # just wait for save_preview's in-progress render to write the PNG
-        # (a click would restart/kill that render).
-        _click_oneshot()
+        # Drain model (verified end-to-end): a SINGLE oneshot click runs the
+        # Lua drain loop, which processes EVERY queued command (assembly +
+        # save_preview) in one pass, then starts the single real render and
+        # saves the frame. We then POLL for the queue to empty and a FRESH PNG.
+        # We do NOT re-click on a timer — a second click while Octane is busy
+        # in the save_preview render is ignored, and re-clicking after the
+        # queue empties would restart/kill that in-progress render. We only
+        # re-click on a genuine launch/click failure (TCC-denied or app-busy),
+        # capped at max_clicks to avoid a click storm.
+        result_click = _click_oneshot()
         clicks += 1
         while waited < png_wait:
             time.sleep(5)
@@ -180,9 +162,12 @@ def sweep_one(slug: str, *, png_wait: int, quality: str | None) -> dict:
             # Done: queue empty AND a fresh frame exists.
             if qc == 0 and fresh:
                 break
-            # Keep draining while work remains (and we have click budget).
-            if qc > 0 and (time.time() - last_click) >= 6.0 and clicks < max_clicks:
-                _click_oneshot()
+            # Only re-nudge if the last click actually failed (not busy) and we
+            # still have click budget. A busy/failed click here is a real
+            # control problem, not a render-in-progress — so a re-click is safe.
+            failed = isinstance(result_click, dict) and not result_click.get("ok")
+            if failed and qc > 0 and (time.time() - last_click) >= 6.0 and clicks < max_clicks:
+                result_click = _click_oneshot()
                 clicks += 1
                 last_click = time.time()
             # If queue is empty but no fresh PNG yet, just wait (render finishing).

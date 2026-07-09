@@ -1,8 +1,8 @@
 -- Hermes / OctaneX MCP bridge one-shot v2. Run inside Octane X.
--- Processes one command from the Octane X sandbox container inbox and exits.
---
--- Octane X from the Mac App Store is sandboxed. Hermes writes commands into
--- the real container path below, which Octane Lua can read/write directly.
+-- Drains the ENTIRE command queue in a single pass (re-snapshots until the
+-- queue is empty, bounded by a guard), then exits. Octane X from the Mac App
+-- Store is sandboxed, so Hermes writes commands into the real container path
+-- below, which Octane Lua can read/write directly.
 
 local ROOT = os.getenv("OCTANEX_MCP_WORKSPACE") or ((os.getenv("HOME") or "/tmp") .. "/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP")
 local QUEUE = ROOT .. "/queue"
