@@ -70,9 +70,13 @@ this review:
 1. **Diff the change set.** For each file touched, ask: does any doc/skill
    describe a now-obsolete behavior, mechanism, path, or error?
 2. **Check the launch prerequisites are current.** The bridge launch requires:
-   - macOS **Accessibility (TCC) granted to `Hermes.app`** (the process that runs
-     `osascript`) — without it every launch fails `-1719`. The skill must state
-     this, not "Automation → Octane X".
+   - macOS **Accessibility (TCC) granted to the Hermes agent-runtime python**
+     (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the parent of the
+     `octanex-mcp` server, spawned by launchd, NOT `Hermes.app`). The osascript
+     caller is this binary; granting `Hermes.app` alone does NOT clear `-1719`.
+     Fallback: grant the Terminal/app that launches Hermes if the binary is
+     awkward to select. The skill MUST state this, not "Automation → Octane X"
+     and not "grant Hermes.app".
    - Octane's `default_script_path` → repo `octane_lua/`.
    - Launch via UI-scripting the **Script** menu (singular), NOT `run script file`.
    - One click of the one-shot drains the **entire** queue.

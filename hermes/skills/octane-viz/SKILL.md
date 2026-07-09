@@ -78,6 +78,17 @@ Map prompts to tools:
 | `Visualise it simply` | default glossy-blue cube + render |
 | `Visualise the helix with a copper material` | helix geometry + copper material + render |
 
+### 1.5. Render protocol (do this every time — prevents near-black/stale renders)
+
+Follow the mandatory 8-step sequence from the `octanex-mcp` skill **Render
+Protocol** section: (1) confirm Octane X running; (2) `File → New` reset;
+(3) start the renderer (lua command queue); (4) one one-shot bridge click to
+flush any stale queue; (5) queue the scene; (6) start the renderer (lua command
+queue) again; (7) one-shot bridge click to drain; (8) repeat from (2) for the
+next scene. **Octane is fast** — basic scenes converge for preview QA in
+**1–2 s**, complex in **5–10 s**; do not over-cap render time. A stale queue or
+leftover scene (not a material bug) is the usual cause of a near-black frame.
+
 ### 2. Drain the queue in Octane X
 
 The bridge uses the **one-shot bridge** mode (`hermes_bridge_oneshot.generated`). Run it from

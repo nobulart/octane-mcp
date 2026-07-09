@@ -3,29 +3,30 @@
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
 brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 
-## Current state (evidence, 2026-07-09 — steward run 1a17f19)
+## Current state (evidence, 2026-07-09 — steward run 2fbc567)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `1a17f19` (HEAD; tree clean at steward start) |
-| Tests | **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. The suite intentionally encodes the honest 17/18 recipe state: `math-surface` is the one *intentional* contract gap (its reference preview PNG was dropped in `0993e51` because the recipe has a pre-existing gap), so `validate_recipe_library`/`verify_recipe_library` expect it excluded. 4 skips are the optional `geo` extra absent in this env. |
+| Repo | `main` = `2fbc567` (HEAD; tree clean at steward start) |
+| Tests | **199 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. **Opened RED this steward run:** 1 failure `test_recipe_index_lists_checked_in_recipes_with_required_metadata` asserted `data_bars["native_octane_verified"] is False`, contradicting the WP6 honesty promotion (c572ace) that flipped it to `True` (real `octane-preview.png` present). Stale assertion fixed → green restored (199/4). 1 skipped (optional `geo` extra absent in this env) |
 | Octane X | running (user restarted it this session after a `failed`/not-running state; bridge recovery pending a live drain). Last prior event: `save preview failed: returned false`. |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
-| Recipe library | **18 recipe dirs, 17 `native_octane_verified=true` (+ PNG), 1 unverified** (`math-surface`). `math-surface` is the *intentional* gap: its reference preview PNG was dropped in `0993e51` because the recipe has a pre-existing contract gap, so it ships no `octane-preview.png` and is excluded by `validate_recipe_library`/`verify_recipe_library`. All other 17 recipes (incl. `avatar-guide`, `data-bars`, `annotated-text-labels`, `architecture-flow`, `document-ocr-layout`) were promoted from real native renders that pass pixel acceptance. (Earlier WIP text wrongly named `avatar-guide` as the unverified recipe and called `math-surface` "verified" — corrected here.) |
+| Recipe library | **18 recipe dirs, 17 `native_octane_verified=true`, 1 unverified** (`avatar-guide`). Closed this run: 4 recipes (annotated-text-labels, architecture-flow, data-bars, document-ocr-layout) had existing native renders that PASS pixel acceptance; promoted from those real renders. `avatar-guide`'s prior render was near-black (failed QA) — being re-rendered live; if it passes it joins, else stays the lone unverified. Reconciled earlier: a prior scan miscounted `examples/recipes/*` (20 dirs) and wrongly listed `helicoid-spiral`/`earth-moon-space`/`math-surface` as unverified — those are not recipe dirs (`_recipe_dirs` excludes them) and `math-surface` is verified. |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)** |
 | Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
-grammars, canvas UI, autonomous loop) and the **5** remaining unverified recipes
-are the open work. The "8 unverified / count drift" claim was a scan artifact
-(see Recipe library row above) — the real gap was always the original 5.
+grammars, canvas UI, autonomous loop) and the **1** remaining unverified recipe
+(`avatar-guide`) are the open work. The "8 unverified / count drift" claim was a
+scan artifact (see Recipe library row above) — the real gap shrank to 1 after the
+WP6 honesty promotion (c572ace: 13→17 verified).
 
 ## Backlog (from brainstorm 2026-07-09)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-1. **A — Recipe verification (DONE).** The 5 recipes previously listed as unverified (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`) were all promoted to `native_octane_verified=true` from real native renders that pass pixel acceptance. The recipe library now stands at the honest **17/18**: the sole remaining gap is `math-surface`, which is an *intentional* contract gap (its reference preview PNG was dropped in `0993e51` because the recipe has a pre-existing defect), not an outstanding verification task. No further live-verify work is pending for the recipe library.
+1. **A — Recipe verification** (LOW effort / HIGH integrity): **5 unverified recipes** (`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`). Live-verify each, flip `native_octane_verified`, append `docs/recipe-book.md`. *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task` over `examples/recipes/*` (the 20-dir / 8-unverified "drift" was a scan artifact — only these 5 are genuinely unverified).
 2. **B — Geo / terrain grammar** (HIGH strategic fit; **MCP tool SHIPPED**): `octane_visualize_geojson` registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase A slice — shell + full-bleed
    viewport + intent command bar + `OCTANEX_RENDER_HOST` Studio flag
@@ -55,6 +56,7 @@ _WP6 promoted-recipe tools shipped (uncommitted, +9 tests). Bridge status `faile
 
 ## Done recently
 
+- **Stale-test regression fix (steward run 2fbc567, uncommitted):** Phase-1 caught the offline suite RED — `test_recipe_index_lists_checked_in_recipes_with_required_metadata` asserted `data-bars["native_octane_verified"] is False`, but `data-bars` was genuinely promoted to verified by the WP6 honesty work (`c572ace`, real `octane-preview.png` present, confirmed via `_recipe_dirs` ground-truth). Corrected the assertion to `assertTrue(...)` with a provenance comment. Suite restored to **199 passed / 4 skipped** (0 failures). Pure `tests/` change; no library import touched, so §6 server-boot layering is unaffected (`doctor` already confirmed the server path is sound). No Lua edits, no deps.
 - **WP6 recipe promotion — first-class tools (steward run 1a17f19, uncommitted):** closed backlog item E. Added three promoted MCP tools in `src/octanex_mcp/server.py` — `octane_build_product_studio` (→ `photoreal-product-studio`), `octane_build_planet_scene` (`planet='earth'`→`photoreal-earth-space`, `'saturn'`→`saturn-moons-space`, unknown falls back to earth), `octane_visualize_network` (→ `network-graph`) — each a thin wrapper over `queue_recipe`. Registered the same three in `gateway.py`'s `DISPATCH` for HTTP Canvas parity. New `tests/test_promoted_recipes.py` (9 tests: registration ×3, slug resolution for earth/saturn/unknown, queue-write, and 2 gateway-parity checks). Suite now **199 passed / 4 skipped** (was 190/4). `compileall` clean; `build_mcp()` boots (44 tools) with no `benchmarks`/`scripts`/`tests` imports added to `server.py`/`gateway.py` (§6 layering holds). No Lua edits, no heavy deps, core install unchanged.
 - **WP7 geo grammar — first slice** (steward run c90d84c, uncommitted): added
   `src/octanex_mcp/geo.py` + `tests/test_geo_grammar.py`. Two offline-testable

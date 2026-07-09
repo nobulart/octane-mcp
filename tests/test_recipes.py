@@ -28,8 +28,10 @@ class RecipeRegistryTests(unittest.TestCase):
         self.assertEqual(data_bars["domain"], "Data visualization")
         self.assertTrue(data_bars["scene_json_exists"])
         self.assertTrue(data_bars["preview_exists"])
-        # data-bars was promoted to native_octane_verified=true by the WP6 recipe
-        # sweep (origin commit c572ace); its scene.json is the source of truth.
+        # data-bars was promoted to native_octane_verified by the WP6 honesty
+        # gap-close work (commit c572ace: 13/18 -> 17/18). The ground-truth
+        # check (_recipe_dirs + octane-preview.png present) confirms it is now
+        # genuinely verified, so the index must reflect True.
         self.assertTrue(data_bars["native_octane_verified"])
         self.assertIn("scene.obj", {Path(path).name for path in data_bars["assets"]})
 
@@ -74,15 +76,17 @@ class RecipeRegistryTests(unittest.TestCase):
             self.assertIn("bundle_path", save_preview["payload"])
 
     def test_validate_recipe_library_reports_every_checked_in_recipe_ok(self) -> None:
+        # Honest state: 17/18 recipes verified; `math-surface` is the single
+        # intentional contract gap (its reference preview PNG was dropped because
+        # the recipe has a pre-existing gap), so validate_recipe_library reports
+        # it as not-ok. The library is still "ok" for every recipe EXCEPT that
+        # known gap — assert the gap is exactly math-surface, not a regression.
         report = validate_recipe_library()
 
-        # 17/18 recipes are fully checked-in (scene.obj + scene.json + a reference
-        # preview). math-surface is the one *intentional* gap: its reference preview
-        # PNG was dropped (commit 0993e51) because the recipe has a pre-existing
-        # contract gap, so it is expected to report an error, not pass.
+        failed = [item["slug"] for item in report["items"] if not item["ok"]]
+        self.assertEqual(failed, ["math-surface"], report["items"])
+        self.assertEqual(report["invalid"], 1)
         self.assertGreaterEqual(report["checked"], 18)
-        invalid_slugs = [item["slug"] for item in report["items"] if not item["ok"]]
-        self.assertEqual(invalid_slugs, ["math-surface"], report["items"])
 
     def test_all_recipes_declare_visual_iteration_contract(self) -> None:
         index = recipe_index()
