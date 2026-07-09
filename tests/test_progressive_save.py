@@ -6,32 +6,34 @@ flags. The Lua bridge edit that *consumes* these flags lives in
 separately (it is part of an in-flight bridge WIP branch).
 """
 
+import unittest
+
 from octanex_mcp.server import _build_save_preview_envelope as build_env
 
 
-def test_progressive_envelope_carries_flags():
-    env = build_env(progressive=True)
-    assert env["progressive"] is True
-    assert "progressive_path" in env
-    assert env["progressive_path"].endswith("preview_progressive.png")
+class TestProgressiveSave(unittest.TestCase):
+    def test_progressive_envelope_carries_flags(self):
+        env = build_env(progressive=True)
+        self.assertTrue(env["progressive"])
+        self.assertIn("progressive_path", env)
+        self.assertTrue(env["progressive_path"].endswith("preview_progressive.png"))
+
+    def test_non_progressive_envelope_has_no_progressive_path(self):
+        env = build_env()
+        self.assertFalse(env["progressive"])
+        self.assertNotIn("progressive_path", env)
+
+    def test_quality_tier_resolves(self):
+        env = build_env(quality="standard")
+        # standard tier -> samples 512 / min_samples 24 / timeout 30 (per QUALITY_TIERS)
+        self.assertEqual(env["samples"], 512)
+        self.assertEqual(env["min_samples"], 24)
+        self.assertEqual(env["timeout_seconds"], 30)
+
+    def test_bad_quality_raises(self):
+        with self.assertRaises(ValueError):
+            build_env(quality="nope")
 
 
-def test_non_progressive_envelope_has_no_progressive_path():
-    env = build_env()
-    assert env["progressive"] is False
-    assert "progressive_path" not in env
-
-
-def test_quality_tier_resolves():
-    env = build_env(quality="standard")
-    # standard tier -> samples 512 / min_samples 24 / timeout 30 (per QUALITY_TIERS)
-    assert env["samples"] == 512
-    assert env["min_samples"] == 24
-    assert env["timeout_seconds"] == 30
-
-
-def test_bad_quality_raises():
-    import pytest
-
-    with pytest.raises(ValueError):
-        build_env(quality="nope")
+if __name__ == "__main__":
+    unittest.main()

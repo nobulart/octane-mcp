@@ -52,7 +52,26 @@ offline-testable; C is a separate Swift workstream.
 
 ## In progress / this session
 
-_No committed build yet — status review + brainstorm only._
+_No open build — direction A committed; see Done recently._
+
+## Done recently
+
+- **A — Recipe verification harness** (committed 2026-07-09): added
+  `benchmarks/verify_recipes.py` + `tests/test_verify_recipes.py`. Offline contract
+  check passes for all 18 recipes; live runner reuses `drain_oneshot` +
+  `acceptance` (mirrors OBJ, rewrites paths, strips `start_render` per pitfall
+  #9/#10, #14). `copy_back=True` promotes a recipe (copies PNG + flips
+  `native_octane_verified`) only after a real native render passes pixel QA. Dry-run
+  verified: 18/18 contract-OK.
+- **Test-framework reconciliation** (committed 2026-07-09): Plato's 4 merged
+  pytest-style test files (`test_gateway`, `test_config_render_host`,
+  `test_progressive_save`, `test_status_schema`) converted to `unittest.TestCase`
+  to match the repo's explicit `python -m unittest` policy (harness.py). Replaced
+  `pytest.raises` → `assertRaises` and `tmp_path`/`monkeypatch` → `tempfile` +
+  `mock.patch.object`. Full suite now collects **136 tests** (122 + 14), all pass
+  under the canonical command — previously his 14 were silently 0 under unittest.
+  Minor cosmetic `ResourceWarning` (unclosed listening socket in gateway teardown)
+  pre-exists and is out of scope.
 
 ## Done recently
 
