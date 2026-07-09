@@ -558,16 +558,22 @@ local function request_render_restart(samples, width, height)
     -- new render before finishing the previous render". Yield briefly and
     -- retry so the prior pass has actually ended before we (re)start ours.
     local last_err = "no attempts made"
+    local started = false
+    local start_msg = ""
     for attempt = 1, 5 do
         local ok, result = try_render_call("start()", function() return octane.render.start() end)
-        if ok then return true, "render start requested (main viewport; bounded by wait_for_render_ready)" end
+        if ok then started, start_msg = true, "render start requested (main viewport; bounded by wait_for_render_ready)"; break end
         ok, result = try_render_call("restart()", function() return octane.render.restart() end)
-        if ok then return true, "render restart requested" end
+        if ok then started, start_msg = true, "render restart requested"; break end
         ok, result = try_render_call("continue()", function() return octane.render.continue() end)
-        if ok then return true, "render continue requested" end
+        if ok then started, start_msg = true, "render continue requested"; break end
         last_err = tostring(result)
         sleep_seconds(0.5)
     end
+    -- NOTE: the delayed RT re-activation now lives at the TOP LEVEL of the one-shot
+    -- script (after the queue loop drains), because a deferred closure here does
+    -- not survive the script's exit. See the top-level block near the end of file.
+    if started then return true, start_msg end
     return false, "render refresh failed after retries; last: " .. last_err
 end
 
@@ -967,6 +973,27 @@ for _, path in ipairs(list_queue_files()) do
             processed = processed + 1
         end
     end
+end
+
+-- Top-level delayed RT re-activation (user-suggested). A deferred closure inside
+-- request_render_restart does NOT survive the one-shot script's exit (the script
+-- terminates after draining, abandoning the pending sleep) — so the 5s settle +
+-- re-select MUST run here, at top level, where the execution context stays alive
+-- until the script returns. By now Octane has finished registering the RT node
+-- graph, so re-issuing activate_render_target + restart() lands on a stable graph.
+-- Non-fatal: if no public setter exists on this build, the manual UI reselect
+-- remains the fallback. The 5s block is fine here — the script is about to exit.
+if processed > 0 then
+    pcall(function()
+        sleep_seconds(5)
+        append_log("top-level delayed RT re-activation: re-selecting after settle")
+        local rt = get_or_create_render_target()
+        if rt then
+            activate_render_target(rt)
+            local ok2, res2 = pcall(function() return octane.render.restart() end)
+            append_log("top-level delayed restart ok=" .. tostring(ok2) .. " result=" .. tostring(res2))
+        end
+    end)
 end
 
 if processed == 0 then

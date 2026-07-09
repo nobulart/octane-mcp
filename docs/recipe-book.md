@@ -704,4 +704,13 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - **Protocol impact:** the 8-step render protocol MUST include an explicit manual "re-select the Hermes Render Target node in the UI" step after starting the renderer, before the frame will render. Until Otoy exposes a setter, this remains a required human step.
 - Do NOT claim the RT auto-activates — it does not on this build.
 
+### Further test (2026-07-09): delayed re-activation ALSO fails
+- User suggested: after the scene loads, wait ~5s, then re-issue RT-select + render-start (hypothesis: immediate setSelection races Octane's node-graph registration).
+- Implemented TWO ways and tested both live from a dirty start (File > New -> data-bars):
+  1. Deferred closure inside `request_render_restart` — DOES NOT FIRE: the one-shot script exits after draining, abandoning the pending sleep (confirmed: no log line; "start commands did not fire").
+  2. Top-level 5s sleep after the queue loop drains (script context alive) — FIRES (`top-level delayed RT re-activation` logged, `activated render target` + `restart ok=true`) BUT the RT is STILL not the active target: the subsequent `save_preview` returns an empty buffer (PNG not rewritten).
+- Decisive user observation: the render fires the instant the RT node is **manually selected in the UI**. So the trigger is the UI *selection event*, which `octane.project.setSelection{rt}` (Lua API) does NOT generate — neither immediately nor after a 5s delay.
+- **Conclusion:** programmatic `setSelection` (immediate or delayed) cannot activate the RT on this build. Only the UI selection event works. The bridge now keeps the top-level delayed kick (harmless; may help on builds where it IS a race), but it is NOT a fix. Real automation requires simulating the UI click (AppleScript/System Events selecting the RT node) to emit the same selection event — a follow-up, not yet implemented.
+- Do NOT claim the RT auto-activates — it does not on this build.
+
 

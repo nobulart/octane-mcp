@@ -593,16 +593,22 @@ local function request_render_restart(samples, width, height)
     -- new render before finishing the previous render". Yield briefly and
     -- retry so the prior pass has actually ended before we (re)start ours.
     local last_err = "no attempts made"
+    local started = false
+    local start_msg = ""
     for attempt = 1, 5 do
         local ok, result = try_render_call("start()", function() return octane.render.start() end)
-        if ok then return true, "render start requested (main viewport; bounded by wait_for_render_ready)" end
+        if ok then started, start_msg = true, "render start requested (main viewport; bounded by wait_for_render_ready)"; break end
         ok, result = try_render_call("restart()", function() return octane.render.restart() end)
-        if ok then return true, "render restart requested" end
+        if ok then started, start_msg = true, "render restart requested"; break end
         ok, result = try_render_call("continue()", function() return octane.render.continue() end)
-        if ok then return true, "render continue requested" end
+        if ok then started, start_msg = true, "render continue requested"; break end
         last_err = tostring(result)
         sleep_seconds(0.5)
     end
+    -- NOTE: the delayed RT re-activation now lives at the TOP LEVEL of the one-shot
+    -- script (after the queue loop drains), because a deferred closure here does
+    -- not survive the script's exit. See the top-level block near the end of file.
+    if started then return true, start_msg end
     return false, "render refresh failed after retries; last: " .. last_err
 end
 
