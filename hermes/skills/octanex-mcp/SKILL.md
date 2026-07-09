@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.2.0
+version: 1.2.1
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -396,6 +396,27 @@ OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live
   always the obvious names (e.g. `data-bars`, not `bar-chart`; there is no
   `histogram`/`scatter-plot`/`correlation-heatmap`/`pca-3d`). Enumerate real
   slugs first: `uv run python -c "from octanex_mcp.recipes import _recipe_dirs; from pathlib import Path; print([d.name for d in _recipe_dirs(Path('examples/recipes'))])"`.
+- **Promotion (`--copy-back`) flips `native_octane_verified` on a real pass.**
+  Add `--copy-back` to copy the live PNG back into the recipe dir as
+  `octane-preview.png` AND set `native_octane_verified=true` in `scene.json`.
+  The harness promotes ONLY when pixel QA passes (`acceptance.passed`); a
+  wrong-subject-but-pixel-OK render is NOT promoted on pixel alone.
+- **Opt-in vision-against-intent gate (`--vision-check`).** After pixel QA passes,
+  a vision model confirms the PNG shows the recipe's stated `intent` and BLOCKS
+  promotion on a wrong-subject verdict. The vision call is injected (`vision_fn`),
+  so the offline test suite never touches a real model. For autonomous live runs,
+  pass a real vision callable (the built-in shim imports `hermes_tools.vision_analyze`,
+  which is not available inside `uv run` — call the vision tool from the agent
+  runtime and pass it as `vision_fn`). The role of this gate: pixel QA cannot catch
+  a grey-shape-wrong-subject render (see `docs/recipe-book.md` "5 color-dependent
+  recipes rendered wrong").
+
+```bash
+# library sweep + promote verified recipes to native_octane_verified=true:
+OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live --copy-back --drain-timeout 150
+# same, with the opt-in vision gate (promotes ONLY on pixel+vision pass):
+OCTANEX_LIVE=1 uv run python -m benchmarks.verify_recipes --live --copy-back --vision-check --drain-timeout 150
+```
 
 Completion: `acceptance.passed == True` on a fresh PNG, confirmed by a
 `vision_analyze` spot-check before declaring the recipe verified.

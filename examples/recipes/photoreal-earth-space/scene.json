@@ -379,5 +379,7 @@
     ],
     "status": "pending_native_octane_iteration",
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
-  }
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-09)"
 }
