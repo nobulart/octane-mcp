@@ -250,10 +250,14 @@ def run_recipe(
         run.duration_seconds = time.time() - start
         return run
 
+    # Wait for the native render to converge and write its PNG. The render can
+    # take far longer than the queue-drain, so honor drain_timeout as the render
+    # budget (not the hardcoded 15s that previously gave up on a blank frame).
+    wait_budget = max(30.0, float(drain_timeout))
     waited = 0.0
-    while not (run.preview_path and run.preview_path.exists()) and waited < 15.0:
-        time.sleep(1.0)
-        waited += 1.0
+    while not (run.preview_path and run.preview_path.exists()) and waited < wait_budget:
+        time.sleep(2.0)
+        waited += 2.0
 
     if run.preview_path and run.preview_path.exists():
         criteria = derive_criteria(slug, data)
