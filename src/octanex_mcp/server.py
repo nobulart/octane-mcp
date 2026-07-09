@@ -25,6 +25,7 @@ from .models import QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
+from .animation import orbit_manifest, build_animation_commands
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -499,6 +500,81 @@ def build_mcp() -> Any:
         commands = geo_asset_to_scene_commands(asset, color=color)
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
+    def octane_build_animation(
+        center: list[float] = [0.0, 0.0, 0.0],
+        radius: float = 8.0,
+        orbit_height: float = 2.0,
+        fps: int = 24,
+        duration: float = 6.0,
+        start_deg: float = 0.0,
+        end_deg: float = 360.0,
+        fov: float = 45.0,
+        segments: int = 24,
+        width: int = 1280,
+        height: int = 1280,
+        samples: int = 64,
+        min_samples: int = 16,
+        timeout_seconds: int = 10,
+        quality: Optional[str] = None,
+        max_render_time: Optional[int] = None,
+    ) -> str:
+        """Queue a camera-orbit animation bake as per-frame commands (WP8).
+
+        Builds a circular camera orbit around ``center`` and queues, for every
+        frame, a ``set_camera`` command followed by a ``save_preview`` that writes
+        a zero-padded ``frame_XXXX.png`` into the workspace renders dir. The Octane
+        Lua bridge drains the queue in order, so running the one-shot renders the
+        full clip. No ffmpeg encode here — callers can encode the frames
+        afterwards (or inject an encoder via the library model).
+
+        ``quality`` accepts the same tiers as ``octane_save_preview``
+        (standard/high/ultra/final); ``max_render_time`` overrides the convergence
+        ceiling per frame.
+        """
+        try:
+            manifest = orbit_manifest(
+                center=tuple(center),  # type: ignore[arg-type]
+                radius=radius,
+                height=orbit_height,
+                fps=fps,
+                duration=duration,
+                start_deg=start_deg,
+                end_deg=end_deg,
+                fov=fov,
+                segments=segments,
+            )
+            preview_env = _build_save_preview_envelope(
+                width=width,
+                height=height,
+                samples=samples,
+                min_samples=min_samples,
+                timeout_seconds=timeout_seconds,
+                quality=quality,
+                max_render_time=max_render_time,
+            )
+            frame_cmds = build_animation_commands(
+                manifest,
+                width=preview_env["width"],
+                height=preview_env["height"],
+                samples=preview_env["samples"],
+                min_samples=preview_env["min_samples"],
+                timeout_seconds=preview_env["timeout_seconds"],
+                quality=preview_env["quality"],
+                max_render_time=preview_env["max_render_time"],
+            )
+        except (ValueError, TypeError) as exc:
+            return _json({"ok": False, "error": str(exc)})
+        results = [write_command(c["op"], c["payload"]) for c in frame_cmds]
+        return _json(
+            {
+                "ok": True,
+                "frames": len(results) // 2,
+                "queued_commands": results,
+                "status": read_status(),
+            }
+        )
 
     # ----------------------------------------------------------------------
     # WP6 — promoted recipe tools (first-class wrappers over checked-in recipes)

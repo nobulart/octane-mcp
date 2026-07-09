@@ -1,48 +1,44 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09** (steward run `d1d0e37`).
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09** (steward run `3ad0094`).
 
-## Current state (evidence, 2026-07-09 — steward run d1d0e37)
+## Current state (evidence, 2026-07-09 — steward run 3ad0094)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `d1d0e37` (HEAD; tree clean at steward start; harness regression-guard commits `a2fccb9`/`d1d0e37` landed since `2fbc567`) |
-| Tests | **216 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. 1 skip because optional `geo` extra absent. Up from 199 (the `2fbc567` snapshot) — harness commits added tests. |
-| Octane X | running (healthy bridge: `status=processed`, `last_event="save_preview … octane-preview.png"`, status age ~20 min). Not wedged. |
+| Repo | `main` = `3ad0094` (HEAD; tree clean at steward start; recent: WP8 animation model `1696b38`, WP9 gate fix `80915db`, TCC docs `3ad0094`) |
+| Tests | **230 passed / 4 skipped** (offline `python -m unittest discover -s tests`) — green. Up from 221 (the `d1d0e37` snapshot overstated 216; truth is 221→230 with +9 new WP8 tool tests). 4 skip (1 optional `geo` extra absent; 3 other optional). |
+| Octane X | running (`running=true`, `octane_available=true`); bridge `status=failed` / `render_stage=error` / `last_event="save preview failed: returned false"`, status age ~71 min. **Stale failed state from an earlier drain — not re-exercised this run.** Not a live wedge. |
+| Server boot | `run_octanex_mcp.sh` (PYTHONPATH unset) boots a **46-tool** `build_mcp()`; stdio JSON-RPC handshake confirmed `octane_build_animation` present. §6 layering holds (no `benchmarks`/`scripts`/`tests` imports). |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table; not re-rendered this run |
-| Recipe library | **20 recipe dirs; 17 genuinely `native_octane_verified=true` (real PNG on disk); 1 false-positive flag corrected (`math-surface` — flag was set but no native PNG on disk, reverted 2026-07-09); 2 unverified (`earth-moon-space`, `helicoid-spiral`).** `avatar-guide` closed via live Octane render (real native PNG, passed pixel QA + vision subject check). |
-| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP8 animation model started (`animation.py`)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)**, WP6 promoted tools |
-| Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 **MCP tool + bridge bake** (model only so far), WP6 live end-to-end of promoted tools, Canvas Phase B+ wiring, Studio multi-host, visual memory |
+| Recipe library | **18 recipe dirs; 17 genuinely `native_octane_verified=true` (real PNG on disk); 1 unverified (`math-surface` — no native PNG).** Ground truth via `_recipe_dirs` this run. The prior WIP/roadmap snapshot mis-named the gap as `avatar-guide`; `avatar-guide` is now verified — `math-surface` is the sole remaining gap. The "20 dirs / 8 unverified" figure was a scan artifact (non-recipe dirs counted). |
+| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar (`geo.py` + `octane_visualize_geojson` tool shipped)**, **WP8 animation model + `octane_build_animation` tool + gateway parity (shipped this run)**, **WP9 corpus + iteration loop + `octane_find_grammar` (shipped)**, WP6 promoted tools |
+| Unscaffolded | WP7 geo **live-`geo`-extra** path, WP8 **live Octane drain** (render a real orbit clip) + optional ffmpeg encode, WP6 live end-to-end of promoted tools, Canvas Phase B+ wiring, Studio multi-host, visual memory, `math-surface` live re-render |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — ergonomic surface (animation tool/bake, geo live
 exercise, canvas UI, autonomous loop) remain the open work. **Recipe library is
-now 17/18 genuinely `native_octane_verified`** (20 dirs total; `math-surface` flag reverted to false — no native PNG on disk; `earth-moon-space` + `helicoid-spiral` still unverified). `avatar-guide` closed 2026-07-09 via live Octane render. Recipe-count "drift" was a scan artifact (§Recipe library row).
+now 17/18 genuinely `native_octane_verified`** (18 dirs total; `math-surface` is the
+sole remaining gap — no native PNG on disk; the earlier `avatar-guide`/`earth-moon-space`/
+`helicoid-spiral` gaps were closed or were scan artifacts). Recipe-count "drift" was
+a scan artifact (§Recipe library row).
 
-## Backlog (from brainstorm 2026-07-09)
+## Backlog (from brainstorm 2026-07-09, re-ranked 2026-07-09 run 3ad0094)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-1. **A — Recipe verification (close the last gap)** (LOW effort / HIGH integrity): 1 unverified recipe remains (`avatar-guide`). Its prior native render was near-black (failed QA); re-render live and, if it passes pixel QA, flip `native_octane_verified=true` + append `docs/recipe-book.md`. *First step:* `verify_recipe_library(live=True, copy_back=True, slug='avatar-guide')` against a running Octane session.
+1. **A — Recipe verification (close the last gap)** (LOW effort / HIGH integrity): 1 unverified recipe remains (`math-surface` — a photoreal math-surface with no native PNG on disk). Re-render it live and, if it passes pixel QA, flip `native_octane_verified=true` + append `docs/recipe-book.md`. *First step:* `verify_recipe_library(live=True, copy_back=True, slug='math-surface')` against a running Octane session. (The earlier `avatar-guide` gap cited in the backlog is now closed — `avatar-guide` is verified; `math-surface` is the real remaining item.)
 2. **B — Geo / terrain grammar live path** (HIGH strategic fit; **MCP tool SHIPPED**): `octane_visualize_geojson` registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py` + `tests/test_geo_grammar.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase B wiring — connect `gateway.read_status()` + `/mcp/call` to a live dashboard (intent command bar → `octane_build_concept` / `octane_queue_recipe`; status pill from `render_stage`). Phase A slice (shell + viewport + command bar + `OCTANEX_RENDER_HOST` flag) from `docs/canvas-implementation-roadmap.md`. Swift/JS workstream.
 4. **D — Autonomous loop**: bounded 2-iteration `octane_render_review_loop` over one recipe, driven end-to-end.
-5. **F2 — Animation tool + bridge bake** (WP8, continuation; HIGH north-star fit, additive): expose the `animation.py` model as an MCP tool (`octane_build_animation`/`octane_queue_animation`) that emits the per-frame `set_camera` bake plan into the bridge queue, and add a Lua-side consumer (requires Octane restart + parity — flag for the user). First slice can reuse `build_bake_plan` + existing `octane_save_preview` per frame, writing zero-padded `frame_*.png`; optional ffmpeg encode via injected encoder (no hard dep).
+5. **F2-live — Animation live drain** (WP8 continuation; HIGH north-star fit): the `octane_build_animation` tool is shipped (queues per-frame `set_camera` + `frame_XXXX.png` `save_preview`); the next step is a **live Octane drain** to render a real orbit clip, confirm the frames land, and (optionally) wire ffmpeg encode via the injected encoder. No Lua edit required for the drain.
 6. **G — Texture gen**: image-gen → `texture_path` / `normal_path` on materials, closing the "texture approximated with geometry" recipe pitfall.
 7. **E — Recipe promotion** (WP6) — **DONE**; first-class tools shipped + tested. Removing from active backlog.
 
 ## Recommended next move
 
-**A (close the last honesty gap) → then B live-`geo` path.** `avatar-guide` is the
-only remaining `native_octane_verified=false`; a live `verify_recipe_library(live=True,
-copy_back=True, slug='avatar-guide')` flips it if the re-render passes pixel QA,
-making the genuinely-verified count 17/18 (20 dirs total: 17 with real PNG on
-disk, 1 false flag reverted, 2 unverified). The earlier "12/20 / 8 unverified" drift was a scan
-artifact (non-recipe dirs counted); truth is 17/18. B's tool is shipped +
-offline-green; the shapely live path needs a `uv sync --extra geo` env. C (Canvas)
-is a separate Swift/JS workstream. WP8 model shipped this run (F→F2): the next
-animation step is the MCP tool + bridge bake.
+**Live closure first (user-owned, needs Octane session):** (1) re-render `math-surface` to flip the last `native_octane_verified=false`; (2) run a real Octane drain of `octane_build_animation` to render a genuine orbit clip. These are the only honesty/closure items left and both require a live Octane session, not code. The autonomous steward cannot do them. For safe code work the steward can take next: **B live-`geo` exercise** (needs `uv sync --extra geo`, still offline-testable after sync) or deepen C/E surface. WP8 tool (F2) shipped this run — the remaining WP8 item is the live drain (F2-live above).
 
 ## In progress / this session
 

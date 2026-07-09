@@ -7,6 +7,9 @@ Defines a small, dependency-free animation grammar for the bridge:
 - ``sample_camera`` / ``camera_command`` — interpolate a camera pose at any time
   and emit an Octane ``set_camera`` command envelope.
 - ``build_bake_plan`` — the per-frame render schedule the bridge can queue.
+- ``build_animation_commands`` — turn the bake plan into queue-ready
+  ``set_camera`` + ``save_preview`` command envelopes (one per frame, zero-padded
+  ``frame_XXXX.png``). Used by the ``octane_build_animation`` MCP tool / gateway.
 - ``orbit_manifest`` — convenience builder for a circular camera orbit (the
   most common agent-requested motion).
 - ``encode_frames`` — optional video encode via an *injected* encoder callable,
@@ -22,7 +25,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 __all__ = [
     "CameraKeyframe",
@@ -31,6 +34,7 @@ __all__ = [
     "sample_camera",
     "camera_command",
     "build_bake_plan",
+    "build_animation_commands",
     "orbit_manifest",
     "frame_paths",
     "encode_frames",
@@ -131,6 +135,53 @@ def build_bake_plan(manifest: AnimationManifest) -> list[Tuple[int, float, dict]
         kf = sample_camera(manifest, t)
         plan.append((i, t, camera_command(kf)))
     return plan
+
+
+def build_animation_commands(
+    manifest: AnimationManifest,
+    *,
+    width: int = 1280,
+    height: int = 1280,
+    samples: int = 64,
+    min_samples: int = 16,
+    timeout_seconds: int = 10,
+    quality: Optional[str] = None,
+    max_render_time: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Queue-ready per-frame command envelopes for the full bake plan.
+
+    Each frame emits a ``set_camera`` command followed by a ``save_preview``
+    command writing a zero-padded ``frame_XXXX.png`` into the manifest's
+    ``output_dir`` (via ``frame_paths``). The returned list is exactly what the
+    MCP tool / gateway dispatch hands to ``write_command`` — no Octane session,
+    no Lua edit, no heavy dependency required.
+
+    ``quality`` maps through the shared ``QUALITY_TIERS`` resolution used by the
+    other preview tools (see ``server._build_save_preview_envelope``), so callers
+    can request ``"high"`` / ``"ultra"`` convergence tiers uniformly. The
+    resolution is done by the *caller* (the tool passes the resolved envelope),
+    keeping this helper free of the models import and server-boot layering clean.
+    """
+    paths = frame_paths(manifest, count=max(1, int(round(manifest.duration * manifest.fps))))
+    commands: List[Dict[str, object]] = []
+    for (i, _t, cam_cmd), path in zip(build_bake_plan(manifest), paths):
+        commands.append({"op": "set_camera", "payload": dict(cam_cmd)})
+        commands.append(
+            {
+                "op": "save_preview",
+                "payload": {
+                    "path": path,
+                    "width": width,
+                    "height": height,
+                    "samples": samples,
+                    "min_samples": min_samples,
+                    "timeout_seconds": timeout_seconds,
+                    "quality": quality,
+                    "max_render_time": max_render_time,
+                },
+            }
+        )
+    return commands
 
 
 def frame_paths(manifest: AnimationManifest, count: int) -> list[str]:

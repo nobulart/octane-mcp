@@ -55,6 +55,7 @@ from octanex_mcp.review import (
 )
 from octanex_mcp.schema import command_schema, validate_command, validate_queue
 from octanex_mcp.server import _build_save_preview_envelope
+from octanex_mcp.animation import orbit_manifest, build_animation_commands
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
@@ -142,7 +143,46 @@ DISPATCH: Dict[str, Callable[[Dict[str, Any]], Any]] = {
     "octane_visualize_network": lambda a: queue_recipe(
         "network-graph", overrides=a.get("overrides") or {}
     ),
+    # WP8 — animation bake (queues per-frame set_camera + save_preview commands)
+    "octane_build_animation": lambda a: _dispatch_build_animation(a),
 }
+
+
+def _dispatch_build_animation(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Gateway parity for the ``octane_build_animation`` MCP tool.
+
+    Builds the orbit manifest + per-frame command envelopes and writes each to
+    the workspace queue (same side-effect as the MCP tool). Returns a summary
+    the Canvas UI can render.
+    """
+    from octanex_mcp.models import QUALITY_TIERS
+
+    center = tuple(args.get("center", [0.0, 0.0, 0.0]))
+    manifest = orbit_manifest(
+        center=center,  # type: ignore[arg-type]
+        radius=args.get("radius", 8.0),
+        height=args.get("orbit_height", 2.0),
+        fps=args.get("fps", 24),
+        duration=args.get("duration", 6.0),
+        start_deg=args.get("start_deg", 0.0),
+        end_deg=args.get("end_deg", 360.0),
+        fov=args.get("fov", 45.0),
+        segments=args.get("segments", 24),
+    )
+    quality = args.get("quality")
+    tier = QUALITY_TIERS.get(quality) if quality else None
+    frame_cmds = build_animation_commands(
+        manifest,
+        width=args.get("width", 1280),
+        height=args.get("height", 1280),
+        samples=args.get("samples", 64 if not tier else tier["samples"]),
+        min_samples=args.get("min_samples", 16 if not tier else tier["min_samples"]),
+        timeout_seconds=args.get("timeout_seconds", 10 if not tier else tier["timeout_seconds"]),
+        quality=quality,
+        max_render_time=args.get("max_render_time"),
+    )
+    queued = [write_command(c["op"], c["payload"]) for c in frame_cmds]
+    return {"ok": True, "frames": len(queued) // 2, "queued_commands": queued}
 
 
 def call_tool(name: str, args: Optional[Dict[str, Any]]) -> Dict[str, Any]:
