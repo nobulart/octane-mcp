@@ -223,6 +223,18 @@ sequence (refined 2026-07-09 per operator guidance — the key addition is
 8. **Return to step 2** for the next scene (reset → flush → build → drain). Do
    NOT pile scenes into one uncleared session.
 
+> **CRITICAL — after the bridge populates the node tree, the Hermes Render
+> Target node MUST be selected and the renderer MUST be explicitly started, or
+> the run silently produces a near-black/empty frame.** The one-shot bridge's
+> Lua handlers call `octane.project.setSelection{rt}` (`activate_render_target`)
+> and `request_render_restart` (`start_render`) for you, but this must happen
+> *against a fully-populated node tree*. If a frame comes back near-black
+> (`mean_dev≈0`) with no scene error, the cause is almost always one of:
+> (a) a stale queue / leftover scene (steps 2–4), or (b) the render target was
+> not selected / renderer not started when the tree was still empty. Re-run with
+> an explicit `start_render` op LAST (after import+camera+lights), and confirm
+> `octane_status` shows `octane_node_available=true` before draining.
+
 > **Octane is fast:** basic scenes are acceptably converged for preview
 > evaluation after only **1–2 s**; complex scenes after **5–10 s**. Do not set
 > long `max_render_time`/`timeout_seconds` caps "to be safe" — they only delay
