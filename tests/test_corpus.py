@@ -214,17 +214,21 @@ class CorpusRegisterTests(unittest.TestCase):
 class HarvestOfflineTests(unittest.TestCase):
     """harvest_commons with an injected mock fetcher (no network)."""
 
-    def _mock_fetch(self, q: str) -> dict:
+    def _mock_fetch(self, q: str, *, match: bool = True) -> dict:
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "ref.png"
             write_rgb_png(p, _red_on_dark())
+            # When match=True the mocked Commons categories contain the query's
+            # head noun so the WP9 semantic gate accepts; when False they do not,
+            # exercising the reject path offline.
+            cat = q if match else "Mock"
             return {
                 "ok": True,
                 "image_bytes": p.read_bytes(),
                 "title": q,
                 "source_url": f"mock://commons/{q}",
                 "license": "CC-BY-mock",
-                "labels": {"subject": q, "categories": ["Mock"]},
+                "labels": {"subject": q, "categories": [cat]},
             }
 
     def _mock_fetch_blank(self, q: str) -> dict:
@@ -240,9 +244,19 @@ class HarvestOfflineTests(unittest.TestCase):
                 "labels": {"subject": q},
             }
 
+    def _mock_file_meta(self, q: str, *, match: bool = True):
+        # Mirrors _mock_fetch's categories so the WP9 semantic gate (which does
+        # its own file_metadata lookup) sees the same offline signal.
+        cat = q if match else "Mock"
+        return {"title": q, "categories": [cat], "description": ""}
+
     def test_harvest_subject_accepts(self) -> None:
         corpus_root = Path(tempfile.mkdtemp()) / "corpus"
-        res = harvest.harvest_subject("red sphere", fetch=self._mock_fetch, corpus_root=corpus_root)
+        res = harvest.harvest_subject(
+            "red sphere", fetch=self._mock_fetch,
+            file_meta=lambda t: self._mock_file_meta("red sphere"),
+            corpus_root=corpus_root,
+        )
         self.assertTrue(res["ok"], res.get("reasons"))
         self.assertEqual(res["harvest"]["license"], "CC-BY-mock")
         self.assertEqual(res["harvest"]["source_url"], "mock://commons/red sphere")
@@ -254,10 +268,27 @@ class HarvestOfflineTests(unittest.TestCase):
         self.assertIsNone(res["entry"])
         self.assertFalse((corpus_root / "void").exists())
 
+    def test_harvest_subject_rejects_semantic_mismatch(self) -> None:
+        # WP9 enrichment: the file's categories do not contain the subject noun,
+        # so the semantic gate must reject BEFORE the pixel filter / corpus write.
+        corpus_root = Path(tempfile.mkdtemp()) / "corpus"
+        res = harvest.harvest_subject(
+            "red sphere",
+            fetch=lambda q: self._mock_fetch(q, match=False),
+            file_meta=lambda t: self._mock_file_meta("red sphere", match=False),
+            corpus_root=corpus_root,
+        )
+        self.assertFalse(res["ok"])
+        self.assertIsNone(res["entry"])
+        self.assertTrue(any("semantic mismatch" in r for r in res.get("reasons", [])))
+        self.assertFalse((corpus_root / "red sphere").exists())
+
     def test_harvest_batch_counts_accept_reject(self) -> None:
         corpus_root = Path(tempfile.mkdtemp()) / "corpus"
         report = harvest.harvest_batch(
-            ["good", "bad"], fetch=lambda q: self._mock_fetch(q) if q == "good" else self._mock_fetch_blank(q),
+            ["good", "bad"],
+            fetch=lambda q: self._mock_fetch(q) if q == "good" else self._mock_fetch_blank(q),
+            file_meta=lambda t: self._mock_file_meta("good") if t == "good" else None,
             corpus_root=corpus_root,
         )
         self.assertEqual(report["total"], 2)

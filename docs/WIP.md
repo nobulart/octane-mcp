@@ -13,7 +13,7 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
 | Recipe library | 18 recipes; **13/18 `native_octane_verified=true`** (5 remain: `annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`) |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar first slice**, **WP9 corpus + `octane_find_grammar` (shipped)** |
-| Unscaffolded | WP6 promoted tools, WP7 geo live-path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory, WP9 iteration-loop / Wikidata enrichment |
+| Unscaffolded | WP6 promoted tools, WP7 geo live-path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
@@ -78,7 +78,18 @@ _WP7 geo grammar first slice landed (uncommitted); see Done recently. Direction 
   (`foreground_bbox_area_percent` always ~100% → gated on `foreground_pixel_percent`).
   Corpus seeded with 6 real CC-licensed Commons refs; `octane_find_grammar` retrieves
   them live (40-tool server verified via `hermes mcp test octanex`). Remaining:
-  iteration-loop + Wikidata enrichment (subject-match tightening).
+  iteration-loop (warm-start render → converge → auto-promote to `benchmarks/spec.py`).
+- **WP9 — Wikidata subject-match enrichment (shipped 2026-07-09):** added
+  `src/octanex_mcp/wikidata.py` + `tests/test_wikidata.py` (12 tests, all pass). The
+  Commons image search returns the first title-matching file, not a verified
+  single-subject photo — live runs returned a *butterfly* for "yellow banana" and a
+  *flag* for "green leaf". The gate now anchors on the query HEAD NOUN (color/material
+  descriptors stripped), checks the resolved file's Commons **categories** for a
+  substring match, and **fails CLOSED**: a file whose categories lack the noun is
+  rejected before it enters the corpus; an unverifiable lookup (429/uncategorized)
+  is rejected too, never silently accepted. Network is injectable + backoff-decorated
+  so the matcher is offline-testable and the harvest is resumable. Wired into
+  `harvest_subject`/`harvest_batch` (fail-closed on gate). Full suite 179 pass / 3 skip.
 - **A (live) — recipe verification fix + vision tier** (2026-07-09): found the 5
   "verified-but-wrong" recipes were failing because the Octane bridge ignores OBJ
   `usemtl`/MTL colors — materials only reach the mesh via explicit

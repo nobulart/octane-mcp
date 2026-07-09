@@ -193,6 +193,8 @@ def _derive_labels(query: str, best: dict[str, Any]) -> dict[str, Any]:
 
 def harvest_subject(query: str, *,
                     fetch: Callable[[str], dict[str, Any]] = commons_image_fetcher,
+                    search: Callable[[str], dict[str, Any]] | None = None,
+                    file_meta: Callable[[str], dict[str, Any]] | None = None,
                     domain: str = "uncategorized",
                     corpus_root: Path | None = None,
                     **fetch_kwargs: Any) -> dict[str, Any]:
@@ -214,6 +216,20 @@ def harvest_subject(query: str, *,
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "entry": None,
                 "reasons": [f"image normalization failed: {exc}"], "harvest": fetched}
+    # Semantic match gate (WP9 enrichment): the Commons search returns the first
+    # file whose title matches the query string, not a verified single-subject
+    # photo. 'yellow banana' resolved to a *butterfly*; 'green leaf' to a flag.
+    # Verify the resolved file's title+categories actually describe the query
+    # subject (token overlap against the canonical Wikidata entity) before it
+    # enters the corpus. Network is injectable (search/file_meta) for tests.
+    from octanex_mcp.wikidata import subject_matches_query
+    match = subject_matches_query(
+        query, fetched["title"], search=search, file_meta=file_meta,
+    )
+    if not match["ok"]:
+        return {"ok": False, "entry": None,
+                "reasons": match["reasons"], "harvest": fetched,
+                "semantic_match": match}
     reg = register_reference(
         slug=query,
         title=fetched["title"],
@@ -236,13 +252,16 @@ def _default_corpus_root() -> Path:
 
 def harvest_batch(queries: list[str], *,
                   fetch: Callable[[str], dict[str, Any]] = commons_image_fetcher,
+                  search: Callable[[str], dict[str, Any]] | None = None,
+                  file_meta: Callable[[str], dict[str, Any]] | None = None,
                   domain: str = "uncategorized",
                   **fetch_kwargs: Any) -> dict[str, Any]:
     """Harvest many subjects; never aborts on one failure."""
     results = []
     accepted = 0
     for q in queries:
-        r = harvest_subject(q, fetch=fetch, domain=domain, **fetch_kwargs)
+        r = harvest_subject(q, fetch=fetch, search=search, file_meta=file_meta,
+                            domain=domain, **fetch_kwargs)
         results.append({"query": q, "ok": r["ok"], "reasons": r.get("reasons", [])})
         accepted += 1 if r["ok"] else 0
     return {"total": len(queries), "accepted": accepted, "rejected": len(queries) - accepted,
