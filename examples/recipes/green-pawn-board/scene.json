@@ -1,0 +1,195 @@
+{
+  "slug": "green-pawn-board",
+  "title": "Green Chess Pawn on a Studio Chessboard",
+  "category": "Product / prop studio",
+  "purpose": "Render a green glossy chess pawn standing on an 8x8 chessboard under soft studio lighting. The combined OBJ carries 3 usemtl groups (cb_base, cb_light, pawn) so each material binds by 1-based group_index.",
+  "prompt": "Visualise a green chess pawn on a chessboard under studio lights.",
+  "camera": {
+    "position": [4.2, 3.0, 4.2],
+    "target": [0, 0.6, 0],
+    "fov": 36
+  },
+  "materials": {
+    "cb_base": {
+      "kind": "glossy",
+      "color": [0.06, 0.06, 0.07],
+      "roughness": 0.4
+    },
+    "cb_light": {
+      "kind": "glossy",
+      "color": [0.86, 0.83, 0.74],
+      "roughness": 0.35
+    },
+    "pawn": {
+      "kind": "glossy",
+      "color": [0.12, 0.72, 0.28],
+      "roughness": 0.2,
+      "clearcoat": 0.6,
+      "specular": 0.5
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/green-pawn-board/scene.obj",
+        "format": "obj",
+        "name": "pawn_board"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cb_base",
+        "kind": "glossy",
+        "color": [0.06, 0.06, 0.07],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cb_light",
+        "kind": "glossy",
+        "color": [0.86, 0.83, 0.74],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "pawn",
+        "kind": "glossy",
+        "color": [0.12, 0.72, 0.28],
+        "roughness": 0.2,
+        "clearcoat": 0.6,
+        "specular": 0.5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "pawn_board",
+        "material_name": "cb_base",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "pawn_board",
+        "material_name": "cb_light",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "pawn_board",
+        "material_name": "pawn",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [4.2, 3.0, 4.2],
+        "target": [0, 0.6, 0],
+        "fov": 36
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": { "preset": "soft_studio" }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/green-pawn-board/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "samples": 128,
+        "min_samples": 24,
+        "timeout_seconds": 45
+      }
+    }
+  ],
+  "preview_note": "octane-preview.png is the native Octane render. Usable convergence ~30s; a 256-spp pass ran ~4 min for a fully clean frame.",
+  "quality_checklist": [
+    "Preview is non-blank; full 8x8 board visible corner-to-corner.",
+    "Checkerboard alternates dark and light squares (not a flat plane).",
+    "Pawn is clearly GREEN and sits on the board (material bound per group_index).",
+    "Board base is dark; light squares are warm cream.",
+    "Studio lighting shows soft highlights and contact shadow under the pawn."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/green-pawn-board/octane-preview.png",
+    "candidate_image": "examples/recipes/green-pawn-board/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "object count and semantic content",
+      "composition, framing, and camera perspective",
+      "material/color readability and contrast",
+      "lighting, shadows, and background clarity",
+      "task-specific labels, legends, or focal details"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata for queued commands",
+      "native Octane candidate preview at octane-preview.png",
+      "glm-ocr reference and candidate review notes",
+      "one bounded patch plan per iteration",
+      "final native Octane render bundled as octane-preview.png",
+      "iteration review/patch records under iterations/"
+    ],
+    "stop_conditions": [
+      "candidate content and major silhouettes match the reference or stated recipe intent",
+      "task-critical colors/materials/labels are visually distinguishable",
+      "camera/framing and lighting are close enough for the task",
+      "remaining gaps require bridge schema or native material capability work"
+    ],
+    "baseline_sweep": {
+      "enabled": true,
+      "purpose": "Rapidly disambiguate scene orientation/camera framing before fine visual matching.",
+      "camera_or_scene_variants": [
+        {"name": "front", "azimuth_degrees": 0, "elevation_degrees": 12},
+        {"name": "left_three_quarter", "azimuth_degrees": -35, "elevation_degrees": 12},
+        {"name": "right_three_quarter", "azimuth_degrees": 35, "elevation_degrees": 12},
+        {"name": "top_oblique", "azimuth_degrees": 0, "elevation_degrees": 45}
+      ],
+      "visual_grammar_axes": [
+        "orientation",
+        "camera_distance",
+        "focal_length",
+        "lighting_direction",
+        "material/readability contrast"
+      ],
+      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/green-pawn-board/octane-preview.png",
+    "iteration_dir": "examples/recipes/green-pawn-board/iterations",
+    "final_review": "examples/recipes/green-pawn-board/iterations/final-review.json",
+    "result_metadata_pattern": "workspace/results/<command_id>.json copied or summarized into iterations/",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.json",
+      "octane-preview.png",
+      "iterations/*.json",
+      "iterations/*.png"
+    ],
+    "status": "native_candidate_available",
+    "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (2026-07-09)"
+}

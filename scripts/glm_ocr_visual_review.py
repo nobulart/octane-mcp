@@ -95,12 +95,12 @@ def run_glm_ocr(image_path: Path, prompt: str, model: str, timeout: int, *, endp
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Cheap local visual review for OctaneX MCP previews using Ollama glm-ocr.")
+    parser = argparse.ArgumentParser(description="Cheap local visual review for OctaneX MCP previews using Ollama vision models.")
     parser.add_argument("--reference", type=Path, required=True, help="target/reference image path")
     parser.add_argument("--candidate", type=Path, required=True, help="native Octane candidate preview path")
-    parser.add_argument("--model", default="glm-ocr", help="Ollama model name")
+    parser.add_argument("--model", default="qwen2.5vl:7b", help="Ollama vision model (default qwen2.5vl:7b; glm-ocr still selectable for parity)")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="per-image visual review prompt")
-    parser.add_argument("--timeout", type=int, default=45, help="seconds per image")
+    parser.add_argument("--timeout", type=int, default=90, help="seconds per image")
     parser.add_argument("--endpoint", default="http://127.0.0.1:11434", help="Ollama HTTP endpoint")
     parser.add_argument("--cli", action="store_true", help="use `ollama run` instead of the HTTP API")
     args = parser.parse_args()

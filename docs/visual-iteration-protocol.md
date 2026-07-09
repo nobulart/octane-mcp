@@ -9,20 +9,21 @@ OctaneX MCP should treat rendering as an iterative visual-control loop, not a on
 3. **Queue native render** — use `octane_queue_recipe(...)` or scene tools, then drain through the one-shot or persistent bridge.
 4. **Capture evidence** — save Octane output as `octane-preview.png`; do not claim native success from repo previews alone.
 5. **Baseline sweep** — before fine matching, render a small set of camera/scene orientations so the agent can establish a rapid visual baseline. Start with front, left three-quarter, right three-quarter, and top-oblique variants; extend the same sweep idea to focal length, camera distance, lighting direction, and material/readability contrast when those are uncertain.
-6. **Cheap visual review** — run local `glm-ocr` via Ollama against the reference and candidate preview to extract visible content/layout/material/lighting notes.
+6. **Cheap visual review** — run a local vision model via Ollama against the reference and candidate preview to extract visible content/layout/material/lighting notes. The project default is `qwen2.5vl:7b` (cleaner JSON, richer semantic reads, catches contact shadows); `glm-ocr` remains selectable via `scripts/glm_ocr_visual_review.py --model glm-ocr`.
 7. **Patch** — apply one bounded change set: geometry proportions/counts, object placement, camera position/FOV, lighting/exposure, material intent, or texture proxies.
 8. **Repeat** — keep iteration records until the review no longer finds material mismatches or the remaining gaps are known renderer/schema limitations.
 9. **Bundle final evidence** — the final iterated native Octane render, result metadata, iteration notes, and all reproduction assets must live inside the recipe directory.
 
 ## Local vision model
 
-Preferred cheap local reviewer:
+Preferred cheap local reviewer (default `qwen2.5vl:7b`):
 
 ```bash
-ollama run glm-ocr 'Please output JSON only: {"visible_objects":"","materials":"","lighting":"","camera_perspective":"","mismatch_risks":""}' path/to/image.png
+python scripts/glm_ocr_visual_review.py --reference ref.png --candidate cand.png   # defaults to qwen2.5vl:7b
+python scripts/glm_ocr_visual_review.py --reference ref.png --candidate cand.png --model glm-ocr   # parity
 ```
 
-GLM-OCR's documentation frames the model primarily as OCR/document parsing plus schema-constrained information extraction. For render review, use the information-extraction mode: ask for a tiny JSON schema instead of open-ended critique. Review both images with the same schema prompt, then ask the agent to produce a patch plan from the two extracted descriptions. `glm-ocr` is not a perfect critic, but it is cheap enough to run every iteration and good enough to catch broad composition, object-count, material, and lighting drift.
+`qwen2.5vl:7b` returns well-formed JSON and richer semantic notes (objects, materials, lighting, camera, mismatch risks) than `glm-ocr`, which emits repeated/truncated fragments. For render review, use the information-extraction mode: ask for a tiny JSON schema instead of open-ended critique. Review both images with the same schema prompt, then ask the agent to produce a patch plan from the two extracted descriptions. Either model is cheap enough to run every iteration and good enough to catch broad composition, object-count, material, and lighting drift.
 
 ## Patch categories
 

@@ -76,7 +76,7 @@ Recipe registry tools only prove that commands were queued. Native Octane succes
 
 ## Visual iteration protocol
 
-For target-matching recipes, especially photoreal references, use [`visual-iteration-protocol.md`](visual-iteration-protocol.md): render a native Octane candidate, review reference and candidate with local `glm-ocr`, patch one bounded scene dimension, re-render, and bundle the final native render plus iteration records with the recipe.
+For target-matching recipes, especially photoreal references, use [`visual-iteration-protocol.md`](visual-iteration-protocol.md): render a native Octane candidate, review reference and candidate with local `qwen2.5vl:7b` (or `glm-ocr` for parity), patch one bounded scene dimension, re-render, and bundle the final native render plus iteration records with the recipe.
 
 ## Animation pattern
 

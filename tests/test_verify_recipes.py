@@ -54,11 +54,12 @@ class TestRecipeContractOffline(TestCase):
     def test_verify_recipe_library_dry_run_counts(self):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
-        self.assertEqual(report["total"], 18)
-        # 18/18 recipes ship scene.obj + scene.json + a reference preview, so all
-        # 18 pass the offline contract. `math-surface` was the last gap (preview
+        self.assertEqual(report["total"], 20)
+        # 20/20 recipes ship scene.obj + scene.json + a reference preview, so all
+        # 20 pass the offline contract. `math-surface` was the last gap (preview
         # PNG dropped in 0993e51); it was re-rendered live and now verifies.
-        self.assertEqual(report["contract_ok"], 18, report)
+        # `green-pawn` + `green-pawn-board` added 2026-07-09.
+        self.assertEqual(report["contract_ok"], 20, report)
         self.assertEqual(report["contract_failed"], 0)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, [], report)

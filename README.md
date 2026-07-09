@@ -61,7 +61,7 @@ Verified or implemented:
 - Scene operations: import mesh, create material, assign material, set camera, set lighting, start/restart render, save preview.
 - Visual tools: bar chart, math surface, Hermes avatar face.
 - Generated visual assets include bounds metadata and use bounds-aware camera placement for more reliable framing.
-- Visual iteration protocol for target-matching recipes: native Octane preview evidence, local `glm-ocr` review, bounded patch plans, and bundled final render/assets.
+- Visual iteration protocol for target-matching recipes: native Octane preview evidence, local `qwen2.5vl:7b` (or `glm-ocr`) review, bounded patch plans, and bundled final render/assets.
 - Self-improving recipe book tools: agents can read and append successes, failures, partials, and pitfalls.
 
 Known constraints:

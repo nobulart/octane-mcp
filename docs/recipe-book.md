@@ -737,3 +737,24 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - Do NOT claim the RT auto-activates — it does not on this build.
 
 
+
+## Green chess pawn + board recipes (studio)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-09 21:20 UTC
+- **Context:** Two new recipes (green-pawn, green-pawn-board) added 2026-07-09. Pawn is a lathed surface-of-revolution OBJ (not a primitive). Board is a single combined OBJ with 3 usemtl groups (cb_base=1, cb_light=2, pawn=3) bound via assign_material group_index.
+
+### Steps
+- gen_pawn.py lathes Catmull-Rom profile -> green_pawn.obj (13k verts)
+- import_geometry -> create_material(green_pawn_mat) -> assign_material -> set_camera(38fov) -> set_lighting(soft_studio) -> save_preview
+- gen_pawn_on_board.py builds combined OBJ: cb_base box + 32 light-square boxes + lathed pawn, 3 groups
+- queue envelope directly with group_index 1/2/3 for board materials
+- verify: pixels (non-blank, green pawn, checkerboard scan-line transitions>=6) + local vision (qwen2.5vl:7b default, glm-ocr parity)
+- renders + verify scripts added; recipes validated by octane_validate_recipe_library
+
+### Signals / evidence
+- Not specified.
+
+### Follow-ups
+- Verify light squares render as warm cream, not white — naive light-floor pixel check fails; use horizontal scan-line transition count.
+- Multi-group OBJ requires group_index on assign_material; MCP tool lacks the field, so queue the command envelope directly or use fix_recipe_materials.py.

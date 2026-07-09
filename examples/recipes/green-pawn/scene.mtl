@@ -1,0 +1,11 @@
+# Material library for green-pawn (single group).
+# NOTE: the OctaneX Lua bridge ignores OBJ/MTL colors and binds materials via
+# explicit create_material + assign_material commands (see scene.json). This
+# .mtl exists only to satisfy the recipe contract (scene.mtl required) and to
+# document group names; it is not the source of truth for the render.
+newmtl green_pawn_mat
+Kd 0.12 0.72 0.28
+Ka 0.00 0.00 0.00
+Ks 0.30 0.30 0.30
+Ns 20
+illum 2
