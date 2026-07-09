@@ -88,6 +88,18 @@ tell application "System Events"
     if not (exists process "Octane X") then error "Octane X process is not running after activate"
     tell process "Octane X"
         set frontmost to true
+        -- Probe menu-bar access first. If macOS denies assistive access the
+        -- inner "menu 1 of menu bar item" throws -1719; surface it verbatim
+        -- instead of masking it as a "script not found" error.
+        try
+            set _probe to count of menu bar items of menu bar 1
+        on error errMsg number errNum
+            if errNum is -1719 then
+                error "assistive access denied (-1719): grant Accessibility to the app running osascript in System Settings -> Privacy & Security -> Accessibility" number errNum
+            else
+                error errMsg number errNum
+            end if
+        end try
         set menuCandidates to {{"Scripts", "Script", "Lua", "File"}}
         repeat with menuTitle in menuCandidates
             try
@@ -165,4 +177,19 @@ def run_bridge_script(
             "If macOS reports assistive-access errors, grant the calling terminal/Hermes app Accessibility permission.",
             "If the persistent bridge is already open, queued commands can still process via that window/timer even when menu automation fails.",
         ]
+        # macOS TCC gate: UI-scripting (clicking Octane's Scripts menu) requires
+        # Accessibility permission for the process that runs osascript. Without it
+        # the bridge silently fails to launch and the queue never drains. Detect and
+        # surface the exact one-time fix instead of a vague hint.
+        _stderr_l = result["error"].lower()
+        if "assistive access" in _stderr_l or "-1719" in _stderr_l:
+            _hermes_app = "/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app"
+            result["tcc_blocked"] = True
+            result["next_steps"] = [
+                "macOS blocked UI-scripting (Accessibility/TCC). Grant it once:",
+                "  1. System Settings -> Privacy & Security -> Accessibility",
+                f"  2. Click + and add: {_hermes_app}",
+                "  3. If already listed, remove + re-add to refresh the TCC token, then restart Hermes.",
+                "This is a one-time OS permission; the launch code itself is correct.",
+            ]
     return result
