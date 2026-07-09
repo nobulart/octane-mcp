@@ -34,6 +34,47 @@ def _json(data: Dict[str, Any]) -> str:
     return json.dumps(data, indent=2)
 
 
+def _build_save_preview_envelope(
+    *,
+    path: Optional[str] = None,
+    width: int = 1280,
+    height: int = 1280,
+    samples: int = 64,
+    min_samples: int = 16,
+    timeout_seconds: int = 10,
+    quality: Optional[str] = None,
+    max_render_time: Optional[int] = None,
+    progressive: bool = False,
+) -> Dict[str, Any]:
+    """Resolve a ``save_preview`` command envelope.
+
+    Shared by the MCP tool and the HTTP gateway so both stay in parity.
+    ``progressive=True`` additionally emits an early low-spp frame at
+    ``preview_progressive.png`` before the final frame (see bridge C1).
+    """
+    tier = None
+    if quality:
+        if quality not in QUALITY_TIERS:
+            raise ValueError(f"quality must be one of {sorted(QUALITY_TIERS)}")
+        tier = QUALITY_TIERS[quality]
+    resolved = {
+        "path": path,
+        "width": width,
+        "height": height,
+        "samples": samples if samples != 64 else (tier["samples"] if tier else 64),
+        "min_samples": min_samples if min_samples != 16 else (tier["min_samples"] if tier else 16),
+        "timeout_seconds": timeout_seconds if timeout_seconds != 10 else (tier["timeout_seconds"] if tier else 10),
+        "max_render_time": max_render_time if max_render_time is not None else (tier["max_render_time"] if tier else None),
+        "quality": quality or None,
+        "progressive": bool(progressive),
+    }
+    if progressive:
+        from .bridge import Workspace
+
+        resolved["progressive_path"] = str(Workspace().renders_dir / "preview_progressive.png")
+    return resolved
+
+
 def build_mcp() -> Any:
     if FastMCP is None:
         raise RuntimeError("mcp package is not installed. Run: uv sync")
@@ -252,6 +293,7 @@ def build_mcp() -> Any:
         timeout_seconds: int = 10,
         quality: Optional[str] = None,
         max_render_time: Optional[int] = None,
+        progressive: bool = False,
     ) -> str:
         """Queue a render-ready preview image save command.
 
@@ -261,22 +303,24 @@ def build_mcp() -> Any:
         as the cap; the render stops at whichever is hit first and the frame is
         saved (best-effort on timeout). Raw ``samples``/``min_samples``/
         ``timeout_seconds``/``max_render_time`` override the tier when given.
+
+        Set ``progressive=True`` to also emit an early low-spp frame at
+        ``preview_progressive.png`` before the final frame (bridge C1).
         """
-        tier = None
-        if quality:
-            if quality not in QUALITY_TIERS:
-                return _json({"ok": False, "error": f"quality must be one of {sorted(QUALITY_TIERS)}"})
-            tier = QUALITY_TIERS[quality]
-        resolved = {
-            "path": path,
-            "width": width,
-            "height": height,
-            "samples": samples if samples != 64 else (tier["samples"] if tier else 64),
-            "min_samples": min_samples if min_samples != 16 else (tier["min_samples"] if tier else 16),
-            "timeout_seconds": timeout_seconds if timeout_seconds != 10 else (tier["timeout_seconds"] if tier else 10),
-            "max_render_time": max_render_time if max_render_time is not None else (tier["max_render_time"] if tier else None),
-            "quality": quality or None,
-        }
+        try:
+            resolved = _build_save_preview_envelope(
+                path=path,
+                width=width,
+                height=height,
+                samples=samples,
+                min_samples=min_samples,
+                timeout_seconds=timeout_seconds,
+                quality=quality,
+                max_render_time=max_render_time,
+                progressive=progressive,
+            )
+        except ValueError as exc:
+            return _json({"ok": False, "error": str(exc)})
         return _json(write_command("save_preview", resolved))
 
     @mcp.tool()
