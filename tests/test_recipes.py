@@ -28,7 +28,11 @@ class RecipeRegistryTests(unittest.TestCase):
         self.assertEqual(data_bars["domain"], "Data visualization")
         self.assertTrue(data_bars["scene_json_exists"])
         self.assertTrue(data_bars["preview_exists"])
-        self.assertFalse(data_bars["native_octane_verified"])
+        # data-bars was promoted to native_octane_verified by the WP6 honesty
+        # gap-close work (commit c572ace: 13/18 -> 17/18). The ground-truth
+        # check (_recipe_dirs + octane-preview.png present) confirms it is now
+        # genuinely verified, so the index must reflect True.
+        self.assertTrue(data_bars["native_octane_verified"])
         self.assertIn("scene.obj", {Path(path).name for path in data_bars["assets"]})
 
     def test_load_recipe_returns_commands_and_resolved_asset_paths(self) -> None:

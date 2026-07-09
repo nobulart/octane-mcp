@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.2.1
+version: 1.3.0
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -85,14 +85,15 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
    > **If the Script menu is absent**, do NOT assume the preference is wrong first — without the Accessibility grant below you cannot even *inspect* the menu (every probe returns `-1719`), so the menu looks missing. Fix the permission, then re-check.
 
-4. **macOS Accessibility for `Hermes.app` (launch prerequisite — the #1 fresh-setup blocker).** The bridge is launched by UI-scripting Octane X's Script menu via `osascript`, which the **Hermes runtime process** spawns. macOS evaluates the Accessibility (TCC) entitlement on the *process that runs `osascript`* — i.e. `Hermes.app` — **not** on Octane X. If it is missing, every launch fails with **`osascript error -1719`** ("not allowed assistive access") and the bridge never runs.
+4. **macOS Accessibility for the process that runs `osascript` (launch prerequisite — the #1 fresh-setup blocker).** The bridge is launched by UI-scripting Octane X's Script menu via `osascript`, which the OctaneX MCP **server** spawns. macOS evaluates the Accessibility (TCC) entitlement on the *process whose descendant runs `osascript`* — for this project that is the **Hermes agent runtime**, NOT `Hermes.app` the GUI:
 
-   - Grant once: **System Settings → Privacy & Security → Accessibility → + → `/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`** → enable.
-   - Restart Hermes (or the process tree) after granting so the entitlement is picked up.
-   - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` should return the menu list (including `"Script"`) instead of `-1719`.
-   - `run_bridge_script('oneshot')` now surfaces this directly: on `-1719` it returns `tcc_blocked: true` with the exact fix above, instead of the old misleading "script not found" `-2700`.
+   - Process tree: the `octanex-mcp` server (`…/octanex-mcp/.venv/bin/python3`) is a child of `uv run` → `/Users/craig/.hermes/hermes-agent/venv/bin/python` (PID 924, the Hermes **agent runtime**). `Hermes.app` (the desktop GUI) is a *separate* process and is NOT in this chain.
+   - **Grant Accessibility to `/Users/craig/.hermes/hermes-agent/venv/bin/python`** (the agent runtime binary), not `Hermes.app`. Adding `Hermes.app` alone will NOT clear `-1719` because the osascript caller is the runtime python.
+   - If the binary is awkward to select in the TCC UI, grant Accessibility to the **Terminal** app you launch Hermes from as a fallback, or to the parent `uv`/shell — TCC walks up to the nearest granted ancestor of the osascript caller.
+   - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` must return the menu list (incl. `"Script"`) instead of `-1719`.
+   - On `-1719` the bridge now returns `tcc_blocked: true` with the exact fix instead of the old misleading `"script not found"` `-2700`.
 
-   This is distinct from the Octane X **Automation** permission; both may be needed, but TCC/Accessibility for `Hermes.app` is the one that blocks the launch. (Discovered + fixed 2026-07-09: a generated AppleScript `try` was swallowing the `-1719` and emitting a fake `-2700`.)
+   > **CORRECTED 2026-07-09 (this session):** the previously-documented target `Hermes.app` is wrong for this deployment — the MCP server runs under the agent-runtime python, so that binary (or its shell/terminal ancestor) must be granted Accessibility. A live `-1719` against a supposedly-granted `Hermes.app` is the tell.
 
 ## Standard Agent Loop
 
@@ -193,6 +194,48 @@ Pitfall (observed): the auxiliary backend **loops its answer** on open-ended que
 
 - Downscale first: `sips -s format jpeg -Z 768 in.png --out small.jpg`, then point `vision_analyze` at `small.jpg`.
 - Ask ONE tight factual question; **take only the first line** of the reply.
+
+## Render Protocol (mandatory before any live render)
+
+A non-clean Octane session is the root cause of blank / near-black / stale
+renders. Before every live render (and between scenes), follow this exact
+sequence (refined 2026-07-09 per operator guidance — the key addition is
+**starting the lua command queue before each drain**):
+
+1. **Check Octane X is running.** If not, `open -a "Octane X"`. Do not proceed
+   without the GUI session.
+2. **Reset the workspace to startup default** — UI-script `File → New` in Octane
+   X (clears any in-memory scene from a prior run). AppleScript:
+   `tell application "System Events" to tell process "Octane X" to click menu
+   item "New" of menu 1 of menu bar item "File" of menu bar 1`.
+3. **Start the renderer (lua command queue).** Ensure Octane's lua/command-queue
+   listener is active (the persistent bridge window / render node is live) so
+   queued commands will actually execute when drained.
+4. **Flush any stale queue** with one one-shot bridge click (Script menu), even
+   if you think the queue is empty. A leftover command from a prior run will
+   otherwise execute against your fresh scene and corrupt it.
+5. **Build the scene and queue the scene commands** (import → material → camera
+   → light → render-start → save-preview).
+6. **Start the renderer (lua command queue)** again — re-affirm the listener is
+   active before processing this scene's commands.
+7. **Process the queue** with another one-shot bridge click (Script menu). One
+   click drains the ENTIRE queue, then renders.
+8. **Return to step 2** for the next scene (reset → flush → build → drain). Do
+   NOT pile scenes into one uncleared session.
+
+> **Octane is fast:** basic scenes are acceptably converged for preview
+> evaluation after only **1–2 s**; complex scenes after **5–10 s**. Do not set
+> long `max_render_time`/`timeout_seconds` caps "to be safe" — they only delay
+> the PNG and tempt an early "failed" conclusion. A short standard-tier save is
+> sufficient for a QA pass; use high/ultra only when the preview genuinely needs
+> more samples.
+
+> **Pitfall — stale queue → near-black frame.** If a render comes back
+> near-black (`mean_dev≈0`, triggers `mostly near-black`) with no obvious scene
+> error, suspect a stale queue or leftover scene, NOT a material bug. Run steps
+> 2–4 (reset + start queue + flush) and re-queue. The 2026-07-09 `avatar-guide`
+> failure was exactly this: a stale scene + un-drained queue, not a recipe
+> defect.
 
 ## Bridge Debugging
 

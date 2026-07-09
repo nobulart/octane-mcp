@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.2.0
+version: 1.3.0
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -78,6 +78,17 @@ Map prompts to tools:
 | `Visualise it simply` | default glossy-blue cube + render |
 | `Visualise the helix with a copper material` | helix geometry + copper material + render |
 
+### 1.5. Render protocol (do this every time — prevents near-black/stale renders)
+
+Follow the mandatory 8-step sequence from the `octanex-mcp` skill **Render
+Protocol** section: (1) confirm Octane X running; (2) `File → New` reset;
+(3) start the renderer (lua command queue); (4) one one-shot bridge click to
+flush any stale queue; (5) queue the scene; (6) start the renderer (lua command
+queue) again; (7) one-shot bridge click to drain; (8) repeat from (2) for the
+next scene. **Octane is fast** — basic scenes converge for preview QA in
+**1–2 s**, complex in **5–10 s**; do not over-cap render time. A stale queue or
+leftover scene (not a material bug) is the usual cause of a near-black frame.
+
 ### 2. Drain the queue in Octane X
 
 The bridge uses the **one-shot bridge** mode (`hermes_bridge_oneshot.generated`). Run it from
@@ -86,9 +97,12 @@ Octane X's Script menu, or trigger it.
 **Preferred (code path, handles TCC):** `drain_oneshot()` in `src/octanex_mcp/bridge_control.py`
 clicks Octane X's **Script** menu item via System Events UI scripting. The MCP tool
 `octane_run_oneshot_bridge` calls it; it returns `{"ok": true}` or
-`{"tcc_blocked": true}` if macOS Accessibility is missing for `Hermes.app`
-(see `octanex-mcp` skill, Setup step 4 — the #1 fresh-setup blocker: `osascript`
-fails `-1719` until `Hermes.app` is granted Accessibility in System Settings).
+`{"tcc_blocked": true}` if macOS Accessibility is missing. **The TCC target is the
+Hermes agent-runtime python (`/Users/craig/.hermes/hermes-agent/venv/bin/python`),
+NOT `Hermes.app`** — the MCP server runs under the agent runtime, so that binary
+(or its Terminal/shell ancestor) must be granted Accessibility in System Settings →
+Privacy & Security → Accessibility. Granting `Hermes.app` alone does NOT clear
+`-1719`. (See `octanex-mcp` skill, Setup step 4 — corrected 2026-07-09.)
 
 **Raw AppleScript fallback** (MCP server down): UI-script the menu item — the menu
 is **"Script"** (singular), not "Scripts"; do NOT use `run script file ...`:

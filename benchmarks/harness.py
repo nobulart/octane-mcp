@@ -223,16 +223,21 @@ def drain_oneshot(ws: Workspace, *, timeout_seconds: float = 60.0) -> dict[str, 
 
     result: dict[str, Any] = {"ok": False, "clicks": 0, "timeout_seconds": timeout_seconds, "queue_remaining": -1}
     waited = 0.0
-    # First click to start the drain (whole queue in one pass).
-    res = run_bridge_script("oneshot", timeout_seconds=max(30, int(timeout_seconds)))
-    result["clicks"] += 1
-    result["last_bridge_result"] = res
-    if not res.get("ok"):
+    # Click to start the drain (whole queue in one pass), with up to 2
+    # re-attempts for a transient menu miss. Iterative retry — the previous
+    # version recursed on failure, which under repeated TCC/menu misses ran
+    # Python's call stack into subprocess.get_exec_path and raised
+    # RecursionError (observed live: 984-deep drain_oneshot self-calls).
+    max_clicks = 3
+    for _ in range(max_clicks):
+        res = run_bridge_script("oneshot", timeout_seconds=max(30, int(timeout_seconds)))
+        result["clicks"] += 1
+        result["last_bridge_result"] = res
+        if res.get("ok"):
+            break
         result["error"] = res.get("error") or res.get("stderr") or "bridge script click failed"
-        # Re-attempt up to 2 more times in case of a transient menu miss.
-        if result["clicks"] < 3:
-            time.sleep(2.0)
-            return drain_oneshot(ws, timeout_seconds=timeout_seconds)
+        time.sleep(2.0)
+    if not result.get("last_bridge_result", {}).get("ok"):
         return result
 
     # Poll until queue drains (files move to processed/failed) or timeout.
