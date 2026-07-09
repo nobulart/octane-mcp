@@ -3,22 +3,22 @@
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
 brainstorm, kept as a fast-glance status doc. Last updated **2026-07-09**.
 
-## Current state (evidence, 2026-07-09)
+## Current state (evidence, 2026-07-09 — WP9 shipped through 6cad9b5)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `8eeca59`, ahead 3 of `origin/main` (not pushed) |
-| Tests | 136 passed / 1 skipped (offline `python -m unittest discover -s tests`) — green |
-| Octane X | running; persistent bridge; 135 processed / 0 failed; no wedge |
+| Repo | `main` = `6cad9b5` (pushed to `origin/main`) |
+| Tests | 166 passed / 3 skipped (offline `python -m unittest discover -s tests`) — green |
+| Octane X | running (pid 67403); bridge status `processed`, last event `save_preview`; status age ~2413s, no wedge/failed |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) |
-| Recipe library | 18 recipes; live-verify sweep in progress — fix applied to 5 broken recipes (missing `create_material`/`assign_material`); vision-against-intent tier added to acceptance |
-| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry |
-| Unscaffolded | WP6 promoted tools, WP7 geo grammar, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory, reference-anchored corpus expansion (WP9) |
+| Recipe library | 18 recipes; **13/18 `native_octane_verified=true`** (5 remain: `annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`, `document-ocr-layout`) |
+| Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, **WP7 geo grammar first slice**, **WP9 corpus + `octane_find_grammar` (shipped)** |
+| Unscaffolded | WP6 promoted tools, WP7 geo live-path, WP8 animation, Canvas Phase B+ wiring, Studio multi-host, visual memory, WP9 iteration-loop / Wikidata enrichment |
 
 **Bottom line:** reliability + core mechanics are proven. The gap is
 *surface area + closure* — high-level ergonomics (promoted tools, domain
-grammars, canvas UI, autonomous loop) and recipe-library verification are
-unfinished.
+grammars, canvas UI, autonomous loop) and recipe-library verification (5 recipes
+still unverified) are the remaining work.
 
 ## Backlog (from brainstorm 2026-07-09)
 
@@ -28,10 +28,7 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
    unverified recipes, flip `native_octane_verified`, append `docs/recipe-book.md`.
    *First step:* a `verify-recipe-library` loop reusing `benchmarks/harness.run_task`
    over `examples/recipes/*`.
-2. **B — Geo / terrain grammar** (HIGH strategic fit): GeoJSON / DEM /
-   elevation-grid → combined OBJ with bounds + camera, behind `uv sync --extra geo`.
-   *First step:* one `shapely`-backed GeoJSON→mesh op with graceful extra-missing
-   failure (per WP7 dependency policy).
+2. **B — Geo / terrain grammar** (HIGH strategic fit; FIRST SLICE SHIPPED this run): `src/octanex_mcp/geo.py` now has pure-Python `elevation_grid_to_obj` (DEM/grid→height-field) + shapely-gated `geojson_to_obj` (GeoJSON/points/lines/polygons→extruded OBJ) with graceful `GeoDependencyError` + `uv sync --extra geo` hint, plus `geo_asset_to_scene_commands`. *Remaining first-step:* add a thin MCP tool `octane_geojson_to_scene` exposing `geojson_to_obj` + bounds camera; exercise the shapely path under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase A slice — shell + full-bleed
    viewport + intent command bar + `OCTANEX_RENDER_HOST` Studio flag
    (from `docs/canvas-implementation-roadmap.md`).
@@ -45,24 +42,61 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
 ## Recommended next move
 
-**A → then B and/or C.** A is cheap and restores full honesty; B is the
-highest-leverage fit for ECDO / TPW / impact-structure research; C is the biggest
-step toward the shared visual communication medium. A + B are Python-only and
-offline-testable; C is a separate Swift workstream.
+**B (geo live-path) → then close recipe honesty gap.** B's pure-Python slice
+is shipped and offline-green; the shapely-backed `geojson_to_obj` path needs a
+`uv sync --extra geo` env to exercise live, and then a thin MCP tool
+(`octane_geojson_to_scene`) to expose it. The 5 still-unverified recipes
+(`annotated-text-labels`, `architecture-flow`, `avatar-guide`, `data-bars`,
+`document-ocr-layout`) remain the only remaining honesty gap. C (Canvas) is a
+separate Swift/JS workstream.
 
 ## In progress / this session
 
-_No open build — direction A committed; see Done recently._
+_WP7 geo grammar first slice landed (uncommitted); see Done recently. Direction A's 5-recipe fix + vision tier is committed. Live recipe sweep sits at 13/18._
 
 ## Done recently
 
-- **A — Recipe verification harness** (committed 2026-07-09): added
-  `benchmarks/verify_recipes.py` + `tests/test_verify_recipes.py`. Offline contract
-  check passes for all 18 recipes; live runner reuses `drain_oneshot` +
-  `acceptance` (mirrors OBJ, rewrites paths, strips `start_render` per pitfall
-  #9/#10, #14). `copy_back=True` promotes a recipe (copies PNG + flips
-  `native_octane_verified`) only after a real native render passes pixel QA. Dry-run
-  verified: 18/18 contract-OK.
+- **WP7 geo grammar — first slice** (steward run c90d84c, uncommitted): added
+  `src/octanex_mcp/geo.py` + `tests/test_geo_grammar.py`. Two offline-testable
+  ops: `elevation_grid_to_obj` (pure-Python DEM/grid → height-field OBJ, no
+  extra) and `geojson_to_obj` (shapely-backed GeoJSON/Polygon/LineString/Point →
+  extruded OBJ, gated behind the optional `geo` extra with a `GeoDependencyError`
+  + `uv sync --extra geo` hint). Plus `geo_asset_to_scene_commands` (bounds
+  camera) so geo assets drop into the render-review pipeline. Suite: **166 passed /
+  3 skipped** (was 158/1 — +8 geo tests; shapely path skipped because the extra
+  is not installed in this env). No Lua edits, no heavy deps, core install
+  unchanged.
+- **WP9 — reference-anchored corpus + `octane_find_grammar`** (shipped 2026-07-09,
+  `c90d84c`→`6cad9b5`, pushed): added `src/octanex_mcp/corpus.py` (manifest model +
+  registry/index/load/validate + `find_grammar` descriptor retrieval) and
+  `scripts/harvest_commons.py` (Wikimedia Commons harvest → pixel-QA filter →
+  derive acceptance spec). Three real bugs fixed during live run: (1) MCP server
+  import crash (`corpus.py` importing `benchmarks` — relocated pixel-QA to
+  `octanex_mcp.acceptance`); (2) JPEG magic-byte trap (Commons serves JPEG despite
+  `.png` thumburl — `normalize_to_png` sniff + Pillow transcode, behind `harvest`
+  extra, centralized in `harvest_subject`); (3) broken foreground check
+  (`foreground_bbox_area_percent` always ~100% → gated on `foreground_pixel_percent`).
+  Corpus seeded with 6 real CC-licensed Commons refs; `octane_find_grammar` retrieves
+  them live (40-tool server verified via `hermes mcp test octanex`). Remaining:
+  iteration-loop + Wikidata enrichment (subject-match tightening).
+- **A (live) — recipe verification fix + vision tier** (2026-07-09): found the 5
+  "verified-but-wrong" recipes were failing because the Octane bridge ignores OBJ
+  `usemtl`/MTL colors — materials only reach the mesh via explicit
+  `create_material` + `assign_material`. The 4 photoreal/space recipes emitted zero
+  `create_material` (relied on MTL, which is ignored); `geospatial-terrain` emitted
+  materials but no `assign_material`. Added `scripts/fix_recipe_materials.py`
+  (idempotent: derives `usemtl` groups from `scene.obj`, emits a `create_material`
+  per group with color/kind from each recipe's `materials` block, then an
+  `assign_material` with the correct 1-based `group_index`), ran it on the 5 broken
+  recipes. Added an **opt-in vision-against-intent tier** to the acceptance harness
+  (`benchmarks/vision_check.py` + wired into `benchmarks/verify_recipes.py` via
+  `--vision-check`): after pixel QA passes, a vision model confirms the PNG actually
+  shows the recipe's stated subject and **blocks promotion** on a wrong-subject
+  verdict (no real model call in the offline test suite — `vision_fn` is injected).
+  Re-rendered the 5 fixed recipes live; all 5 now render correct color-dependent
+  subjects (Earth, Saturn, product studio, 5 vases, terrain). Full 18-recipe
+  `copy_back` sweep running to flip `native_octane_verified` on every recipe that
+  passes pixel QA. New tests: `tests/test_verify_recipes.py::TestVisionTierOffline`.
 - **Test-framework reconciliation** (committed 2026-07-09): Plato's 4 merged
   pytest-style test files (`test_gateway`, `test_config_render_host`,
   `test_progressive_save`, `test_status_schema`) converted to `unittest.TestCase`
