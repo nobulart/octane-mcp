@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.2.1
+version: 1.3.0
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -181,6 +181,52 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
    ```
 
    Completion: use `ok`, `issues`, `metrics`, and recommended actions before claiming the visual result is good. `ok=true` means it passed QA; `likely_blank`/`likely_clipped`/low contrast means re-render.
+
+## Reliable Render Protocol (the loop that actually produces good frames)
+
+The Standard Agent Loop above is the mechanics. This is the *discipline* that keeps
+results reliable across recipe sweeps and multi-scene sessions. Follow it exactly;
+skipping the File→New reset or the pre-build queue flush is the single most common
+cause of stale/wrong/duplicated renders.
+
+**Octane X is extremely fast.** Do not over-budget render time.
+
+- Basic scenes (bars, scatter, simple geometry): acceptably converged for *preview*
+  evaluation after **1–2 s** of render.
+- Complex scenes (photoreal PBR, multi-object, high-poly surfaces): acceptably
+  converged after **5–10 s**.
+
+Treat `save_preview` `quality` tiers as upper bounds for QA passes, not targets —
+a quick preview confirms framing/subject; a longer tier is for the final bundled
+PNG. (See `references/render-convergence-tiers.md` for the tier → `timeout_seconds`
+mapping.)
+
+For every scene you render, run this cycle:
+
+1. **Check Octane X is running.** If not, launch it first — a real render requires
+   the GUI session.
+   ```bash
+   pgrep -fl "Octane X" || open -a "Octane X"
+   ```
+2. **Reset to the startup default scene** (clears any prior scene state so imports
+   don't append to a stale node tree):
+   AppleScript → **File ▸ New**.
+3. **Flush any stale queue** before building, so a leftover command file from a
+   prior run can't silently execute against the new scene:
+   AppleScript → **Script ▸ `hermes_bridge_oneshot.generated`** (one click drains
+   the entire queue). Verify `…/OctaneMCP/queue/` is empty afterwards.
+4. **Build the scene and queue its commands** (import_geometry → materials →
+   camera/lights → save_preview), per the Standard Agent Loop steps 3–5.
+5. **Process the queue** with one more one-shot click:
+   AppleScript → **Script ▸ `hermes_bridge_oneshot.generated`**.
+   The oneshot wires the scene (deferred start — no per-command blocking) and the
+   trailing `save_preview` performs the single real `render.start{}` + wait + save.
+6. **Return to step 2** for the next scene.
+
+> Do NOT restart Octane X between `import_geometry` and `save_preview` (see
+> "CRITICAL" under Bridge Debugging) — a restart purges the in-memory scene and
+> yields a uniform gray frame. Restart Octane X ONLY to reload a patched bridge,
+> and do it before step 4.
 
 ## Local Vision Inspection (every rendered PNG)
 
