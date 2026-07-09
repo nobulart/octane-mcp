@@ -14,6 +14,7 @@ from octanex_mcp.scene import (
     remove_scene_object,
     requeue_scene,
     save_scene_manifest,
+    swap_geometry,
     update_scene_object,
 )
 from octanex_mcp.visuals import create_primitive_obj
@@ -182,6 +183,63 @@ class ScenePlanTests(unittest.TestCase):
             self.assertTrue((config.workspace / "scenes").exists())
             self.assertTrue(checks["workspace_artifacts"]["ok"])
             self.assertTrue(checks["workspace_scenes"]["ok"])
+
+
+class SwapGeometryTests(unittest.TestCase):
+    def _make_scene(self, ws: Workspace, scene_id: str = "swap_demo") -> None:
+        save_scene_manifest({
+            "scene_id": scene_id,
+            "objects": [{"id": "point_a", "type": "sphere", "size": 1}],
+        }, ws)
+
+    def test_swap_replaces_asset_keeps_stable_node_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp) / "workspace")
+            self._make_scene(ws)
+            new_obj = Path(tmp) / "replacement.obj"
+            new_obj.write_text("o point_a\nv 0 0 0\n", encoding="utf-8")
+
+            result = swap_geometry("swap_demo", "point_a", str(new_obj), workspace=ws)
+
+            # Node identity must stay fixed (stable data-grammar name).
+            self.assertEqual(result["node_name"], "Hermes::swap_demo::point_a")
+            # Manifest must reference the new asset file.
+            loaded = load_scene_manifest("swap_demo", ws)
+            obj = next(o for o in loaded["scene"]["objects"] if (o.get("id") or o.get("name")) == "point_a")
+            self.assertEqual(obj["path"], str(new_obj))
+            # Swap command targets the same stable node name.
+            cmd = result["swap_command"]
+            self.assertEqual(cmd["op"], "import_geometry")
+            self.assertEqual(cmd["payload"]["name"], "Hermes::swap_demo::point_a")
+            self.assertEqual(cmd["payload"]["path"], str(new_obj))
+
+    def test_swap_requires_existing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp) / "workspace")
+            self._make_scene(ws)
+            with self.assertRaises(FileNotFoundError):
+                swap_geometry("swap_demo", "point_a", str(Path(tmp) / "missing.obj"), workspace=ws)
+
+    def test_swap_unknown_object_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp) / "workspace")
+            self._make_scene(ws)
+            new_obj = Path(tmp) / "replacement.obj"
+            new_obj.write_text("o x\nv 0 0 0\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                swap_geometry("swap_demo", "does_not_exist", str(new_obj), workspace=ws)
+
+    def test_swap_queue_writes_command_to_queue(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp) / "workspace")
+            self._make_scene(ws)
+            new_obj = Path(tmp) / "replacement.obj"
+            new_obj.write_text("o point_a\nv 0 0 0\n", encoding="utf-8")
+
+            result = swap_geometry("swap_demo", "point_a", str(new_obj), queue=True, workspace=ws)
+
+            self.assertIn("queued_command", result)
+            self.assertTrue(Path(result["queued_command"]["path"]).exists())
 
 
 if __name__ == "__main__":
