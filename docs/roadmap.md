@@ -2,7 +2,17 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
-## Status snapshot (2026-07-08)
+## Status snapshot (2026-07-09)
+
+Live-checked 2026-07-09 (Hermes review session). Evidence-based, not aspirational:
+
+- **Repo:** `main` = `5d928ac`, tree clean, up to date with `origin/main`.
+- **Tests:** 116 passed / 1 skipped (offline `python -m unittest discover -s tests`). Green.
+- **Octane X:** running; persistent bridge active; **135 commands processed, 0 failed**; status `released`; no wedge.
+- **Benchmarks:** **18/18 native-Octane verified** across Tiers 1–6. The T3–6 render-restart collision is fixed in both bridge templates.
+- **Recipe library:** 18 recipes registered; only **2** `native_octane_verified=true` (`math-surface`, `photoreal-vase-studio`). The other 16 ship *target/reference* PNGs, not verified native Octane output.
+
+**Maturity read:** core mechanics (Lua bridge oneshot+persistent, typed command schema + validation, preview pixel-QA, render-review loop, scene manifest v2, PBR material/light ops, bounds-camera, recipe registry, benchmarks) are solid. Thin / unscaffolded: WP6 promoted tools, WP7 science/geo grammar, WP8 animation DSL, the **Agentic Canvas Swift app** (`apps/octanex-canvas/` not yet built), multi-host (Studio) rendering, visual memory. The gap is *surface area + closure*, not reliability.
 
 **Shipped (previously listed under Priority A — do not redo):**
 
@@ -803,6 +813,64 @@ Focus:
 - optional encoding
 
 Stop when orbit reveal is reproducible through MCP tooling.
+
+---
+
+# Development brainstorm (2026-07-09 review)
+
+Captured during a Hermes status review of the live project state (tests green,
+Octane running, 18/18 benchmarks verified). These are **directions, not
+committed work** — ranked by effort × strategic fit. Mirrored in `docs/WIP.md`.
+
+**A — Close the recipe-verification gap (low effort, high integrity).**
+Push the 16 unverified recipes (`native_octane_verified=false`) through the live
+pipeline, flip their flags, and append `docs/recipe-book.md` entries. Directly
+fixes the one honesty mismatch in the repo (benchmarks 18/18 vs recipe-library
+2/18).
+*First step:* a `verify-recipe-library` harness loop reusing
+`benchmarks/harness.run_task` over `examples/recipes/*`.
+
+**B — Geo / terrain grammar (WP7, geo extra; strongest strategic fit).**
+`octane_visualize_geojson`, `octane_visualize_terrain_grid`,
+`octane_visualize_sites`, `octane_visualize_tracks`. GeoJSON / DEM / elevation-grid
+→ combined OBJ with bounds + camera. Natural bridge from ECDO / TPW /
+impact-structure hypotheses to rendered spatial evidence.
+*First step:* one `shapely`-backed GeoJSON→mesh op behind `uv sync --extra geo`,
+graceful "install extra" failure per the WP7 dependency policy.
+
+**C — Agentic Canvas app (biggest unbuilt item).**
+`docs/canvas-implementation-roadmap.md` is ticket-ready (Phases A–D: WebKit Swift
+app, Studio `OCTANEX_RENDER_HOST` flag, progressive save, voice/share stretch).
+Turns OctaneX into the shared visual communication medium — type intent → watch
+it build → honest progress → real preview.
+*First step:* Phase A slice (shell + full-bleed viewport + intent command bar +
+Studio flag).
+
+**D — Autonomous closed-loop iteration.**
+`octane_render_review_loop` exists but is one-shot. With the T3–6 render-restart
+blocker solved, wire persistent-bridge + progressive preview + auto-patch for a
+genuine "visual chain-of-thought."
+*First step:* bounded 2-iteration loop over one recipe, driven end-to-end.
+
+**E — Recipe promotion (WP6).**
+Thin wrappers: `octane_build_product_studio`, `octane_build_planet_scene`,
+`octane_visualize_network`, `octane_visualize_vector_field`. Cuts the need to read
+raw recipe JSON.
+*First step:* wrap the 3 strongest recipes with typed overrides + tests.
+
+**F — Animation DSL (WP8).**
+Orbit reveals / frame sequences / MP4 via ffmpeg. Good for explorable
+explanations; lower urgency than A–C.
+
+**G — Texture / material gen via local image models.**
+Feed image-gen output into `texture_path` / `normal_path` on `octane_create_material`.
+Closes the "ribbed/brush texture approximated with geometry" pitfall noted in
+recipe metadata.
+
+**Recommended next move:** do **A first** (cheap, restores full honesty, de-risks
+everything else), then **B** (geo grammar — highest-leverage fit for the research)
+and/or **C** (canvas app — biggest step toward the communication-medium goal).
+A + B are Python-only and offline-testable; C is a separate Swift workstream.
 
 ---
 

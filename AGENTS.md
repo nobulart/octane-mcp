@@ -13,7 +13,7 @@ docs/                   command-schema, recipe-book, octane-bridge, roadmap,
                         idea, plan, review, review-2, octanex-apple-test-report,
                         recipe-library, visual-grammar, visual-iteration-protocol,
                         agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan,
-                        benchmark-suite
+                        benchmark-suite, WIP
 benchmarks/            progressive visualisation benchmark suite (spec/acceptance/harness)
 tests/                  parity + schema + benchmark tests
 ```
