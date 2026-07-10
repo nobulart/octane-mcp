@@ -95,11 +95,33 @@ class TestLayout(unittest.TestCase):
 
 
 class TestRasterMissingDep(unittest.TestCase):
-    def test_missing_pillow_hint(self):
-        # In the default venv Pillow is absent -> precise install hint.
-        with self.assertRaises(RuntimeError) as ctx:
+    def test_missing_source_is_clear_error(self):
+        # With Pillow present, a non-existent source must raise a clear error,
+        # not leak PIL's raw FileNotFoundError.
+        with self.assertRaises(ValueError) as ctx:
             draw_label_overlay("nope.png", [], "out.png")
-        self.assertIn("harvest", str(ctx.exception))
+        self.assertIn("source preview not found", str(ctx.exception))
+
+    def test_missing_pillow_hint(self):
+        # Force the Pillow-absent path regardless of environment by hiding the
+        # import, and confirm the precise install hint.
+        import builtins
+        import octanex_mcp.annotation as ann
+
+        real_import = builtins.__import__
+
+        def _blocked(name, *a, **k):
+            if name == "PIL" or name.startswith("PIL."):
+                raise ImportError("blocked for test")
+            return real_import(name, *a, **k)
+
+        builtins.__import__ = _blocked
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                draw_label_overlay("anything.png", [], "out.png")
+            self.assertIn("harvest", str(ctx.exception))
+        finally:
+            builtins.__import__ = real_import
 
 
 if __name__ == "__main__":

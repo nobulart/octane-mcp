@@ -902,3 +902,25 @@ geometry, the launcher `-2741` bug, and TCC.
 - Phase 3: grouping + mesh modifiers (resolution->mesh routes to swap_geometry with a subdivided OBJ).
 - Phase 4: object keyframe animation (extend animation.py with ObjectKeyframe + easing; new Lua op to set transform per frame).
 - NL intent layer over resolver + ref parser (last, sugar only).
+
+## Phase 3: grouping + mesh modifiers (#N-driven)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-10 17:47 UTC
+- **Context:** Extend the #N label language so the human can say "group #6 through #10 and #54" or "increase resolution of #1 and #3" or "apply mesh smoothing".
+
+### Steps
+- meshmod.py: trimesh-gated (science extra) subdivide_obj / smooth_obj (pure-numpy Laplacian, no scipy) / merge_objs. Each writes OBJ to assets/, returns bounds.
+- scene.group_objects: resolve refs->uids->merge_objs; replace members with one merged node + #Gk group entry.
+- scene.modify_objects: resolution/smooth per node via swap_geometry (stable node name preserved).
+- server.octane_group_objects / octane_modify_objects wired.
+- Fixed: trimesh.smoothing needs scipy -> replaced with pure-numpy Laplacian; subdivide_to_fixed does not exist -> loop guard on max_faces.
+- annotation.draw_label_overlay now raises clear ValueError on missing source (was leaking PIL FileNotFoundError).
+
+### Signals / evidence
+- BLOCKER hit: trimesh.smoothing.filter_laplacian and subdivide_to_size both need scipy. Avoided by using pure numpy Laplacian + loop-guarded subdivide(). Keep meshmod scipy-free.
+- uv sync --extra X reconciles extras (drops others). Always sync ALL needed extras together: --extra science --extra geo --extra harvest.
+
+### Follow-ups
+- Phase 4: object keyframe animation (quadratic in-out) via animation.py + new Lua transform op.
+- Phase 5: NL sugar over resolver + ref parser.

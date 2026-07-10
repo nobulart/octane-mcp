@@ -471,3 +471,122 @@ def queue_scene_plan(plan: Mapping[str, Any], workspace: Workspace = Workspace()
 def requeue_scene(scene_id: str, workspace: Workspace = Workspace()) -> dict[str, Any]:
     loaded = load_scene_manifest(scene_id, workspace)
     return queue_scene_plan(loaded["scene"], workspace)
+
+
+def group_objects(
+    scene_id: str,
+    refs: str,
+    group_name: str | None = None,
+    workspace: Workspace = Workspace(),
+) -> dict[str, Any]:
+    """Merge the objects referenced by ``refs`` into one node (geometry grouping).
+
+    ``refs`` is a human label phrase (``"#6 through #10 and #54"``). The resolved
+    member OBJs are merged into a single asset via :func:`meshmod.merge_objs`,
+    the members are removed (they are now represented by the merged node), and a
+    new merged object plus a ``#Gk`` group entry are added. Because merged node
+    identity is the group, the group can be addressed later as a unit.
+
+    Returns the saved manifest plus ``merged_node`` (stable node name) and the
+    new group guid.
+    """
+    loaded = load_scene_manifest(scene_id, workspace)
+    scene = loaded["scene"]
+    uids = resolve_label_refs(scene, refs)
+    if not uids:
+        raise ValueError(f"no objects resolved from refs: {refs!r}")
+    by_uid = {_object_uid(o): o for o in scene["objects"] if isinstance(o, Mapping)}
+    member_paths = []
+    for uid in uids:
+        obj = by_uid.get(uid)
+        if obj is None:
+            continue
+        p = obj.get("path")
+        if p:
+            member_paths.append(str(p))
+    if len(member_paths) < 2:
+        raise ValueError("group needs at least two valid geometry objects")
+
+    from . import meshmod
+
+    name = group_name or _safe_id(f"{scene_id}_group_{len(scene.get('groups', [])) + 1}")
+    merged = meshmod.merge_objs(member_paths, out_name=name, workspace=workspace)
+
+    # Replace members with the merged node; record a group entry for #Gk.
+    kept = [o for o in scene["objects"] if isinstance(o, Mapping) and _object_uid(o) not in set(uids)]
+    merged_obj: dict[str, Any] = {
+        "id": name,
+        "type": "mesh",
+        "path": merged["path"],
+        "format": "obj",
+        "bounds": merged["bounds"],
+        "members": uids,
+        "semantic_role": "group",
+    }
+    kept.append(merged_obj)
+    scene["objects"] = kept
+    guid = f"g{len(scene.get('groups', [])) + 1:03d}"
+    scene.setdefault("groups", []).append(
+        {"guid": guid, "id": name, "members": uids, "merged_node": name}
+    )
+    saved = _save_loaded_scene(scene, workspace)
+    return {
+        **saved,
+        "merged_node": namespaced(scene["scene_id"], name),
+        "merged_path": merged["path"],
+        "group_guid": guid,
+        "member_count": len(member_paths),
+        "vertex_count": merged["vertex_count"],
+    }
+
+
+def modify_objects(
+    scene_id: str,
+    refs: str,
+    modifier: str,
+    workspace: Workspace = Workspace(),
+    **opts: Any,
+) -> dict[str, Any]:
+    """Apply a mesh modifier to each object in ``refs``, in place.
+
+    ``modifier`` is ``"resolution"`` (subdivide) or ``"smooth"`` (Laplacian
+    smoothing). Each target node keeps its stable name via ``swap_geometry`` —
+    only its asset is replaced with the modified one.
+
+    Returns per-object swap results keyed by uid.
+    """
+    modifier = str(modifier).lower()
+    if modifier not in ("resolution", "smooth"):
+        raise ValueError(f"unsupported modifier {modifier!r}; use 'resolution' or 'smooth'")
+    loaded = load_scene_manifest(scene_id, workspace)
+    scene = loaded["scene"]
+    uids = resolve_label_refs(scene, refs)
+    if not uids:
+        raise ValueError(f"no objects resolved from refs: {refs!r}")
+    by_uid = {_object_uid(o): o for o in scene["objects"] if isinstance(o, Mapping)}
+
+    from . import meshmod
+
+    results: dict[str, Any] = {}
+    for uid in uids:
+        obj = by_uid.get(uid)
+        if obj is None:
+            results[uid] = {"error": "object not in manifest"}
+            continue
+        src = obj.get("path")
+        if not src:
+            results[uid] = {"error": "object has no geometry path"}
+            continue
+        if modifier == "resolution":
+            mod = meshmod.subdivide_obj(src, workspace=workspace, **opts)
+        else:
+            mod = meshmod.smooth_obj(src, workspace=workspace, **opts)
+        swap = swap_geometry(scene_id, uid, mod["path"], queue=False, workspace=workspace)
+        results[uid] = {
+            "node_name": swap["node_name"],
+            "new_path": mod["path"],
+            "bounds": mod["bounds"],
+            "face_count": mod.get("face_count"),
+            "vertex_count": mod.get("vertex_count"),
+        }
+    return {"scene_id": scene_id, "modifier": modifier, "refs": refs, "results": results}

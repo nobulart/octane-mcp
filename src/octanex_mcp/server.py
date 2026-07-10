@@ -23,7 +23,7 @@ from .corpus import find_grammar
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
-from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object
+from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object, group_objects, modify_objects
 from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
@@ -527,6 +527,44 @@ def build_mcp() -> Any:
             # Missing Pillow (or other raster failure) -> still return layout.
             payload["raster_error"] = str(exc)
         return _json(payload)
+
+    @mcp.tool()
+    def octane_group_objects(scene_id: str, refs: str, group_name: Optional[str] = None) -> str:
+        """Merge referenced objects into one node (geometry grouping).
+
+        ``refs`` is a human label phrase, e.g. "#6 through #10 and #54". The
+        resolved member OBJs are merged into a single asset; the members are
+        replaced by the merged node and a "#Gk" group entry is recorded so the
+        unit can be addressed later. Requires the optional ``science`` extra
+        (trimesh) -> install via ``uv sync --extra science``.
+        """
+        return _json(group_objects(scene_id, refs, group_name=group_name))
+
+    @mcp.tool()
+    def octane_modify_objects(
+        scene_id: str,
+        refs: str,
+        modifier: str,
+        iterations: int = 1,
+        laplacian: float = 0.5,
+        max_faces: Optional[int] = None,
+    ) -> str:
+        """Apply a mesh modifier to objects by label (Phase 3).
+
+        ``modifier`` is "resolution" (subdivide -> more triangles) or "smooth"
+        (Laplacian mesh smoothing). ``refs`` is a label phrase like "#1 and #3"
+        or "#G2". Each node keeps its stable name (swap_geometry); only its asset
+        is replaced. ``iterations`` controls depth, ``laplacian`` the smoothing
+        blend, ``max_faces`` caps subdivision (default 200k). Requires the
+        optional ``science`` extra (trimesh) -> ``uv sync --extra science``.
+        """
+        opts: dict[str, Any] = {"iterations": iterations}
+        if modifier.lower() == "smooth":
+            opts["laplacian"] = laplacian
+        else:
+            if max_faces is not None:
+                opts["max_faces"] = max_faces
+        return _json(modify_objects(scene_id, refs, modifier, **opts))
 
     @mcp.tool()
     def octane_visualize_bars(values: list[float], name: str = "visual_bar_chart") -> str:

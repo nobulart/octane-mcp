@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 __all__ = [
@@ -241,6 +242,9 @@ def draw_label_overlay(
             "Pillow is required to draw the label overlay. Install it with: "
             "uv sync --extra harvest   (or: pip install pillow)"
         ) from exc
+
+    if not Path(source_png).exists():
+        raise ValueError(f"label overlay: source preview not found: {source_png}")
 
     img = Image.open(source_png).convert("RGBA")
     draw = ImageDraw.Draw(img)

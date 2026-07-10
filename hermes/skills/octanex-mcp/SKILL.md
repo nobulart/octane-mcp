@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.5
+|version: 1.9.6
 |author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -72,6 +72,21 @@ Phases still to build (post-2026-07-10 spike): (3) grouping + mesh
 modifiers routing "resolution→mesh" to `swap_geometry` with a subdivided
 OBJ; (4) object keyframe animation (extend `animation.py` + new Lua op);
 (5) NL sugar over the resolver/ref parser.
+
+### Phase 3 shipped (2026-07-10): grouping + mesh modifiers
+
+- `src/octanex_mcp/meshmod.py` (gated on optional `science` extra = `trimesh`,
+  mirrors `geo.py`/`shapely`): `subdivide_obj` (resolution → Loop subdiv,
+  `max_faces` cap 200k), `smooth_obj` (pure-numpy umbrella Laplacian; no scipy
+  dep), `merge_objs` (grouping). Each writes a new OBJ to `assets/` and returns
+  `{path, bounds, ...}`. Missing extra → `MeshDependencyError` + `uv sync
+  --extra science` hint (never import-crash).
+- `scene.py` `group_objects(scene_id, refs, ...)`: resolves `#6 through #10 and
+  #54` → uids → `merge_objs`, replaces members with one merged node, records a
+  `#Gk` group entry. `modify_objects(scene_id, refs, modifier, ...)`:
+  `resolution`/`smooth` per node via `swap_geometry` (stable node name kept).
+- MCP tools `octane_group_objects`, `octane_modify_objects`. Tests:
+  `tests/test_meshmod.py` (9, real trimesh; dependency-missing path guarded).
 
 ## Setup Checklist
 
