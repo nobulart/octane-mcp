@@ -193,15 +193,15 @@ set launchWait to {int(launch_wait)}
 
 -- Launch (or activate) Octane X and wait until its menu bar is UI-ready.
 do shell script "open -a " & quoted form of appPath
-set launchDeadline to (current date) + launchWait
-set launched to false
-repeat while (current date) < launchDeadline
-    if (exists process "Octane X") then
+tell application "System Events"
+    set launchDeadline to (current date) + launchWait
+    set launched to false
+    repeat while (current date) < launchDeadline
         try
             -- Probe menu-bar access first. If macOS denies assistive access the
             -- inner "menu 1 of menu bar item" throws -1719; surface it verbatim
             -- instead of masking it as a "script not found" error.
-            set _probe to count of menu bar items of menu bar 1
+            set _probe to count of menu bar items of menu bar 1 of process "Octane X"
             if _probe > 0 then
                 set launched to true
                 exit repeat
@@ -210,12 +210,12 @@ repeat while (current date) < launchDeadline
             if errNum is -1719 then
                 error "assistive access denied (-1719): grant Accessibility to the app running osascript in System Settings -> Privacy & Security -> Accessibility" number errNum
             else
-                error errMsg number errNum
+                -- process not up yet / transient; keep waiting
             end if
         end try
-    end if
-    delay 0.3
-end repeat
+        delay 0.3
+    end repeat
+end tell
 if not launched then
     error "Octane X did not become UI-ready within " & launchWait & "s after launch (menus not populated)."
 end if
@@ -335,7 +335,7 @@ def render_reset_scene_applescript() -> str:
 
     return (
         'tell application "System Events"\n'
-        '  if not (exists process "Octane X") then error "Octane X not running"\n'
+        '  if not (exists (process "Octane X" of application "System Events")) then error "Octane X not running"\n'
         '  tell process "Octane X"\n'
         '    set frontmost to true\n'
         '    try\n'
