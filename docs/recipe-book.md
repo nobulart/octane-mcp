@@ -738,7 +738,60 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 
 
 
-## Green chess pawn + board recipes (studio)
+## Pitfall: imported meshes do not rasterize in current Octane X session (geometry-wedge regression)
+
+- **Outcome:** failure
+- **Recorded:** 2026-07-09 22:35 UTC
+- **Context:** User asked for a photoreal blue butterfly on a white surface, dark background, warm studio lighting. Scene built correctly (combined OBJ, 7 usemtl groups, plain `f a b c` faces matching the proven product-studio recipe; dark charcoal cyclorama for the dark bg; `set_lighting soft_studio`; warm/cool emissive softboxes). Every command reported success and the bridge log confirmed `render target mesh connection requested mesh=... connected=true`. Yet the rendered frame showed ONLY the environment (flat blue ~RGB 62,119,184 for soft_studio; near-white 243 for default) with zero geometry pixels.
+
+### Steps that failed (all produced env-only frames)
+- butterfly_studio.obj via raw queue + oneshot drain → white fill (std 0.0)
+- agent_cube.obj (gray) via raw queue → white fill
+- product_studio.obj (PROVEN recipe, committed octane-preview.png shows real gold sphere/pedestal) via raw queue in a FRESH Octane session → flat blue env, 0 foreground pixels
+- Regenerated bridge (`octanex-mcp init`), full Octane quit+relaunch, re-ran product_studio control → still flat blue env, 0 foreground pixels
+- MCP `octane_import_geometry` (validated path) → same env-only result
+
+### Signals / evidence
+- `bridge.log`: `render target mesh connection requested mesh=product_studio (NT_GEO_MESH) connected=true now=product_studio (NT_GEO_MESH)` and `render ready for preview: beauty=5000 ... pending=false state=4` — mesh IS wired, render IS ready, but frame has 0 geometry.
+- Pixel QA: control_v1.png foreground-deviating pixels = 0 of 145,266 (env is uniform).
+- COMMITTED `examples/recipes/photoreal-product-studio/octane-preview.png` (mean RGB 76, dark, real geometry) proves the pipeline CAN render geometry — so this is a CURRENT engine/session regression, not a scene bug.
+- Both OBJs are valid triangle meshes (product 869v/800f; butterfly 231v/292f). OBJ format is NOT the cause (matched `f a b c`, no `vn` — the `//` normal syntax also produced the same env-only result earlier, but plain faces didn't fix it either).
+
+- **RESOLVED 2026-07-10 (supersedes the root-cause hypothesis below):** the env-only
+  frames were **NOT** an engine/RT-selection regression. The scene was correctly
+  wired the whole time (`connected=true`). The real causes, all since fixed:
+  1. **Camera edge-on at thin wings** + **coplanar disc/floor** (white disc at
+     Y=0.08, floor at Y=0) produced blank/uniform frames. Fix: raise disc to
+     Y=0.5 and use an oblique 3/4 camera `[8,3.8,9]→[0,0.9,0.3]` fov 40.
+  2. **AppleScript `-2741` syntax bug** in the launcher (`bridge_control.py`
+     emitted `exists process` at top level) blocked the bridge click entirely —
+     frames only appeared when the operator clicked manually. **FIXED in
+     `src/octanex_mcp/bridge_control.py`.**
+  3. **macOS TCC gate** — the autonomous click needs Accessibility on `Hermes.app`
+     + full Hermes relaunch (NOT the python binaries). See SKILL.md §TCC.
+  After these fixes the bridge `save_preview` autonomously renders real geometry
+  (verified: 17-command butterfly scene, zero manual clicks, PNG ~320–350 KB).
+  The "RT-click required / bridge save broken" theory was a misdiagnosis from a
+  confusing stretch of the session — RETRACTED.
+
+### Root-cause hypothesis
+~~Engine/RT-selection regression~~ — RETRACTED. See RESOLVED note above. The
+node graph was correctly wired; the failures were camera framing, coplanar
+geometry, the launcher `-2741` bug, and TCC.
+
+### Follow-ups (for the next agent)
+- Before assuming a wedge: re-check **camera framing** (compute OBJ bounds, ensure
+  the subject is not edge-on) and **coplanar geometry** (disc vs floor). These are
+  the common blank-frame causes.
+- Re-importing the SAME mesh name does NOT reload the file (mesh-name cache) — use
+  a new mesh name to force a fresh node. See `butterfly-session-recovery.md` §4.
+- Do NOT claim a render shows geometry on vision/mean-RGB alone — count
+  foreground-deviating pixels against the env color. A uniform env with std~0 is a
+  wedge, not a good render. But also confirm the bridge actually *clicked*
+  (`octane_run_oneshot_bridge` → `ok:true, stdout:"clicked … via Script"`) before
+  blaming the engine.
+
+
 
 - **Outcome:** success
 - **Recorded:** 2026-07-09 21:20 UTC
@@ -758,3 +811,36 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 ### Follow-ups
 - Verify light squares render as warm cream, not white — naive light-floor pixel check fails; use horizontal scan-line transition count.
 - Multi-group OBJ requires group_index on assign_material; MCP tool lacks the field, so queue the command envelope directly or use fix_recipe_materials.py.
+
+---
+
+## Recipe: photoreal blue butterfly on white disc (SUCCESS, autonomous)
+
+- **Outcome:** success (verified end-to-end, zero manual clicks)
+- **Recorded:** 2026-07-10
+- **Context:** "Photoreal blue butterfly on a white surface, dark background,
+  warm studio lighting." Built as a single combined OBJ with 7 `usemtl` groups
+  (cyc / surface / wing / body / sb_key / sb_fill / sb_top). Rendered autonomously
+  via `octane_run_oneshot_bridge` (one queue of 17 commands → click → drains →
+  `save_preview`) after the `-2741` launcher bug was fixed and TCC was granted to
+  `Hermes.app` + full Hermes relaunch. Survived a system OOM crash + recovery and
+  re-rendered identically.
+- **Generator:** `scripts/gen_butterfly_studio.py` (writes
+  `…/OctaneMCP/assets/butterfly_studio.obj`). Smooth wings via Catmull-Rom
+  subdivision + vertex normals (`f v//vn`); rounded tapered body (capsules); thin
+  antennae with club tips.
+- **Key working parameters (the fixes that made it render):**
+  - Disc height `BASE_Y = 0.5` (clear of the y=0 floor — coplanar disc/floor was a
+    blank-frame cause).
+  - Oblique 3/4 camera `[8.0, 3.8, 9.0] → [0.0, 0.9, 0.3]`, fov 40 (distance ~12;
+    butterfly ≈5 units wide fills ~56% of frame; avoids the edge-on black frame).
+  - Wing material: `glossy, color:[0.10,0.40,1.0], roughness:0.16, specular:0.6,
+    clearcoat:0.5, emission:[0.05,0.18,0.62]`. Body: `glossy, [0.06,0.06,0.08],
+    clearcoat:0.5`. Disc: `diffuse, [0.96,0.96,0.97], roughness:0.22`.
+  - Emissive softboxes (key warm / fill cool / top neutral) for studio lighting —
+    **not** `set_lighting`, which blew out the background.
+  - To force a geometry reload after editing the OBJ, import under a NEW mesh name
+    (`butterfly_smooth`) — re-importing the same name is cached (mesh-name cache).
+- **Verification:** pixel QA (mean RGB ~94/98/105, blue ~2.8%, dark ~27%, white
+  ~20%, std high) + local vision confirmed a valid non-blank render. PNG
+  ~320–350 KB at 1280×1024.
