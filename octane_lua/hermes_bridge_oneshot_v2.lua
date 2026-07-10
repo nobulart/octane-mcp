@@ -189,6 +189,11 @@ local function expand_path(path)
     if path:sub(1, 1) == "~" then
         local home = os.getenv("HOME") or "/Users/craig"
         path = home .. path:sub(2)
+    elseif path:sub(1, 1) ~= "/" and not path:match("^%a:") then
+        -- Relative path: resolve against the repo root (where examples/recipes/ lives),
+        -- NOT Octane'"'"'s container CWD (where it would silently fail to import).
+        local root = (config and config.REPO_ROOT) or "/Users/craig/octanex-mcp"
+        path = root .. "/" .. path
     end
     return path
 end
@@ -361,7 +366,7 @@ local function ensure_canonical(type_id, name, position, setup)
     return node
 end
 
-local function create_node(type_id, name, position)
+function create_node(type_id, name, position)
     if not type_id then return nil, "missing node type for " .. tostring(name) end
     local ok, node_or_err = pcall(function()
         return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
