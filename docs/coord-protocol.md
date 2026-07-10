@@ -54,3 +54,5 @@ chmod +x scripts/coord/*.sh .git/hooks/post-receive
 cp scripts/coord/com.nobulart.octanex.coord-watch.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.nobulart.octanex.coord-watch.plist
 ```
+
+<!-- loop verified 15:02:23Z -->
