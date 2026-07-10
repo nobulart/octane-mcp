@@ -12,7 +12,7 @@
 # Idempotent: dedup via peer-line membership; watermark only used for logging.
 
 set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 cd "$(coord_repo_dir)" || { coord_log "watch: cannot cd to repo"; exit 1; }
