@@ -1,0 +1,13 @@
+# material defs (documentation; bridge uses explicit create_material)
+newmtl earth_surface
+Ka 1.0 1.0 1.0
+Kd 0.1000 0.3500 0.7500
+Ks 0.5 0.5 0.5
+Ns 48.0
+d 1.0
+newmtl moon_surface
+Ka 1.0 1.0 1.0
+Kd 0.7200 0.7200 0.6800
+Ks 0.5 0.5 0.5
+Ns 9.6
+d 1.0

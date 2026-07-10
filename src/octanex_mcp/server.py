@@ -8,6 +8,7 @@ from .bridge import (
     Workspace,
     concept_to_commands,
     create_simple_obj,
+    flush_queue,
     list_commands,
     octane_app_status,
     read_recipe_book,
@@ -212,6 +213,17 @@ def build_mcp() -> Any:
     def octane_validate_queue() -> str:
         """Validate all queued command JSON files in the current workspace."""
         return _json(validate_queue(Workspace()))
+
+    @mcp.tool()
+    def octane_flush_queue(backup: bool = True) -> str:
+        """Flush the command queue before a live render.
+
+        The container queue is shared and persistent; prior sessions can leave
+        thousands of stale commands that would otherwise re-render on drain.
+        This MOVEs queued files into a dated backup dir (never deletes) so the
+        operation is recoverable, then returns how many were cleared.
+        """
+        return _json(flush_queue(Workspace(), backup=backup))
 
     @mcp.tool()
     def octane_ping(message: str = "hello from Hermes") -> str:

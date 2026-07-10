@@ -337,6 +337,65 @@ local function find_item_by_name(name)
     return nil
 end
 
+-- Return ALL nodes whose name matches (orphan-aware variant of find_item_by_name).
+local function find_items_by_name(name)
+    local out = {}
+    if not name or name == "" then return out end
+    local graph = scene_graph()
+    if not graph then return out end
+    local ok, items = pcall(function() return graph:findItemsByName(name) end)
+    if ok and items then
+        for _, it in ipairs(items) do out[#out + 1] = it end
+    end
+    ok, items = pcall(function() return graph:getOwnedItems() end)
+    if ok and items then
+        for _, item in ipairs(items) do
+            local okp, props = pcall(function() return item:getProperties() end)
+            if okp and props and props.name == name then out[#out + 1] = item end
+        end
+    end
+    return out
+end
+
+-- Delete every node matching `name` except the first `keep_first`. Returns the
+-- count deleted. Prevents the scene graph from accumulating duplicate Hermes_*
+-- nodes that stale find_item_by_name would otherwise re-bind to. This is the
+-- root-cause fix for "several geometry nodes not wired to anything": each
+-- repeated render used to leave an orphaned mesh/camera/env that the RT then
+-- failed to use, while the canonical node sat unused.
+local function delete_items_by_name(name, keep_first)
+    keep_first = keep_first or 0
+    local items = find_items_by_name(name)
+    local deleted = 0
+    for i, item in ipairs(items) do
+        if i > keep_first then
+            local ok = pcall(function() octane.project.deleteItems({item}) end)
+            if not ok then pcall(function() item:delete() end) end
+            deleted = deleted + 1
+        end
+    end
+    if deleted > 0 then append_log("delete_items_by_name: removed " .. tostring(deleted) .. " orphan node(s) named " .. tostring(name)) end
+    return deleted
+end
+
+-- Ensure exactly one canonical node of (type, name): delete duplicate orphans,
+-- reuse the first if present, else create it. Then run setup(node). Returns the
+-- canonical node (or nil).
+local function ensure_canonical(type_id, name, position, setup)
+    delete_items_by_name(name, 1)
+    local node = find_item_by_name(name)
+    if not node and type_id then
+        local err
+        node, err = create_node(type_id, name, position or {500, 500})
+        if not node then append_log("ensure_canonical create failed " .. tostring(name) .. " err=" .. tostring(err)); return nil end
+    end
+    if node and setup then
+        local ok, em = pcall(setup, node)
+        if not ok then append_log("ensure_canonical setup failed " .. tostring(name) .. " err=" .. tostring(em)) end
+    end
+    return node
+end
+
 local function create_node(type_id, name, position)
     if not type_id then return nil, "missing node type for " .. tostring(name) end
     local ok, node_or_err = pcall(function()
@@ -685,14 +744,13 @@ local function handle_import_geometry(cmd)
     if not ok then return true, msg end
     if not cmd.path then return false, "import_geometry missing path" end
     local name = cmd.name or basename(cmd.path)
-    local mesh = find_item_by_name(name)
-    if not mesh then
-        local err
-        mesh, err = create_node(octane.NT_GEO_MESH, name, {500, 500})
-        if not mesh then return false, "create mesh failed: " .. tostring(err) end
-    end
-    local loaded, load_err = pcall(function() mesh:setAttribute(octane.A_FILENAME, cmd.path, true) end)
-    if not loaded then return false, "mesh load failed: " .. tostring(load_err) end
+    -- Canonical mesh: delete duplicate orphans, keep/create ONE mesh node, then
+    -- wire it to the RT so the geometry is actually in the scene graph (no
+    -- orphaned meshes left unwired).
+    local mesh = ensure_canonical(octane.NT_GEO_MESH, name, {500, 500}, function(m)
+        pcall(function() m:setAttribute(octane.A_FILENAME, cmd.path, true) end)
+    end)
+    if not mesh then return false, "create mesh failed: " .. tostring(name) end
     maybe_connect_geometry_to_rt(mesh)
     local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-import render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -703,33 +761,35 @@ local function handle_create_material(cmd)
     local ok, msg = ensure_octane()
     if not ok then return true, msg end
     local name = cmd.name or "mcp_material"
-    local existing = find_item_by_name(name)
-    if existing then return true, "material exists " .. tostring(name) end
+    -- Canonical material: delete duplicate orphans, then create fresh so the
+    -- CURRENT spec (color/kind/roughness/...) is actually applied. The old
+    -- "if existing then return" silently kept a stale material.
     local matType = octane.NT_MAT_DIFFUSE
     if cmd.kind == "glossy" and octane.NT_MAT_GLOSSY then matType = octane.NT_MAT_GLOSSY end
     if cmd.kind == "specular" and octane.NT_MAT_SPECULAR then matType = octane.NT_MAT_SPECULAR end
     if cmd.kind == "metallic" and octane.NT_MAT_METALLIC then matType = octane.NT_MAT_METALLIC end
-    local mat, err = create_node(matType, name, {650, 500})
-    if not mat then return false, "create material failed: " .. tostring(err) end
-    local col = cmd.color or cmd.diffuse or cmd.albedo or {0.8, 0.8, 0.8}
-    local function setdef(pin, val)
-        if val ~= nil then
-            local okp, w = pcall(set_pin_value, mat, pin, val)
-            if not okp then append_log("material pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
+    local mat = ensure_canonical(matType, name, {650, 500}, function(m)
+        local col = cmd.color or cmd.diffuse or cmd.albedo or {0.8, 0.8, 0.8}
+        local function setdef(pin, val)
+            if val ~= nil then
+                local okp, w = pcall(set_pin_value, m, pin, val)
+                if not okp then append_log("material pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
+            end
         end
-    end
-    setdef(octane.P_DIFFUSE or "diffuse", {col[1] or 0.8, col[2] or 0.8, col[3] or 0.8})
-    setdef(octane.P_ROUGHNESS or "roughness", cmd.roughness)
-    setdef(octane.P_SPECULAR or "specular", cmd.specular)
-    setdef(octane.P_METALLIC or "metallic", cmd.metallic)
-    setdef(octane.P_TRANSMISSION or "transmission", cmd.transmission)
-    setdef(octane.P_INDEX or "ior", cmd.ior)
-    setdef(octane.P_OPACITY or "opacity", cmd.opacity)
-    setdef(octane.P_CLEARCOAT or "clearcoat", cmd.clearcoat)
-    setdef(octane.P_ANISOTROPY or "anisotropy", cmd.anisotropy)
-    setdef(octane.P_EMISSION or "emission", cmd.emission)
-    if cmd.texture_path then setdef(octane.P_DIFFUSE_TEXTURE or "diffuse_texture", cmd.texture_path) end
-    if cmd.normal_path then setdef(octane.P_NORMAL_TEXTURE or "normal_texture", cmd.normal_path) end
+        setdef(octane.P_DIFFUSE or "diffuse", {col[1] or 0.8, col[2] or 0.8, col[3] or 0.8})
+        setdef(octane.P_ROUGHNESS or "roughness", cmd.roughness)
+        setdef(octane.P_SPECULAR or "specular", cmd.specular)
+        setdef(octane.P_METALLIC or "metallic", cmd.metallic)
+        setdef(octane.P_TRANSMISSION or "transmission", cmd.transmission)
+        setdef(octane.P_INDEX or "ior", cmd.ior)
+        setdef(octane.P_OPACITY or "opacity", cmd.opacity)
+        setdef(octane.P_CLEARCOAT or "clearcoat", cmd.clearcoat)
+        setdef(octane.P_ANISOTROPY or "anisotropy", cmd.anisotropy)
+        setdef(octane.P_EMISSION or "emission", cmd.emission)
+        if cmd.texture_path then setdef(octane.P_DIFFUSE_TEXTURE or "diffuse_texture", cmd.texture_path) end
+        if cmd.normal_path then setdef(octane.P_NORMAL_TEXTURE or "normal_texture", cmd.normal_path) end
+    end)
+    if not mat then return false, "create material failed: " .. tostring(name) end
     return true, "created material " .. tostring(name)
 end
 
@@ -751,12 +811,9 @@ local function handle_create_light(cmd)
         activate_render_target(rt)
         local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
         if not env_type then return true, "no known environment node type constant" end
-        local env = find_item_by_name(name)
-        if not env then
-            local err
-            env, err = create_node(env_type, name, {300, 680})
-            if not env then return false, "environment create failed: " .. tostring(err) end
-        end
+        -- Canonical environment: delete orphan nodes, keep one.
+        local env = ensure_canonical(env_type, name, {300, 680})
+        if not env then return false, "environment create failed" end
         connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-light render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -805,15 +862,13 @@ local function handle_set_camera(cmd)
     local rt, rt_err = get_or_create_render_target()
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
     activate_render_target(rt)
-    local cam = find_item_by_name("Hermes Camera")
-    if not cam then
-        local err
-        cam, err = create_node(octane.NT_CAM_THINLENS or octane.NT_CAM_PANORAMIC, "Hermes Camera", {300, 520})
-        if not cam then return false, "camera create failed: " .. tostring(err) end
-    end
-    if cmd.fov then set_pin_value(cam, octane.P_FOV or "fov", cmd.fov) end
-    if cmd.position then set_pin_value(cam, octane.P_POSITION or "pos", cmd.position) end
-    if cmd.target then set_pin_value(cam, octane.P_TARGET or "target", cmd.target) end
+    -- Canonical camera: delete orphan Hermes Camera nodes, keep one, reconnect.
+    local cam = ensure_canonical(octane.NT_CAM_THINLENS or octane.NT_CAM_PANORAMIC, "Hermes Camera", {300, 520}, function(c)
+        if cmd.fov then set_pin_value(c, octane.P_FOV or "fov", cmd.fov) end
+        if cmd.position then set_pin_value(c, octane.P_POSITION or "pos", cmd.position) end
+        if cmd.target then set_pin_value(c, octane.P_TARGET or "target", cmd.target) end
+    end)
+    if not cam then return false, "camera create failed" end
     connect_to(rt, octane.P_CAMERA or "camera", cam)
     local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-camera render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -828,12 +883,9 @@ local function handle_set_lighting(cmd)
     activate_render_target(rt)
     local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
     if not env_type then return true, "no known environment node type constant" end
-    local env = find_item_by_name("Hermes Environment")
-    if not env then
-        local err
-        env, err = create_node(env_type, "Hermes Environment", {300, 680})
-        if not env then return false, "environment create failed: " .. tostring(err) end
-    end
+    -- Canonical environment: delete orphan Hermes Environment nodes, keep one.
+    local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
+    if not env then return false, "environment create failed" end
     connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
     local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-lighting render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))

@@ -1,0 +1,257 @@
+{
+  "slug": "helicoid-spiral",
+  "title": "Helicoid Spiral + Torus Knot (Math Grammar)",
+  "category": "Mathematics / geometry",
+  "purpose": "Render two parametric surfaces \u2014 a helicoid spiral and a (2,3) torus knot \u2014 with distinct blue and orange emissive materials to demonstrate combined-OBJ multi-group assignment.",
+  "prompt": "Visualise a helicoid spiral surface and a torus knot.",
+  "camera": {
+    "position": [
+      7.878,
+      5.712,
+      11.002
+    ],
+    "target": [
+      0.112,
+      -0.112,
+      0.0
+    ],
+    "fov": 50
+  },
+  "materials": {
+    "helicoid_surface": {
+      "kind": "diffuse",
+      "color": [
+        0.05,
+        0.35,
+        1.0
+      ],
+      "emission": 1.0,
+      "roughness": 0.9
+    },
+    "torus_knot_surface": {
+      "kind": "diffuse",
+      "color": [
+        1.0,
+        0.55,
+        0.05
+      ],
+      "emission": 1.0,
+      "roughness": 0.9
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/helicoid-spiral/scene.obj",
+        "format": "obj",
+        "name": "helicoid_fresh_probe"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "helicoid_surface_v3",
+        "kind": "diffuse",
+        "color": [
+          0.05,
+          0.35,
+          1.0
+        ],
+        "emission": 1.0,
+        "roughness": 0.9
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "torus_knot_surface_v3",
+        "kind": "diffuse",
+        "color": [
+          1.0,
+          0.55,
+          0.05
+        ],
+        "emission": 1.0,
+        "roughness": 0.9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "helicoid_fresh_probe",
+        "material_name": "helicoid_surface_v3",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "helicoid_fresh_probe",
+        "material_name": "torus_knot_surface_v3",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          7.878,
+          5.712,
+          11.002
+        ],
+        "target": [
+          0.112,
+          -0.112,
+          0.0
+        ],
+        "fov": 50
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/helicoid-spiral/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "Preview is non-blank and the subject is recognizable at thumbnail size.",
+    "scene.obj imports the local path listed in commands[].",
+    "Camera frames the full subject with margin.",
+    "Each usemtl group has an explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "Octane caches imported geometry by filename; re-rendering the same mesh name does NOT reload the OBJ. The bridge now deletes the stale mesh node before re-import to force a fresh load.",
+    "Named materials persist across renders; create_material is a no-op if the name already exists, so re-renders must use fresh material names or the stale (washed-out) material is reused.",
+    "The persistent bridge may not stay alive on some Octane X builds (closes after showWindow); render via the one-shot bridge drain. When alive, it processes the queue too.",
+    "CRITICAL RENDER-TARGET LIMITATION: octane.project.setSelection{rt} selects the Hermes Render Target node in the graph but does NOT make it the active render target the engine renders/saves. octane.render.start{renderTargetNode=rt} is also ignored on this build. Until Otoy exposes a working setter, the user MUST manually click the 'Hermes Render Target' node in Octane's node graph so it becomes the active RT BEFORE the save_preview runs. Without this, the engine renders the default RT (white/sky) and the preview is blank regardless of geometry or materials. This is the proven cause of all 'blank blue-sky' helicoid renders; a known-good sphere through the same path also renders blank, confirming it is NOT a geometry issue."
+  ],
+  "target_preview": "octane-preview.png",
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/helicoid-spiral/preview.png",
+    "candidate_image": "examples/recipes/helicoid-spiral/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "object count and semantic content",
+      "framing and camera",
+      "material/color readability",
+      "lighting",
+      "task-specific structure"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              7.878,
+              5.712,
+              11.002
+            ],
+            "target": [
+              0.112,
+              -0.112,
+              0.0
+            ],
+            "fov": 50
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              5.5146,
+              3.9983999999999997,
+              7.7014
+            ],
+            "target": [
+              0.112,
+              -0.112,
+              0.0
+            ],
+            "fov": 50
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              10.2414,
+              7.4256,
+              14.302600000000002
+            ],
+            "target": [
+              0.112,
+              -0.112,
+              0.0
+            ],
+            "fov": 50
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              7.878,
+              7.712,
+              11.002
+            ],
+            "target": [
+              0.112,
+              -0.112,
+              0.0
+            ],
+            "fov": 50
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "materials visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/helicoid-spiral/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (2026-07-09)"
+}

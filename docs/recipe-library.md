@@ -36,6 +36,8 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Earth and Moon — Orbital Space](../examples/recipes/earth-moon-space/README.md) | Photoreal/PBR space rendering | `earth-moon-space` | Similar to photoreal-earth-space but with explicit Earth-Moon system and orbital positioning. |
 | [Helicoid Spiral](../examples/recipes/helicoid-spiral/README.md) | Mathematics/geometry | `helicoid-spiral` | Render a helicoid spiral surface to explain rotational translation and parametric curves. |
 | [Saturn and Moons in Space](../examples/recipes/saturn-moons-space/README.md) | Photoreal/PBR space rendering | `saturn-moons-space` | Set a quality target for Saturn bands, rings, Cassini division cues, moons, and space lighting. |
+| [Green Chess Pawn (Studio)](../examples/recipes/green-pawn/README.md) | Photoreal/PBR rendering | `green-pawn` | A single photorealistic green glossy chess pawn under soft studio lighting, built from a lathed surface-of-revolution OBJ (not a primitive). |
+| [Green Chess Pawn on a Studio Chessboard](../examples/recipes/green-pawn-board/README.md) | Photoreal/PBR rendering | `green-pawn-board` | A green glossy pawn on an 8×8 chessboard under studio lighting, with three group-indexed materials (board slab, light squares, pawn). |
 
 ## Recommended agent loop
 

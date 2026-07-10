@@ -192,6 +192,39 @@ def list_commands(workspace: Workspace = Workspace()) -> Dict[str, Any]:
     }
 
 
+def flush_queue(workspace: Workspace = Workspace(), *, backup: bool = True) -> Dict[str, Any]:
+    """Safely clear the command queue before a live render.
+
+    The container queue is a shared, persistent directory. Across sessions it
+    accumulates stale commands (observed: 2000+ leftover JSON files). Draining
+    those blindly would re-render old scenes, so any live run should flush
+    first. We MOVE files into a dated backup dir (never delete) so the operation
+    is recoverable, and return the count moved.
+
+    Returns {"flushed": int, "backup_dir": str|None, "queue_remaining": int}.
+    """
+    workspace.ensure()
+    pending = sorted(workspace.queue_dir.glob("*.json"))
+    moved = 0
+    backup_dir: Optional[Path] = None
+    if pending and backup:
+        stamp = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime())
+        backup_dir = workspace.root / "queue_backups" / stamp
+        backup_dir.mkdir(parents=True, exist_ok=True)
+    for p in pending:
+        moved += 1
+        if backup_dir is not None:
+            os.replace(p, backup_dir / p.name)
+        else:
+            p.unlink()
+    return {
+        "flushed": moved,
+        "backup_dir": str(backup_dir) if backup_dir else None,
+        "queue_remaining": len(list(workspace.queue_dir.glob("*.json"))),
+        "backup": backup,
+    }
+
+
 def _recipe_heading(title: str) -> str:
     safe = " ".join(title.strip().split())
     return safe[:96] or "Untitled recipe"

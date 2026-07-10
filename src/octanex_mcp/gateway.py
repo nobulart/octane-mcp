@@ -34,6 +34,7 @@ from typing import Any, Callable, Dict, Optional
 from octanex_mcp.bridge import (
     Workspace,
     create_simple_obj,
+    flush_queue,
     list_commands,
     octane_app_status,
     read_recipe_book,
@@ -91,6 +92,7 @@ DISPATCH: Dict[str, Callable[[Dict[str, Any]], Any]] = {
     "octane_load_recipe": lambda a: load_recipe(a["slug"]),
     "octane_validate_command": lambda a: validate_command(a["command"]),
     "octane_validate_queue": lambda a: validate_queue(a["commands"]),
+    "octane_flush_queue": lambda a: flush_queue(Workspace(), backup=a.get("backup", True)),
     "octane_review_preview": lambda a: review_preview(a.get("path")),
     "octane_suggest_camera_fix": lambda a: suggest_camera_fix(a["preview_review"], a.get("asset_bounds", {})),
     "octane_suggest_lighting_fix": lambda a: suggest_lighting_fix(a.get("preview_review", {})),

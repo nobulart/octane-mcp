@@ -187,6 +187,7 @@ def run_recipe(
     copy_back: bool = False,
     vision_check: bool = False,
     vision_fn: Any = None,
+    no_flush: bool = False,
 ) -> RecipeRun:
     """Run one recipe's scene.json end-to-end (or up to the dry_run boundary).
 
@@ -261,6 +262,15 @@ def run_recipe(
         run.duration_seconds = time.time() - start
         return run
 
+    # Automatically flush any stale queue first (the container queue is shared
+    # and persistent — prior sessions can leave thousands of leftover commands
+    # that would otherwise re-render on drain). flush_queue MOVEs them into a
+    # dated backup dir, never deletes, so this is recoverable.
+    if not no_flush:
+        from octanex_mcp.bridge import flush_queue
+        flush_res = flush_queue(ws)
+        run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
+
     drain_result = drain_oneshot(ws, timeout_seconds=max(30, int(drain_timeout)))
     if not drain_result.get("ok"):
         run.error = f"drain failed: {drain_result.get('error')}"
@@ -331,6 +341,7 @@ def verify_recipe_library(
     slug: str | None = None,
     vision_check: bool = False,
     vision_fn: Any = None,
+    no_flush: bool = False,
 ) -> dict[str, Any]:
     """Verify the recipe library.
 
@@ -355,7 +366,7 @@ def verify_recipe_library(
         data = _read_scene_json(recipe_dir / "scene.json")
         s = str(data.get("slug") or recipe_dir.name)
         if live:
-            runs.append(run_recipe(s, container=container, dry_run=False, drain_timeout=drain_timeout, copy_back=copy_back, vision_check=vision_check, vision_fn=vision_fn))
+            runs.append(run_recipe(s, container=container, dry_run=False, drain_timeout=drain_timeout, copy_back=copy_back, vision_check=vision_check, vision_fn=vision_fn, no_flush=no_flush))
         else:
             r = RecipeRun(slug=s, title=str(data.get("title") or s), domain=str(data.get("domain") or data.get("category") or "uncategorized"))
             ok, errs, warns, _ = _check_contract(s, recipe_dir, data)
@@ -389,6 +400,8 @@ def _main() -> None:
     ap.add_argument("--vision-check", action="store_true",
                     help="opt-in semantic vision tier after pixel acceptance (live only; blocks promotion on wrong-subject)")
     ap.add_argument("--drain-timeout", type=float, default=120.0)
+    ap.add_argument("--no-flush", action="store_true",
+                    help="do NOT auto-flush the shared queue before draining")
     args = ap.parse_args()
 
     live = args.live
@@ -399,6 +412,7 @@ def _main() -> None:
         copy_back=args.copy_back,
         vision_check=args.vision_check,
         drain_timeout=args.drain_timeout,
+        no_flush=args.no_flush,
     )
     print(json.dumps(report, indent=2))
 

@@ -180,6 +180,62 @@ function runtime.scene_graph()
     return nil
 end
 
+function runtime.find_items_by_name(name)
+    local out = {}
+    if not name or name == "" then return out end
+    local graph = runtime.scene_graph()
+    if not graph then return out end
+    local ok, items = pcall(function() return graph:findItemsByName(name) end)
+    if ok and items then
+        for _, it in ipairs(items) do out[#out + 1] = it end
+    end
+    ok, items = pcall(function() return graph:getOwnedItems() end)
+    if ok and items then
+        for _, item in ipairs(items) do
+            local okp, props = pcall(function() return item:getProperties() end)
+            if okp and props and props.name == name then out[#out + 1] = item end
+        end
+    end
+    return out
+end
+
+-- Delete every node whose name matches `name` (orphan cleanup). Returns count
+-- deleted. Used so repeated scene builds don't accumulate duplicate Hermes_*
+-- nodes that stale find_item_by_name would otherwise re-bind to.
+function runtime.delete_items_by_name(name, keep_first)
+    keep_first = keep_first or 0
+    local items = runtime.find_items_by_name(name)
+    local deleted = 0
+    for i, item in ipairs(items) do
+        if i > keep_first then
+            local ok = pcall(function() octane.project.deleteItems({item}) end)
+            if not ok then pcall(function() item:delete() end) end
+            deleted = deleted + 1
+        end
+    end
+    if deleted > 0 then runtime.append_log(LOG, "deleted " .. tostring(deleted) .. " orphan node(s) named " .. tostring(name)) end
+    return deleted
+end
+
+-- Ensure exactly one canonical node of (type, name): delete duplicate orphans,
+-- reuse the first if present, else create it. Then run setup(node). Returns the
+-- canonical node (or nil). This prevents the scene graph from piling up stale
+-- duplicate cameras/environments/materials/meshes that the RT then binds to.
+function runtime.ensure_canonical(type_id, name, position, setup)
+    runtime.delete_items_by_name(name, 1)
+    local node = runtime.find_item_by_name(name)
+    if not node and type_id then
+        local err
+        node, err = runtime.create_node(type_id, name, position or {500, 500})
+        if not node then runtime.append_log(LOG, "ensure_canonical create failed " .. tostring(name) .. " err=" .. tostring(err)); return nil end
+    end
+    if node and setup then
+        local ok, em = pcall(setup, node)
+        if not ok then runtime.append_log(LOG, "ensure_canonical setup failed " .. tostring(name) .. " err=" .. tostring(em)) end
+    end
+    return node
+end
+
 function runtime.find_item_by_name(name)
     if not name or name == "" then return nil end
     local graph = runtime.scene_graph()

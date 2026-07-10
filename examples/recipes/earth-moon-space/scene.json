@@ -1,0 +1,253 @@
+{
+  "slug": "earth-moon-space",
+  "title": "Earth + Moon (Space Scene)",
+  "category": "Astronomy / space",
+  "purpose": "Render Earth and the Moon as distinct bodies with correct blue/grey materials so the bridge's per-group material binding is demonstrated on two separated spheres.",
+  "prompt": "Visualise Earth and its Moon as a space scene.",
+  "camera": {
+    "position": [
+      28.999,
+      19.161,
+      36.194
+    ],
+    "target": [
+      3.45,
+      0.0,
+      0.0
+    ],
+    "fov": 42
+  },
+  "materials": {
+    "earth_surface": {
+      "kind": "glossy",
+      "color": [
+        0.1,
+        0.35,
+        0.75
+      ],
+      "roughness": 0.25
+    },
+    "moon_surface": {
+      "kind": "glossy",
+      "color": [
+        0.72,
+        0.72,
+        0.68
+      ],
+      "roughness": 0.85
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/earth-moon-space/scene.obj",
+        "format": "obj",
+        "name": "earth-moon-space"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "earth_surface",
+        "kind": "glossy",
+        "color": [
+          0.1,
+          0.35,
+          0.75
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "moon_surface",
+        "kind": "glossy",
+        "color": [
+          0.72,
+          0.72,
+          0.68
+        ],
+        "roughness": 0.85
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth-moon-space",
+        "material_name": "earth_surface",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth-moon-space",
+        "material_name": "moon_surface",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          28.999,
+          19.161,
+          36.194
+        ],
+        "target": [
+          3.45,
+          0.0,
+          0.0
+        ],
+        "fov": 42
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/earth-moon-space/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "Preview is non-blank and the subject is recognizable at thumbnail size.",
+    "scene.obj imports the local path listed in commands[].",
+    "Camera frames the full subject with margin.",
+    "Each usemtl group has an explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "Octane caches imported geometry by filename; re-rendering the same mesh name does NOT reload the OBJ. The bridge now deletes the stale mesh node before re-import to force a fresh load.",
+    "Named materials persist across renders; create_material is a no-op if the name already exists, so re-renders must use fresh material names or the stale (washed-out) material is reused.",
+    "The persistent bridge may not stay alive on some Octane X builds (closes after showWindow); render via the one-shot bridge drain. When alive, it processes the queue too.",
+    "CRITICAL RENDER-TARGET LIMITATION: octane.project.setSelection{rt} selects the Hermes Render Target node in the graph but does NOT make it the active render target the engine renders/saves. octane.render.start{renderTargetNode=rt} is also ignored on this build. Until Otoy exposes a working setter, the user MUST manually click the 'Hermes Render Target' node in Octane's node graph so it becomes the active RT BEFORE the save_preview runs. Without this, the engine renders the default RT (white/sky) and the preview is blank regardless of geometry or materials. This is the proven cause of all 'blank blue-sky' helicoid renders; a known-good sphere through the same path also renders blank, confirming it is NOT a geometry issue."
+  ],
+  "target_preview": "octane-preview.png",
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/earth-moon-space/preview.png",
+    "candidate_image": "examples/recipes/earth-moon-space/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "object count and semantic content",
+      "framing and camera",
+      "material/color readability",
+      "lighting",
+      "task-specific structure"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              28.999,
+              19.161,
+              36.194
+            ],
+            "target": [
+              3.45,
+              0.0,
+              0.0
+            ],
+            "fov": 42
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              20.2993,
+              13.412700000000001,
+              25.3358
+            ],
+            "target": [
+              3.45,
+              0.0,
+              0.0
+            ],
+            "fov": 42
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              37.6987,
+              24.9093,
+              47.052200000000006
+            ],
+            "target": [
+              3.45,
+              0.0,
+              0.0
+            ],
+            "fov": 42
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              28.999,
+              21.161,
+              36.194
+            ],
+            "target": [
+              3.45,
+              0.0,
+              0.0
+            ],
+            "fov": 42
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "materials visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/earth-moon-space/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (2026-07-09)"
+}
