@@ -57,6 +57,7 @@ from octanex_mcp.review import (
 from octanex_mcp.schema import command_schema, validate_command, validate_queue
 from octanex_mcp.server import _build_save_preview_envelope
 from octanex_mcp.animation import orbit_manifest, build_animation_commands
+from octanex_mcp.scene import swap_geometry
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
@@ -99,6 +100,7 @@ DISPATCH: Dict[str, Callable[[Dict[str, Any]], Any]] = {
     "octane_import_geometry": lambda a: write_command(
         "import_geometry", {"path": a["path"], "format": a.get("format", "obj"), "name": a.get("name")}
     ),
+    "octane_swap_geometry": lambda a: _swap_geometry_dispatch(a),
     "octane_start_render": lambda a: write_command(
         "start_render",
         {"samples": a.get("samples", 128), "width": a.get("width", 1280), "height": a.get("height", 1280)},
@@ -185,6 +187,25 @@ def _dispatch_build_animation(args: Dict[str, Any]) -> Dict[str, Any]:
     )
     queued = [write_command(c["op"], c["payload"]) for c in frame_cmds]
     return {"ok": True, "frames": len(queued) // 2, "queued_commands": queued}
+
+
+def _swap_geometry_dispatch(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Gateway parity for the ``octane_swap_geometry`` MCP tool.
+
+    Hot-swaps an object's geometry asset in place (preserving its stable node
+    name) and, when ``queue`` is True, writes the swap command into the workspace
+    queue so the bridge hot-replaces the mesh on the next drain.
+    """
+    scene_id = args["scene_id"]
+    object_id = args["object_id"]
+    new_path = args["new_path"]
+    fmt = args.get("format", "obj")
+    result = swap_geometry(scene_id, object_id, new_path, format=fmt, queue=False, workspace=Workspace())
+    if args.get("queue", False):
+        swap_cmd = result.get("swap_command")
+        if swap_cmd:
+            result["queued"] = write_command(swap_cmd["op"], swap_cmd["payload"])
+    return result
 
 
 def call_tool(name: str, args: Optional[Dict[str, Any]]) -> Dict[str, Any]:

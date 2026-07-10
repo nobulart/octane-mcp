@@ -23,7 +23,7 @@ from .corpus import find_grammar
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
-from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, update_scene_object
+from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
 from .animation import orbit_manifest, build_animation_commands
@@ -437,6 +437,29 @@ def build_mcp() -> Any:
     def octane_remove_object(scene_id: str, object_id: str) -> str:
         """Remove one object from a saved scene manifest and resave it."""
         return _json(remove_scene_object(scene_id, object_id))
+
+    @mcp.tool()
+    def octane_swap_geometry(
+        scene_id: str,
+        object_id: str,
+        new_path: str,
+        format: str = "obj",
+        queue: bool = False,
+    ) -> str:
+        """Hot-swap an object's geometry asset in place, preserving its stable node name.
+
+        The replaceable-asset-files primitive of the streaming data-grammar protocol:
+        the scene node identity stays fixed so the mesh can be swapped without rebuilding
+        the rest of the scene. The replacement file must already exist on disk. When
+        ``queue`` is True, also writes the swap command into the queue so the bridge
+        hot-replaces the mesh on the next drain. No Lua/schema change required.
+        """
+        result = swap_geometry(scene_id, object_id, new_path, format=format, queue=False)
+        if queue:
+            swap_cmd = result.get("swap_command")
+            if swap_cmd:
+                result["queued"] = write_command(swap_cmd["op"], swap_cmd["payload"])
+        return _json(result)
 
     @mcp.tool()
     def octane_requeue_scene(scene_id: str) -> str:
