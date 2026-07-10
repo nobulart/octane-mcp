@@ -18,12 +18,14 @@ source "$SCRIPT_DIR/common.sh"
 cd "$(coord_repo_dir)" || { coord_log "watch: cannot cd to repo"; exit 1; }
 
 NEW="$(coord_pull_peer)"
-coord_log "watch: pulled $NEW new peer message(s)"
+coord_log "watch: pulled $NEW new peer message(s) via outbox; will react to any unseen inbox line"
 
-[ "$NEW" -eq 0 ] && exit 0
+# NOTE: do NOT exit on NEW==0. The SSH fast-path may have delivered peer messages
+# DIRECTLY into our inbox already (counted as "seen" by the pull dedup), so the
+# pull returns 0 even though there is an unprocessed line. The reaction loop below
+# processes every inbox line not yet in .coord_seen, so those fast-path messages
+# are still handled.
 
-# Read only the NEW lines (tail -n NEW of inbox, but dedup-safe: reprocess all inbox
-# lines, react once per unseen type=done/intent from peer using a seen-file).
 SEEN="$COORD_DIR/.coord_seen"
 touch "$SEEN"
 
