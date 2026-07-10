@@ -72,8 +72,12 @@ class GeoToolTests(unittest.TestCase):
             self.skipTest("geo extra not installed; cannot exercise real geojson path")
         from shapely.geometry import Polygon
 
+        # The MCP boundary is JSON: a live shapely object cannot cross it, only a
+        # GeoJSON dict. Serialize the polygon to its GeoJSON form (the dict the
+        # tool actually accepts) to prove the shapely-backed conversion works
+        # end-to-end through the tool.
         geom = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
-        data = _call_geo(geom)
+        data = _call_geo(geom.__geo_interface__)
         self.assertNotIn("error", data)
         self.assertIn("asset", data)
         self.assertTrue(data["queued_commands"], data)

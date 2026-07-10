@@ -517,13 +517,15 @@ def build_mcp() -> Any:
         z_extrude: float = 0.5,
         color: Optional[list[float]] = None,
     ) -> str:
-        """Visualize GeoJSON (or a shapely geometry) as extruded geometry in Octane (WP7 geo grammar).
+        """Visualize GeoJSON as extruded geometry in Octane (WP7 geo grammar).
 
-        Accepts a GeoJSON FeatureCollection / Feature / bare geometry dict, or any
-        object exposing __geo_interface__ (e.g. a shapely geometry). Points become
-        marker boxes; lines and polygons become extruded walls. Requires the optional
-        `geo` extra (shapely) — if it is not installed the tool fails with an exact
-        install hint rather than an import traceback.
+        Accepts a GeoJSON FeatureCollection / Feature / bare geometry DICT. The MCP
+        boundary is JSON, so live shapely objects cannot cross it — pass GeoJSON
+        dicts here. (The underlying ``geo.geojson_to_obj`` also accepts shapely
+        geometries for in-process callers.) Points become marker boxes; lines and
+        polygons become extruded walls. Requires the optional `geo` extra (shapely)
+        — if it is not installed the tool fails with an exact install hint rather
+        than an import traceback.
 
         Returns the generated asset path, the queued render commands, and the current
         bridge status, so the caller knows the next Octane action required.
