@@ -115,5 +115,3 @@ this review:
 
 This review is required even for "docs-only" commits — a wrong skill instruction
 is a functional regression for the next agent.
-
-<!-- guard test 1783697036 -->

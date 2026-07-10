@@ -43,3 +43,10 @@ renders/
 *.log
 octane_lua/config.generated.lua
 octane_lua/*.generated.lua
+
+# Session scratch debug scripts (ad-hoc probes, not source)
+scripts/_bounds.py
+scripts/_camcheck.py
+scripts/_click_bridge.py
+scripts/_probe_menu.py
+scripts/queue_butterfly_raw.py
