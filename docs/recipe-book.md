@@ -373,7 +373,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Added MCP tools and CLI commands for status, one-shot, and persistent bridge control.
 - Verified the already-open persistent bridge can process a queued ping and write result metadata.
 
-> **2026-07-09 correction:** the "structured failure because the generated script name was not found in the exposed Scripts menu" was a *masked* error. The real cause was macOS TCC/Accessibility for `Hermes.app` not being granted, so `osascript` failed with `-1719` and the menu could not even be inspected. The generated AppleScript's `try` block swallowed the `-1719` and emitted a fake "script not found" (`-2700`). This is now fixed: `run_bridge_script` surfaces the real `-1719` and flags `tcc_blocked: true` with the exact grant step. The "not found" framing is obsolete — once Accessibility is granted and Octane's `default_script_path` points at `octane_lua/`, the one-shot appears as `hermes_bridge_oneshot.generated` in the Script menu and launches with one click (which drains the whole queue).
+> **2026-07-09 correction:** the "structured failure because the generated script name was not found in the exposed Scripts menu" was a *masked* error. The real cause was macOS TCC/Accessibility not being granted to the **Hermes agent-runtime python** (the `osascript` caller, `/Users/craig/.hermes/hermes-agent/venv/bin/python`) — NOT `Hermes.app`, which is not in the octanex-mcp server's process ancestry. `osascript` failed with `-1719` and the menu could not even be inspected. The generated AppleScript's `try` block swallowed the `-1719` and emitted a fake "script not found" (`-2700`). This is now fixed: `run_bridge_script` surfaces the real `-1719` and flags `tcc_blocked: true` with the exact grant step. The "not found" framing is obsolete — once Accessibility is granted (to the agent-runtime python, not `Hermes.app`) and Octane's `default_script_path` points at `octane_lua/`, the one-shot appears as `hermes_bridge_oneshot.generated` in the Script menu and launches with one click (which drains the whole queue). *(2026-07-10 further correction: the original "grant `Hermes.app`" wording here was itself retracted — `Hermes.app` is the wrong TCC target.)*
 
 ### Signals / evidence
 - `octanex-mcp bridge-status --json` reported Octane X running, both generated scripts present, and persistent bridge status `idle`.
@@ -767,8 +767,10 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
      emitted `exists process` at top level) blocked the bridge click entirely —
      frames only appeared when the operator clicked manually. **FIXED in
      `src/octanex_mcp/bridge_control.py`.**
-  3. **macOS TCC gate** — the autonomous click needs Accessibility on `Hermes.app`
-     + full Hermes relaunch (NOT the python binaries). See SKILL.md §TCC.
+  3. **macOS TCC gate** — the autonomous click needs Accessibility on the **Hermes
+     agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python`,
+     the `osascript` caller — NOT `Hermes.app`) + full Hermes relaunch. See
+     SKILL.md §TCC (the "grant Hermes.app" guidance was retracted 2026-07-10).
   After these fixes the bridge `save_preview` autonomously renders real geometry
   (verified: 17-command butterfly scene, zero manual clicks, PNG ~320–350 KB).
   The "RT-click required / bridge save broken" theory was a misdiagnosis from a
@@ -844,3 +846,37 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Verification:** pixel QA (mean RGB ~94/98/105, blue ~2.8%, dark ~27%, white
   ~20%, std high) + local vision confirmed a valid non-blank render. PNG
   ~320–350 KB at 1280×1024.
+
+## Always flush the queue before every live render (process fix)
+
+- **Outcome:** pitfall (resolved)
+- **Recorded:** 2026-07-10
+- **Context:** After a session left an 821-file backlog in the shared/persistent
+  `queue/` (including 76 `start_render` wedge landmines from the autonomous
+  steward + parallel agents), a live earth-moon-space render drained the WRONG
+  commands and a stale 02:24 `octane-preview.png` falsely looked like success
+  (pixel stats mean_dev=2.09, nonbg=1.92 = empty sky). The user explicitly asked
+  for always-on flush between renders.
+
+### Steps that fixed it (now enforced in code)
+- `benchmarks/harness.py::run_task` and `benchmarks/verify_recipes.py::run_recipe`
+  now call `flush_queue(ws)` **unconditionally** before every live drain — not
+  only when pollution is suspected. The queue is shared across sessions/agents,
+  so it refills silently; never skip the flush.
+- `src/octanex_mcp/recipes.py::queue_recipe` flushes on every call, so the
+  high-level `octane_queue_recipe` MCP tool starts from a clean queue (covers the
+  manual persistent-bridge drain path the user drives by hand).
+- Before draining, delete any pre-existing `renders/<slug>_octane-preview.png` so
+  acceptance guards on a FRESH mtime, never a stale frame from a prior session.
+- `flush_queue` MOVEs files into a dated `queue_backups/` dir (reversible, never
+  `rm`). `octane_flush_queue` is also exposed as a first-class MCP/gateway tool
+  for manual sessions.
+
+### Follow-ups
+- One click of the one-shot (or the persistent bridge Script-menu item) drains
+  the ENTIRE queue; never loop "one click per command".
+- macOS TCC (`-1719`) still blocks the AppleScript drain unless Accessibility is
+  granted to the agent-runtime python; a manual persistent-bridge drain is the
+  reliable fallback when TCC is absent.
+- Manual RT reselect in Octane is still required (setSelection{rt} is a no-op on
+  this build) or the render is blank regardless of geometry.

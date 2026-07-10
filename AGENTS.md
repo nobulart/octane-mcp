@@ -70,25 +70,28 @@ this review:
 1. **Diff the change set.** For each file touched, ask: does any doc/skill
    describe a now-obsolete behavior, mechanism, path, or error?
 2. **Check the launch prerequisites are current.** The bridge launch requires:
-   - macOS **Accessibility (TCC) granted to `Hermes.app`**
-     (`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`)
-     **followed by a FULL Hermes quit + relaunch.** `Hermes.app` is the signed
-     root of the process tree that spawns `osascript` (Hermes.app →
-     `mcp_stdio_watchdog` → `uv run octanex-mcp` → `octanex-mcp` server →
-     `osascript`), so TCC's ancestor walk covers the whole tree. **Do NOT grant
-     the `uv` python binaries** (`cpython-3.12.12…` / hermes-agent
-     `cpython-3.11.15…`) — they are unsigned/ad-hoc-signed and are unreliable TCC
-     targets; granting them was tested 2026-07-10 and did NOT clear `-1719`. The
-     earlier "grant the agent-runtime python, NOT Hermes.app" guidance
-     (2026-07-09) is RETRACTED — it was wrong. A plain `/reload-mcp` is NOT enough;
-     the Hermes app process itself must restart so the running server inherits the
-     new TCC token.
+   - macOS **Accessibility (TCC) granted to the Hermes agent-runtime python**
+     (`/Users/craig/.hermes/hermes-agent/venv/bin/python`) — **NOT `Hermes.app`.**
+     Process chain confirmed live (2026-07-10): `osascript` is spawned by the
+     `octanex-mcp` server (PID 36709, `/Users/craig/octanex-mcp/.venv/bin/python3`)
+     ← `uv` (PID 36708, `/opt/homebrew/bin/uv`) ← the agent-runtime python
+     (PID 36706). TCC evaluates the entitlement on that runtime binary, so granting
+     `Hermes.app` alone does NOT clear `-1719`. Grant the agent-runtime python
+     (⌘⇧G-paste the path) or the shell/terminal that launches Hermes. The earlier
+     "grant `Hermes.app`" guidance (retracted 2026-07-10) is WRONG and re-creates
+     the `-1719` bug for the next agent — correct it wherever found.
    - Octane's `default_script_path` → repo `octane_lua/`.
    - Launch via UI-scripting the **Script** menu (singular), NOT `run script file`.
    - One click of the one-shot drains the **entire** queue.
    - The launcher's `-2741` AppleScript syntax bug (top-level `exists process`)
      is FIXED in `src/octanex_mcp/bridge_control.py`; if `-2741` recurs the
      running server has stale code (restart Hermes to reload).
+   - **ALWAYS flush the queue before every live render** (the `octanex-mcp` MCP
+     tools now do this unconditionally; for any manual/other path call
+     `octane_flush_queue` first). The container `queue/` is shared + persistent
+     across sessions/agents/steward and refills silently. Never rely on a
+     leftover `octane-preview.png` — delete it before rendering so promotion
+     guards on a fresh mtime.
 3. **Check for stale error narratives.** If a doc records a failure like
    "script not found in Scripts menu" / "one command per click" / "run script
    file", annotate or correct it — these were symptoms of the masked `-1719`

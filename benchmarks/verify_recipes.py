@@ -262,14 +262,21 @@ def run_recipe(
         run.duration_seconds = time.time() - start
         return run
 
-    # Automatically flush any stale queue first (the container queue is shared
-    # and persistent — prior sessions can leave thousands of leftover commands
-    # that would otherwise re-render on drain). flush_queue MOVEs them into a
-    # dated backup dir, never deletes, so this is recoverable.
-    if not no_flush:
-        from octanex_mcp.bridge import flush_queue
-        flush_res = flush_queue(ws)
+    # ALWAYS flush the shared/persistent queue before every live render
+    # (unconditional — the autonomous steward and parallel agents write to the
+    # same queue/, so it refills silently between sessions; never skip even if
+    # it looks empty). flush_queue MOVEs files into a dated backup dir (never
+    # deletes), so the operation is recoverable.
+    from octanex_mcp.bridge import flush_queue
+    flush_res = flush_queue(ws)
+    if flush_res["flushed"]:
         run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
+    # Delete any pre-existing preview so acceptance guards on a FRESH mtime,
+    # never a stale frame left by a prior session (which would look like a
+    # successful render without actually running).
+    if run.preview_path and run.preview_path.exists():
+        run.preview_path.unlink()
+        run.notes.append("removed stale preview PNG before render")
 
     drain_result = drain_oneshot(ws, timeout_seconds=max(30, int(drain_timeout)))
     if not drain_result.get("ok"):

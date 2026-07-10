@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from .bridge import REPO_ROOT, Workspace, write_command
+from .bridge import REPO_ROOT, Workspace, flush_queue, write_command
 from .schema import SCHEMA_VERSION, validate_command
 
 RECIPES_ROOT = REPO_ROOT / "examples" / "recipes"
@@ -188,8 +188,17 @@ def _validate_recipe_command(command: Mapping[str, Any], idx: int) -> None:
 
 
 def queue_recipe(slug: str, overrides: Mapping[str, Any] | None = None, *, workspace: Workspace = Workspace(), recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:
-    """Queue a checked-in recipe command sequence by slug."""
+    """Queue a checked-in recipe command sequence by slug.
 
+    ALWAYS flushes the shared/persistent queue first — unconditionally, even
+    when the queue looks empty. The container ``queue/`` is shared across
+    sessions, the autonomous steward, and parallel agents, so it refills
+    silently; a leftover backlog would render the wrong scene or wedge the
+    drain. flush_queue MOVEs files into a dated backup dir (never deletes), so
+    the operation is recoverable.
+    """
+
+    flush_res = flush_queue(workspace)
     recipe = load_recipe(slug, recipes_root)
     commands = _apply_overrides(recipe["commands"], overrides)
     commands = _rewrite_preview_outputs(commands, slug=recipe["slug"], workspace=workspace)
@@ -200,6 +209,7 @@ def queue_recipe(slug: str, overrides: Mapping[str, Any] | None = None, *, works
     return {
         "slug": recipe["slug"],
         "title": recipe["title"],
+        "flushed": flush_res["flushed"],
         "queued_count": len(queued),
         "queued_commands": queued,
         "expected_next_action": "Run octane_lua/hermes_bridge_oneshot.generated.lua inside Octane X, then save/review preview evidence before claiming native render success.",

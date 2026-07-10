@@ -166,6 +166,20 @@ def run_task(
             run.notes.append("drain deferred")
             return run
 
+        # ALWAYS flush the shared/persistent queue before every live render
+        # (unconditional — do not skip even when the queue looks empty; the
+        # autonomous steward and parallel agents write to the same queue/, so
+        # it refills silently between sessions). Reversible backup, never rm.
+        from octanex_mcp.bridge import flush_queue
+        flush_res = flush_queue(ws)
+        if flush_res["flushed"]:
+            run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
+        # Delete any pre-existing preview so acceptance guards on a FRESH mtime,
+        # never a stale frame from a prior session.
+        if run.preview_path and run.preview_path.exists():
+            run.preview_path.unlink()
+            run.notes.append("removed stale preview PNG before render")
+
         drain_result = drain_oneshot(ws, timeout_seconds=drain_timeout)
         run.drain = drain_result
         if not drain_result.get("ok"):
