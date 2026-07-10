@@ -99,5 +99,19 @@ this review:
    changes) a live ad-hoc check before committing. Documentation-only commits
    still get a dry-run suite pass.
 
+6. **Coordinate with the peer instance (octanex-coordinate loop).** When working
+   the `octanex-mcp` repo alongside the other Hermes instance, keep the loop live:
+   - At session start: `bash scripts/coord/intent.sh "path1;path2;..."` to declare
+     scope (prevents both instances editing the same file → rebase conflicts).
+   - **Always push via `bash scripts/coord/gitp.sh "msg"`** (not bare `git push`).
+     `gitp.sh` does `git push && notify` — deterministic peer notification. The
+     `.git/hooks/post-receive` hook is a bonus for interactive shells but does NOT
+     fire through some agent git paths, so do not rely on it alone.
+   - The peer's `watch.sh` (launchd, 2 min) auto-fetches + rebases if its tree is
+     clean and acks back; if its tree is dirty it sends `blocked` (never force-
+     rebases, never loses work). React to `blocked`: don't force-rebase the peer;
+     coordinate an `intent` split or let it resolve its own tree.
+   - Full protocol: `docs/coord-protocol.md`; skill: `octanex-coordinate`.
+
 This review is required even for "docs-only" commits — a wrong skill instruction
 is a functional regression for the next agent.
