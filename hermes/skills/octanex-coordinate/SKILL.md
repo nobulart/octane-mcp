@@ -33,7 +33,12 @@ and need no manual handoff. Built on `~/hermes-bridge` file channel + keyless SS
 ## Session-start checklist
 1. `bash scripts/coord/intent.sh "path1;path2;..."` — declare your scope (conflict prevention).
 2. Do your work.
-3. `bash scripts/coord/gitp.sh "commit message"` — commits (tracked changes only), pushes, notifies peer.
+3. `bash scripts/coord/gitp.sh "commit message"` — commits (tracked changes only),
+   pushes, notifies peer. **`gitp.sh` also runs a peer-intent overlap guard**: before
+   pushing it scans the peer's recent (30-min) `intent` messages in the inbox and
+   **aborts (exit 2) if you're about to push a file the peer declared they'd touch**,
+   with a clear message to coordinate first. This is the self-policing safety net —
+   it catches the "forgot to declare intent" case at the highest-leverage moment.
 
 ## Why `gitp.sh` and not `git push`
 git's `post-receive` hook (`.git/hooks/post-receive`) fires reliably in an
