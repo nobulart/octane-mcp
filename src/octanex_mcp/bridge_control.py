@@ -191,29 +191,49 @@ set bridgeScriptName to {menu_name}
 set bridgeScriptStem to {stem_name}
 set launchWait to {int(launch_wait)}
 
--- Launch (or activate) Octane X and wait until its menu bar is UI-ready.
+-- Launch (or activate) Octane X, then wait until its menu bar is UI-ready.
+-- NOTE: `exists process "Octane X"` must run inside `tell application "System
+-- Events"`; at top level it is a -2741 syntax error on this build. Also, the
+-- menu bar only populates after Octane is frontmost, so we activate + settle
+-- before probing (otherwise we get a spurious -1728 "Can't get menu bar 1").
 do shell script "open -a " & quoted form of appPath
+-- bring Octane to the front immediately so its menu bar populates
+try
+    tell application "Octane X" to activate
+on error
+    -- app may still be launching; the readiness loop below retries
+end try
 set launchDeadline to (current date) + launchWait
 set launched to false
 repeat while (current date) < launchDeadline
-    if (exists process "Octane X") then
+    tell application "System Events"
         try
             -- Probe menu-bar access first. If macOS denies assistive access the
             -- inner "menu 1 of menu bar item" throws -1719; surface it verbatim
             -- instead of masking it as a "script not found" error.
-            set _probe to count of menu bar items of menu bar 1
-            if _probe > 0 then
-                set launched to true
-                exit repeat
+            if exists process "Octane X" then
+                tell process "Octane X"
+                    set frontmost to true
+                    delay 0.4
+                    set _probe to count of menu bar items of menu bar 1
+                end tell
+                if _probe > 0 then
+                    set launched to true
+                    exit repeat
+                end if
             end if
         on error errMsg number errNum
             if errNum is -1719 then
                 error "assistive access denied (-1719): grant Accessibility to the app running osascript in System Settings -> Privacy & Security -> Accessibility" number errNum
+            else if errNum is -1728 then
+                -- menu bar not ready yet; keep waiting (don't fail on transient -1728)
+                delay 0.5
             else
                 error errMsg number errNum
             end if
         end try
-    end if
+    end tell
+    if launched then exit repeat
     delay 0.3
 end repeat
 if not launched then
