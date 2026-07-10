@@ -1,0 +1,43 @@
+octanex-mcp — NOTICE
+
+This project is distributed under a two-layer license:
+
+  * Source code          -> Business Source License 1.1  (see LICENSE)
+  * Data / corpus / docs -> Creative Commons BY-NC-SA 4.0 (see LICENSE-DATA.md)
+
+Commercial use of either layer requires a separate paid license from the
+Licensor. See COMMERCIAL-TERMS.md.
+
+------------------------------------------------------------------------
+THIRD-PARTY / UPSTREAM MATERIAL IN corpus/
+------------------------------------------------------------------------
+
+The corpus/ directory (WP9 reference harvest) incorporates third-party
+works — primarily images and metadata harvested from Wikimedia Commons —
+each of which carries its OWN upstream Creative Commons license and
+attribution requirement (commonly CC BY, CC BY-SA, CC BY-NC, or CC0).
+
+The project's CC BY-NC-SA 4.0 data license is the FLOOR applied to the
+compiled corpus and the derived acceptance specifications. It does NOT
+override, replace, or relieve you of the attribution and license terms of
+the upstream works. Where upstream terms are more restrictive (e.g. an
+upstream NC or SA clause), those terms remain in force for that work.
+
+MAINTAINER OBLIGATIONS:
+  * Every file harvested into corpus/ MUST retain its upstream source URL,
+    author/attribution string, and upstream license identifier.
+  * A manifest (e.g. corpus/<slug>/LICENSE or a SOURCES manifest) MUST
+    accompany each harvested entry recording these fields.
+  * Do not strip upstream attribution when deriving acceptance specs;
+    the derivative inherits the upstream SA/NC obligations where present.
+
+This NOTICE is provided to satisfy attribution and provenance obligations
+and to prevent accidental license conflicts in redistributed corpora.
+
+------------------------------------------------------------------------
+TRADEMARKS
+------------------------------------------------------------------------
+
+"octanex-mcp" and any associated logos are trademarks of the Licensor.
+Neither the BSL nor the CC license grants any right to use these marks.
+See COMMERCIAL-TERMS.md.

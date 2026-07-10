@@ -2,6 +2,15 @@
 
 A local MCP server that lets Hermes Agent use **Octane X as a shared visual canvas** for geometry, data, math, and concept visualization.
 
+## License
+
+This project is distributed under a two-layer license:
+
+- **Source code** — [Business Source License 1.1](LICENSE). Free for non-commercial, non-production use, modification, and sharing. Commercial use (including SaaS and resale of outputs) requires a paid license; the code converts to Apache 2.0 on **2030-07-10**.
+- **Data, corpus & docs** — [Creative Commons BY-NC-SA 4.0](LICENSE-DATA.md). Free for non-commercial use and sharing under the same terms.
+
+Commercial licensing, trademark reservation, and upstream third-party attributions are covered in [COMMERCIAL-TERMS.md](COMMERCIAL-TERMS.md) and [NOTICE](NOTICE).
+
 ```text
 Hermes MCP tool call -> Python MCP server -> JSON command queue -> Octane Lua bridge -> Octane X viewport/render target
 ```
