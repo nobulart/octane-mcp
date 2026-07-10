@@ -45,6 +45,7 @@ ALLOWED_OPS = {
     "save_scene",
     "scene_summary",
     "build_concept",
+    "set_object_transform",
 }
 
 
@@ -241,6 +242,22 @@ class SetCameraPayload(PayloadValidator):
         self.optional_number_range(payload, "fov", 5, 120, errors)
 
 
+class SetObjectTransformPayload(PayloadValidator):
+    def validate(self, payload: Mapping[str, Any], errors: _Collector) -> None:
+        self.require_string(payload, "object_name", errors)
+        # At least one transform channel must be present.
+        has = any(k in payload for k in ("translation", "rotation_euler", "scale"))
+        if not has:
+            errors.error(
+                "payload.transform.required",
+                "set_object_transform needs translation, rotation_euler, or scale",
+                "payload",
+            )
+        self.optional_vector3(payload, "translation", errors)
+        self.optional_vector3(payload, "rotation_euler", errors)
+        self.optional_vector3(payload, "scale", errors)
+
+
 class SetLightingPayload(PayloadValidator):
     pass
 
@@ -287,6 +304,7 @@ PAYLOAD_VALIDATORS: dict[str, type[PayloadValidator]] = {
     "assign_material": AssignMaterialPayload,
     "set_camera": SetCameraPayload,
     "set_lighting": SetLightingPayload,
+    "set_object_transform": SetObjectTransformPayload,
     "create_light": CreateLightPayload,
     "start_render": StartRenderPayload,
     "pause_render": PayloadValidator,
@@ -353,6 +371,7 @@ def command_schema() -> dict[str, Any]:
             "create_material": {"fields": {"name": {"type": "string", "required": True}, "kind": {"type": "string", "required": False}, "color": {"type": "number[3|4]", "min": 0, "max": 1}, "roughness": {"type": "number", "min": 0, "max": 1}, "metallic": {"type": "number", "min": 0, "max": 1}}},
             "assign_material": {"fields": {"object_name": {"type": "string", "required": True}, "material_name": {"type": "string", "required": True}}},
             "set_camera": {"fields": {"position": {"type": "number[3]", "required": True}, "target": {"type": "number[3]", "required": True}, "fov": {"type": "number", "min": 5, "max": 120}}},
+            "set_object_transform": {"fields": {"object_name": {"type": "string", "required": True}, "translation": {"type": "number[3]", "required": False}, "rotation_euler": {"type": "number[3]", "required": False}, "scale": {"type": "number[3]", "required": False}}},
             "set_lighting": {"fields": {"preset": {"type": "string", "required": False}}},
             "create_light": {"fields": {"name": {"type": "string", "required": True}, "light_type": {"type": "string", "required": True, "allowed": ["area_light", "sun_light", "point_light", "spot_light", "directional_light", "environment", "emissive"]}, "intensity": {"type": "number", "min": 0, "max": 500}, "angle": {"type": "number", "min": 0, "max": 180}, "size": {"type": "number[3]", "required": False}, "position": {"type": "number[3]", "required": False}, "direction": {"type": "number[3]", "required": False}, "hdr_path": {"type": "safe path", "required": False}}},
             "start_render": {"fields": {"samples": {"type": "number", "min": 1, "max": 1_000_000}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}}},

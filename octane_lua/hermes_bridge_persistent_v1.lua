@@ -892,6 +892,23 @@ local function handle_set_lighting(cmd)
     return true, "lighting preset " .. tostring(cmd.preset or "default") .. " connected"
 end
 
+local function handle_set_object_transform(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    if not cmd.object_name then return false, "set_object_transform missing object_name" end
+    local node = find_item_by_name(cmd.object_name)
+    if not node then return false, "unknown object " .. tostring(cmd.object_name) end
+    local P_TRANSLATION = octane.P_TRANSFORM_TRANSLATION or "translation"
+    local P_ROTATION    = octane.P_TRANSFORM_ROTATION or "rotation"
+    local P_SCALE       = octane.P_TRANSFORM_SCALE or "scale"
+    if cmd.translation then set_pin_value(node, P_TRANSLATION, cmd.translation) end
+    if cmd.rotation_euler then set_pin_value(node, P_ROTATION, cmd.rotation_euler) end
+    if cmd.scale then set_pin_value(node, P_SCALE, cmd.scale) end
+    local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
+    append_log("post-transform refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+    return true, "set transform on " .. tostring(cmd.object_name)
+end
+
 local function handle_start_render(cmd)
     return request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
 end
@@ -988,6 +1005,7 @@ local function handle_command(cmd)
     if cmd.op == "assign_material" then return handle_assign_material(cmd) end
     if cmd.op == "set_camera" then return handle_set_camera(cmd) end
     if cmd.op == "set_lighting" then return handle_set_lighting(cmd) end
+    if cmd.op == "set_object_transform" then return handle_set_object_transform(cmd) end
     if cmd.op == "start_render" then return handle_start_render(cmd) end
     if cmd.op == "save_preview" then return handle_save_preview(cmd) end
     return true, "acknowledged " .. tostring(cmd.op)

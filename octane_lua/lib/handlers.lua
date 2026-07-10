@@ -149,6 +149,31 @@ function handlers.handle_start_render(cmd)
     return runtime.request_render_restart(cmd.samples or 64, cmd.width or 1280, cmd.height or 1280)
 end
 
+function handlers.handle_set_object_transform(cmd)
+    local ok, msg = runtime.ensure_octane()
+    if not ok then return true, msg, nil end
+    if not cmd.object_name then return false, "set_object_transform missing object_name", nil end
+    local node = runtime.find_item_by_name(cmd.object_name)
+    if not node then return false, "unknown object " .. tostring(cmd.object_name), nil end
+    -- Octane GEO mesh transform pins. Use the engine constants when present,
+    -- else the canonical lowercase pin names, so the op is robust across
+    -- Octane X builds.
+    local P_TRANSLATION = octane.P_TRANSFORM_TRANSLATION or "translation"
+    local P_ROTATION    = octane.P_TRANSFORM_ROTATION or "rotation"
+    local P_SCALE       = octane.P_TRANSFORM_SCALE or "scale"
+    if cmd.translation then
+        runtime.set_pin_value(node, P_TRANSLATION, cmd.translation)
+    end
+    if cmd.rotation_euler then
+        runtime.set_pin_value(node, P_ROTATION, cmd.rotation_euler)
+    end
+    if cmd.scale then
+        runtime.set_pin_value(node, P_SCALE, cmd.scale)
+    end
+    local refreshed, refresh_msg = runtime.request_render_restart(64)
+    return true, "set transform on " .. tostring(cmd.object_name), refresh_msg
+end
+
 function handlers.handle_save_preview(cmd)
     if not (octane and octane.render) then return true, "Octane render API unavailable; acknowledged only", nil end
     local path = cmd.path or "/OctaneMCP/renders/preview.png"
@@ -203,6 +228,7 @@ handlers.dispatch["import_geometry"] = handlers.handle_import_geometry
 handlers.dispatch["create_material"] = handlers.handle_create_material
 handlers.dispatch["assign_material"] = handlers.handle_assign_material
 handlers.dispatch["set_camera"] = handlers.handle_set_camera
+handlers.dispatch["set_object_transform"] = handlers.handle_set_object_transform
 handlers.dispatch["set_lighting"] = handlers.handle_set_lighting
 handlers.dispatch["start_render"] = handlers.handle_start_render
 handlers.dispatch["save_preview"] = handlers.handle_save_preview

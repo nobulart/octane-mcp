@@ -23,7 +23,7 @@ from .corpus import find_grammar
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
-from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object, group_objects, modify_objects
+from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object, group_objects, modify_objects, animate_objects
 from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
@@ -565,6 +565,44 @@ def build_mcp() -> Any:
             if max_faces is not None:
                 opts["max_faces"] = max_faces
         return _json(modify_objects(scene_id, refs, modifier, **opts))
+
+    @mcp.tool()
+    def octane_animate_objects(
+        scene_id: str,
+        refs: str,
+        motion: str,
+        axis: str = "y",
+        degrees: float = 0.0,
+        offset: Optional[list[float]] = None,
+        scale: Optional[list[float]] = None,
+        start_frame: Any = 0,
+        end_frame: Any = 24,
+        fps: int = 24,
+        easing: str = "ease_in_out_quad",
+    ) -> str:
+        """Queue a transform animation for objects by label (Phase 4).
+
+        ``motion`` is "rotate" / "translate" / "scale". ``refs`` is a label phrase
+        like "#54" or "#6 through #10". For rotate: ``axis`` (x/y/z) + ``degrees``.
+        For translate/scale: ``offset`` / ``scale`` as [x,y,z]. ``start_frame`` /
+        ``end_frame`` accept ints or timecode strings ("00:00:16:08"); ``fps``
+        defaults to 24 (a common standard) when unspecified. ``easing`` supports
+        linear / ease_in_out_quad / ease_in_quad / ease_out_quad / ease_in_out_cubic
+        -- "rotate #54 by 104 degrees over frames 400-1000 with quadratic in-out"
+        maps to motion=rotate, degrees=104, start_frame=400, end_frame=1000,
+        easing=ease_in_out_quad.
+
+        Requires the scene nodes to already exist in Octane (build the scene
+        first). One click of the one-shot bridge drains the whole per-frame
+        set_object_transform + save_preview queue.
+        """
+        return _json(
+            animate_objects(
+                scene_id, refs, motion,
+                axis=axis, degrees=degrees, offset=offset, scale=scale,
+                start_frame=start_frame, end_frame=end_frame, fps=fps, easing=easing,
+            )
+        )
 
     @mcp.tool()
     def octane_visualize_bars(values: list[float], name: str = "visual_bar_chart") -> str:

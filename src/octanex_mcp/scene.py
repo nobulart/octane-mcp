@@ -4,7 +4,7 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 # Keep bridge import separate to avoid circular import
 # Workspace and write_command are used at module level
@@ -590,3 +590,97 @@ def modify_objects(
             "vertex_count": mod.get("vertex_count"),
         }
     return {"scene_id": scene_id, "modifier": modifier, "refs": refs, "results": results}
+
+
+def animate_objects(
+    scene_id: str,
+    refs: str,
+    motion: str,
+    *,
+    axis: str = "y",
+    degrees: float = 0.0,
+    offset: Sequence[float] | None = None,
+    scale: Sequence[float] | None = None,
+    start_frame: Any = 0,
+    end_frame: Any = 24,
+    fps: int = 24,
+    easing: str = "ease_in_out_quad",
+    workspace: Workspace = Workspace(),
+) -> dict[str, Any]:
+    """Queue a transform animation for the objects addressed by ``refs``.
+
+    ``motion`` is ``"rotate"`` / ``"translate"`` / ``"scale"``. Each resolved
+    node gets its own :class:`ObjectAnimationManifest` (per-object motion is
+    independent), baked into ``set_object_transform`` + ``save_preview`` commands
+    per frame and written to the queue. ``start_frame``/``end_frame`` accept ints
+    or timecode strings; ``fps`` defaults to 24 (a common standard) when the user
+    does not specify.
+
+    Requires the scene's nodes to already exist in Octane (build the scene via
+    ``queue_scene_plan`` / ``octane_build_scene`` first) -- this queues only the
+    per-frame transform + render commands, exactly like ``octane_build_animation``.
+
+    Returns the per-object bake summaries and the queued command count.
+    """
+    from . import animation
+
+    loaded = load_scene_manifest(scene_id, workspace)
+    scene = loaded["scene"]
+    uids = resolve_label_refs(scene, refs)
+    if not uids:
+        raise ValueError(f"no objects resolved from refs: {refs!r}")
+    by_uid = {_object_uid(o): o for o in scene["objects"] if isinstance(o, Mapping)}
+
+    baked: dict[str, Any] = {}
+    all_commands: list[dict[str, Any]] = []
+    for uid in uids:
+        obj = by_uid.get(uid)
+        if obj is None:
+            baked[uid] = {"error": "object not in manifest"}
+            continue
+        node_name = namespaced(scene["scene_id"], uid)
+        if motion == "rotate":
+            man = animation.object_rotate_manifest(
+                node_name, axis=axis, degrees=degrees,
+                start_frame=start_frame, end_frame=end_frame, fps=fps, easing=easing,
+            )
+        elif motion == "translate":
+            man = animation.object_translate_manifest(
+                node_name, offset=animation._v3(offset or (0.0, 0.0, 0.0)),
+                start_frame=start_frame, end_frame=end_frame, fps=fps, easing=easing,
+            )
+        elif motion == "scale":
+            from .animation import ObjectKeyframe, ObjectAnimationManifest as OAM
+
+            sf = animation._parse_frame(start_frame, fps)
+            ef = animation._parse_frame(end_frame, fps)
+            target = animation._v3(scale or (1.0, 1.0, 1.0))
+            man = OAM(
+                object_name=node_name, start_frame=sf, end_frame=ef, fps=fps, easing=easing,
+                keyframes=(
+                    ObjectKeyframe(frame=sf, scale=(1.0, 1.0, 1.0)),
+                    ObjectKeyframe(frame=ef, scale=target),
+                ),
+            )
+        else:
+            raise ValueError(f"unsupported motion {motion!r}; use rotate/translate/scale")
+        cmds = animation.build_object_animation_commands(man)
+        baked[uid] = {
+            "node_name": node_name,
+            "start_frame": man.start_frame,
+            "end_frame": man.end_frame,
+            "frame_count": man.end_frame - man.start_frame + 1,
+            "command_count": len(cmds),
+        }
+        all_commands.extend(cmds)
+
+    # Queue all per-frame commands for every targeted node.
+    queued = [write_command(c["op"], c["payload"], workspace) for c in all_commands]
+    return {
+        "scene_id": scene_id,
+        "motion": motion,
+        "refs": refs,
+        "fps": fps,
+        "queued_command_count": len(queued),
+        "baked": baked,
+    }

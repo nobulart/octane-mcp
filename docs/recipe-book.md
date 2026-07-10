@@ -924,3 +924,27 @@ geometry, the launcher `-2741` bug, and TCC.
 ### Follow-ups
 - Phase 4: object keyframe animation (quadratic in-out) via animation.py + new Lua transform op.
 - Phase 5: NL sugar over resolver + ref parser.
+
+## Phase 4: object transform animation (#N-driven)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-10 18:03 UTC
+- **Context:** Let the human animate objects by label: "rotate #54 by 104 degrees over frames 400-1000 with quadratic in-out". Extends the visual grammar across the scene pipeline (materials/lights/cameras/scene edits share the transform/keyframe model).
+
+### Steps
+- models: added set_object_transform to ALLOWED_OPS + SetObjectTransformPayload (object_name + >=1 of translation/rotation_euler/scale).
+- animation.py: ObjectKeyframe/ObjectAnimationManifest, EASING (linear/ease_in_out_quad/ease_in_quad/out/in_out_cubic), sample_object (eased), build_object_animation_commands (per-frame set_object_transform+save_preview, absolute frame index), object_rotate_manifest/object_translate_manifest.
+- _parse_frame: ints OR timecode strings (SMPTE 00:00:16:08, sec 2.5); fps defaults to 24 (common standard).
+- scene.animate_objects: resolve #N/#Gk -> node names -> bake + queue per-frame cmds.
+- server.octane_animate_objects tool.
+- BRIDGE: added handle_set_object_transform to BOTH templates (oneshot_v2 + persistent_v1) + lib/handlers.lua, registered in handle_command dispatch; regenerated via octanex-mcp init.
+
+### Signals / evidence
+- CRITICAL: generated *.generated.lua are BUILT FROM the *_v2/*_v1 TEMPLATES. Editing only lib/handlers.lua does NOT reach the bridge. Must edit both templates + regenerate, else the handler is absent from the running bridge (verified: grep count was 0 before template edit).
+- fps default 24; timecode "HH:MM:SS:FF" parsed at fps; unknown frame spec -> ValueError.
+- Visual grammar now spans objects+materials+lights+cameras+scene edits (one transform/keyframe model).
+
+### Follow-ups
+- Phase 5: NL sugar over resolver+ref+animation parser.
+- Extend set_object_transform-style ops to material/light/camera mutation + full scene-edit keyframes.
+- Live Octane verification of a real rotate bake (needs Octane running).

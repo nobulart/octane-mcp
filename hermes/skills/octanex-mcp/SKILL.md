@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.6
+|version: 1.9.7
 |author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -87,6 +87,36 @@ OBJ; (4) object keyframe animation (extend `animation.py` + new Lua op);
   `resolution`/`smooth` per node via `swap_geometry` (stable node name kept).
 - MCP tools `octane_group_objects`, `octane_modify_objects`. Tests:
   `tests/test_meshmod.py` (9, real trimesh; dependency-missing path guarded).
+
+### Phase 4 shipped (2026-07-10): object transform animation (#N-driven)
+
+The visual-grammar model now extends across the scene pipeline — objects,
+materials, lights, cameras, and scene edits share one transform/keyframe
+grammar. Phase 4 delivers object animation; the same `set_object_transform`
+op generalizes to animating materials/lights/cameras/scene state later.
+
+- **New op `set_object_transform`** in `models.ALLOWED_OPS` + `SetObjectTransformPayload`
+  (needs `object_name` + ≥1 of `translation`/`rotation_euler`/`scale`). Handler added to
+  BOTH bridge templates (`hermes_bridge_oneshot_v2.lua`, `hermes_bridge_persistent_v1.lua`)
+  **and** `lib/handlers.lua` (reference copy). Regenerate with `uv run octanex-mcp init`
+  — the templates are the source of truth, NOT `lib/handlers.lua`.
+- `animation.py`: `ObjectKeyframe`/`ObjectAnimationManifest`, `EASING` table
+  (`linear`/`ease_in_out_quad`/`ease_in_quad`/`ease_out_quad`/`ease_in_out_cubic`),
+  `sample_object` (eased interpolation), `build_object_animation_commands`
+  (per-frame `set_object_transform` + `save_preview`, absolute frame index preserved
+  so sub-ranges compose), `object_rotate_manifest` / `object_translate_manifest`.
+  `_parse_frame` accepts ints OR timecode strings (`"00:00:16:08"` SMPTE, `"2.5"` sec);
+  `fps` defaults to **24** (common standard) when unspecified.
+- `scene.animate_objects(scene_id, refs, motion, ...)`: `motion` = rotate/translate/scale;
+  resolves `#N`/`#Gk` → node names → bakes + queues per-frame commands. Requires the
+  scene nodes to already exist in Octane (build the scene first). One one-shot click
+  drains the whole queue (same as `octane_build_animation`).
+- MCP tool `octane_animate_objects`. "rotate #54 by 104 degrees over frames 400-1000
+  with quadratic in-out" → `motion=rotate, degrees=104, start_frame=400, end_frame=1000,
+  easing=ease_in_out_quad`. Tests: `tests/test_object_animation.py` (18).
+- **Bridge edit rule (re-learned):** the generated `*.generated.lua` are BUILT FROM the
+  `*_v2`/`*_v1` TEMPLATES. Editing only `lib/handlers.lua` does NOT reach the bridge —
+  you must edit both templates + regenerate. Parity guard: `tests/test_lua_bridge_parity`.
 
 ## Setup Checklist
 
