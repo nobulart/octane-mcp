@@ -24,6 +24,7 @@ from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object
+from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
 from .animation import orbit_manifest, build_animation_commands
@@ -465,6 +466,67 @@ def build_mcp() -> Any:
     def octane_requeue_scene(scene_id: str) -> str:
         """Load a saved scene manifest and queue its validated commands again."""
         return _json(requeue_scene(scene_id))
+
+    @mcp.tool()
+    def octane_annotate_preview(
+        scene_id: str,
+        source_png: Optional[str] = None,
+        out_png: Optional[str] = None,
+        width: int = 1280,
+        height: int = 1280,
+    ) -> str:
+        """Dev overlay: draw stable "#N" badges onto a rendered preview.
+
+        Lets the human talk about the scene by number -- "change object #43",
+        "group #6 through #10" -- by projecting each labelled object's
+        bounds.center through the scene camera and stamping its badge in 2D.
+
+        Render the scene first (octane_build_scene / octane_save_preview), then
+        call this on the produced PNG. If ``source_png`` is omitted it defaults
+        to the workspace ``renders/octane-preview.png``. The output defaults to
+        ``renders/<scene_id>_annotated.png``.
+
+        Requires Pillow (the ``harvest`` extra) for the raster step. If it is
+        missing the tool still returns the computed label layout (badge -> screen
+        x/y/depth, visibility) plus a precise install hint, so labelling logic
+        is inspectable without the dependency.
+        """
+        from .bridge import Workspace
+
+        ws = Workspace()
+        ws.ensure()
+        loaded = load_scene_manifest(scene_id, ws)
+        scene = loaded["scene"]
+
+        placements = compute_label_layout(scene, width=width, height=height)
+        payload = {
+            "scene_id": scene_id,
+            "labels": [
+                {
+                    "badge": p.badge,
+                    "uid": p.uid,
+                    "screen": [round(p.screen[0], 1), round(p.screen[1], 1)],
+                    "depth": round(p.depth, 3),
+                    "visible": p.visible,
+                }
+                for p in placements
+            ],
+            "visible_count": sum(1 for p in placements if p.visible),
+        }
+
+        src = source_png or str(ws.renders_dir / "octane-preview.png")
+        out = out_png or str(ws.renders_dir / f"{scene_id}_annotated.png")
+        from pathlib import Path as _Path
+        if not _Path(src).exists():
+            payload["error"] = f"source preview not found: {src}"
+            return _json(payload)
+        try:
+            draw_label_overlay(src, placements, out)
+            payload["annotated_png"] = out
+        except RuntimeError as exc:
+            # Missing Pillow (or other raster failure) -> still return layout.
+            payload["raster_error"] = str(exc)
+        return _json(payload)
 
     @mcp.tool()
     def octane_visualize_bars(values: list[float], name: str = "visual_bar_chart") -> str:

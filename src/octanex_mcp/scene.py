@@ -66,7 +66,170 @@ def normalize_scene_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("scene_plan.objects must be a list")
     if not isinstance(normalized["materials"], list):
         raise ValueError("scene_plan.materials must be a list")
+    if not isinstance(normalized["groups"], list):
+        raise ValueError("scene_plan.groups must be a list")
+    _assign_stable_ids(normalized)
     return normalized
+
+
+def _assign_stable_ids(scene: dict[str, Any]) -> None:
+    """Assign persistent ``uid`` + human ``#N`` / ``#Gk`` labels to a scene.
+
+    Human-facing indices are the bridge between the user's speech
+    ("change object #43") and the stable node names the bridge uses. Two rules
+    make them trustworthy:
+
+    1. **Stable uid.** Every object/group gets a ``uid`` that never changes
+       for the life of the scene. Node names stay ``Hermes::<scene>::<id>``,
+       where ``<id>`` is the uid.
+    2. **Never-renumbering labels.** The ``#N`` (objects) / ``#Gk`` (groups)
+       badge shown in the dev overlay is assigned once and then *preserved* across
+       add/remove. Removing an object leaves a gap (``#42``, ``#44`` with no
+       ``#43``) rather than silently shifting every later index — otherwise the
+       user's "#43" would point at a different object after any edit.
+
+    The mapping ``labels: {"#43": "<uid>"}`` plus ``group_labels:
+    {"#G2": "<guid>"}`` lets the ref-resolver turn "#6 through #10 and #54"
+    into a concrete uid set without ever renumbering.
+    """
+    objects = scene.setdefault("objects", [])
+    groups = scene.setdefault("groups", [])
+
+    # Assign a stable uid per object. Seed from the human "id" when present
+    # (so node names stay Hermes::<scene>::<id>, preserving the bridge's
+    # find-by-name contract and swap_geometry's stable-node guarantee), and
+    # mint "oNNNN" only when an id/uid is absent or would collide. Once set,
+    # a uid is sticky across reloads (never reseeded from a changed id).
+    used_uids: set[str] = set()
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        existing = obj.get("uid")
+        if existing and existing not in used_uids:
+            used_uids.add(existing)
+            continue
+        seed = obj.get("id") or obj.get("name")
+        if seed and str(seed) not in used_uids:
+            obj["uid"] = str(seed)
+            used_uids.add(str(seed))
+        else:
+            n = 1
+            while f"o{n:04d}" in used_uids:
+                n += 1
+            obj["uid"] = f"o{n:04d}"
+            used_uids.add(obj["uid"])
+    used_guids: set[str] = set()
+    for grp in groups:
+        if not isinstance(grp, dict):
+            continue
+        guid = grp.get("guid")
+        if not guid or guid in used_guids:
+            guid = f"g{len(used_guids) + 1:03d}"
+            grp["guid"] = guid
+        used_guids.add(guid)
+
+    # Build / preserve the never-renumbering badge map.
+    # Live objects keep their existing badge; dead badges (whose uid no longer
+    # has a live object) are DROPPED, leaving a gap rather than a dangling
+    # reference. New objects get the next free badge. This is the correct
+    # "never renumber" contract: removing #2 leaves "#1, #3" (not "#1, #2"
+    # with #2 now pointing at a different object).
+    live_uids = {str(o.get("uid")) for o in objects if isinstance(o, dict)}
+    labels = {
+        badge: uid
+        for badge, uid in (scene.get("labels") or {}).items()
+        if uid in live_uids
+    }
+    label_for_uid: dict[str, str] = {v: k for k, v in labels.items()}
+    next_obj_badge = 1
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        uid = obj["uid"]
+        if uid in label_for_uid:
+            continue  # keep the existing badge
+        while f"#{next_obj_badge}" in labels:
+            next_obj_badge += 1
+        badge = f"#{next_obj_badge}"
+        labels[badge] = uid
+        label_for_uid[uid] = badge
+        next_obj_badge += 1
+
+    live_guids = {str(g.get("guid")) for g in groups if isinstance(g, dict)}
+    group_labels = {
+        badge: guid
+        for badge, guid in (scene.get("group_labels") or {}).items()
+        if guid in live_guids
+    }
+    glabel_for_guid: dict[str, str] = {v: k for k, v in group_labels.items()}
+    next_grp_badge = 1
+    for grp in groups:
+        if not isinstance(grp, dict):
+            continue
+        guid = grp["guid"]
+        if guid in glabel_for_guid:
+            continue
+        while f"#G{next_grp_badge}" in group_labels:
+            next_grp_badge += 1
+        badge = f"#G{next_grp_badge}"
+        group_labels[badge] = guid
+        glabel_for_guid[guid] = badge
+        next_grp_badge += 1
+
+    scene["labels"] = labels
+    scene["group_labels"] = group_labels
+
+
+def _object_uid(obj: Mapping[str, Any]) -> str:
+    return str(obj.get("uid") or obj.get("id") or obj.get("name") or "object")
+
+
+def _group_guid(grp: Mapping[str, Any]) -> str:
+    return str(grp.get("guid") or grp.get("id") or "group")
+
+
+def resolve_label_refs(scene: Mapping[str, Any], text: str) -> list[str]:
+    """Resolve a human label phrase into a list of object uids.
+
+    Handles ``#43``, ``#1 and #3``, ``#6 through #10``, ``#G2`` (groups expand
+    to their member uids). Returns uids that exist in the scene; unknown badges
+    are silently dropped (the caller should surface "no object #99" separately if
+    needed — this keeps batch ops resilient).
+    """
+    labels: dict[str, str] = dict(scene.get("labels") or {})
+    group_labels: dict[str, str] = dict(scene.get("group_labels") or {})
+    group_members: dict[str, list[str]] = {
+        str(g.get("guid") or g.get("id")): list(g.get("members") or [])
+        for g in (scene.get("groups") or [])
+        if isinstance(g, Mapping)
+    }
+
+    text = text.lower()
+    uids: list[str] = []
+
+    # "through/.." ranges first: #6 through #10
+    for m in re.finditer(r"#\s*(\d+)\s*(?:through|to|-|–|—)\s*#?\s*(\d+)", text):
+        a, b = int(m.group(1)), int(m.group(2))
+        lo, hi = min(a, b), max(a, b)
+        for n in range(lo, hi + 1):
+            uid = labels.get(f"#{n}")
+            if uid and uid not in uids:
+                uids.append(uid)
+
+    # single badges: #43, #G2
+    for m in re.finditer(r"#\s*([a-z]?)\s*(\d+)", text):
+        prefix, num = m.group(1), m.group(2)
+        if prefix == "g":
+            guid = group_labels.get(f"#G{num}")
+            if guid:
+                for member in group_members.get(guid, []):
+                    if member not in uids:
+                        uids.append(member)
+        else:
+            uid = labels.get(f"#{num}")
+            if uid and uid not in uids:
+                uids.append(uid)
+    return uids
 
 
 _PRIMITIVE_TYPES = {"box", "sphere", "ellipsoid", "cylinder"}
@@ -92,7 +255,9 @@ def build_scene_commands(plan: Mapping[str, Any], workspace: Workspace = Workspa
         if not isinstance(obj, Mapping):
             raise ValueError("scene_plan.objects entries must be objects")
         obj_type = str(obj.get("type", "mesh"))
-        object_id = str(obj.get("id") or obj.get("name") or "object")
+        # Prefer the stable uid so the human "#N" label resolves to a fixed
+        # node name (Hermes::<scene>::<uid>) regardless of list order.
+        object_id = _object_uid(obj)
         object_name = namespaced(scene_id, object_id)
         if obj_type in _PRIMITIVE_TYPES:
             asset = create_primitive_obj(dict(obj), scene_id=scene_id, workspace=workspace)

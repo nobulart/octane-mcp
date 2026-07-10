@@ -84,7 +84,7 @@ class ScenePlanTests(unittest.TestCase):
             payload = json.loads(Path(result["path"]).read_text(encoding="utf-8"))
             self.assertEqual(payload["scene_manifest_version"], "2.0")
             self.assertEqual(payload["intent"], "show primitive grammar")
-            self.assertEqual(payload["groups"], [{"id": "main", "objects": ["box_1"]}])
+            self.assertEqual(payload["groups"], [{"id": "main", "guid": "g001", "objects": ["box_1"]}])
             self.assertEqual(payload["annotations"], [{"id": "label_1", "text": "Box"}])
             self.assertEqual(payload["quality_targets"], {"preview": "not_blank"})
             self.assertEqual(payload["provenance"], {"agent": "test"})

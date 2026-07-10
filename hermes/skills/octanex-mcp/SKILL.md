@@ -1,8 +1,8 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.4
-author: OctaneX MCP contributors
+|version: 1.9.5
+|author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
 metadata:
@@ -31,6 +31,47 @@ Use this skill when an agent needs to:
 - build, test, or extend the Agentic Canvas dashboard (HTTP gateway + Swift/WKWebView host + web bundle).
 
 Do not use this skill for arbitrary Lua execution. The bridge is intentionally an allow-listed command DSL.
+
+## Human scene labels (#N) & scope→domain resolution
+
+The human can address scene objects by a stable badge (``#N`` for objects,
+``#Gk`` for groups) instead of opaque names. Built 2026-07-10.
+
+- **Stable ids live in the manifest.** `src/octanex_mcp/scene.py`
+  `_assign_stable_ids` seeds a `uid` from the object `id` (so node names
+  stay `Hermes::<scene>::<id>` and the bridge `find_item_by_name` +
+  `swap_geometry` stable-node contract is preserved), minting `oNNNN` only
+  when no id exists. A never-renumbering `labels`/`group_labels` map
+  (`#N → uid`) is preserved across add/remove — **dead badges are
+  dropped (gap left), not shifted**, so "#43" never silently points at a
+  different object.
+- **`scene.py` `resolve_label_refs`** parses `#43`, `#1 and #3`,
+  `#6 through #10`, `#G2` (groups expand to member uids) → uid list.
+- **`src/octanex_mcp/annotation.py`** projects each labelled object's
+  `bounds.center` through the scene `camera` (pure-stdlib look-at +
+  perspective, no numpy) and draws `#N` markers onto a rendered PNG via
+  `octane_annotate_preview` (MCP tool). The raster step needs Pillow
+  (`uv sync --extra harvest`); if absent it still returns the computed
+  label layout + an install hint. No Lua/bridge change required.
+
+### Edge-case precedent (do NOT re-litigate)
+
+A property word like **"resolution" is NOT inherently ambiguous**. The scope
+decides the domain, encoded in `src/octanex_mcp/intent/disambiguate.py`
+(`resolve(text, object_refs=...)`):
+
+- object/group scope (`#N`, `#Gk`) → **object domain** (mesh tessellation),
+  high confidence, **no confirm**. "increase the resolution of #1" = mesh.
+- render/canvas scope (`output`, `canvas`, `render`) → **render domain**
+  (W×H, spp). "set output resolution to 4k" = render.
+- **no scope** → default (render, statistically common) + `needs_confirm=True`.
+  Only *this* case is genuinely ambiguous. The same table generalizes to
+  size / quality / smoothing / sharpness / detail / density.
+
+Phases still to build (post-2026-07-10 spike): (3) grouping + mesh
+modifiers routing "resolution→mesh" to `swap_geometry` with a subdivided
+OBJ; (4) object keyframe animation (extend `animation.py` + new Lua op);
+(5) NL sugar over the resolver/ref parser.
 
 ## Setup Checklist
 

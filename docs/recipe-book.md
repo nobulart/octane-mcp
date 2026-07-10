@@ -880,3 +880,25 @@ geometry, the launcher `-2741` bug, and TCC.
   reliable fallback when TCC is absent.
 - Manual RT reselect in Octane is still required (setSelection{rt} is a no-op on
   this build) or the render is blank regardless of geometry.
+
+## Human scene labels: stable #N ids + scope-domain resolver
+
+- **Outcome:** success
+- **Recorded:** 2026-07-10 17:32 UTC
+- **Context:** Project brainstorm 2026-07-10: let the human address scene objects by stable #N badge in the dev overlay and resolve ambiguous property words by scope (object vs render).
+
+### Steps
+- intent/disambiguate.py: scope->domain resolver. Object-scoped property word -> object domain (no confirm); render-scoped -> render; unscoped -> default + needs_confirm.
+- scene.py _assign_stable_ids: stable uid (seeded from object id, minted oNNNN only when absent) + never-renumbering #N / #Gk badge map (dead badges dropped, gap preserved).
+- scene.py resolve_label_refs: parses "#43", "#1 and #3", "#6 through #10", "#G2" (groups expand to members) into uid list.
+- annotation.py: pure-stdlib camera projection (look-at + perspective) project_world_to_screen + compute_label_layout; draw_label_overlay gated on optional Pillow (harvest extra).
+- server.py octane_annotate_preview: loads manifest, projects labels, draws onto rendered PNG; returns layout even if Pillow missing.
+
+### Signals / evidence
+- KEY PRECEDENT: "increase the resolution of #1" is NOT ambiguous -> object scope -> mesh tessellation. Only unscoped "increase resolution" is ambiguous (default render + confirm).
+- Node names stay Hermes::scene::<id> (uid seeded from id) to keep find_item_by_name + swap_geometry stable-node contract intact.
+
+### Follow-ups
+- Phase 3: grouping + mesh modifiers (resolution->mesh routes to swap_geometry with a subdivided OBJ).
+- Phase 4: object keyframe animation (extend animation.py with ObjectKeyframe + easing; new Lua op to set transform per frame).
+- NL intent layer over resolver + ref parser (last, sugar only).
