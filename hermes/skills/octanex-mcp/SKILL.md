@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.8.1
+version: 1.8.2
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -59,7 +59,7 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
    venv's broken `pydantic_core` and crash with `RuntimeError: mcp package is not installed`. Under a clean
    env the project `.venv` (mcp 1.26.0) imports fine.
 
-   Completion: `hermes mcp list` shows `octanex` (✓ enabled, 38/38 tools) and `hermes mcp test octanex`
+   Completion: `hermes mcp list` shows `octanex` (✓ enabled, 48 tools) and `hermes mcp test octanex`
    enumerates the tools. Start a new Hermes session to use them.
 
    (Equivalent hand-edited config block, if the guardrail ever allowed it:
