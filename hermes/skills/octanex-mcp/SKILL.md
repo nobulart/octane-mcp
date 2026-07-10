@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.8.1
+version: 1.9.4
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -75,15 +75,13 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
 
    > **If the Script menu is absent**, do NOT assume the preference is wrong first — without the Accessibility grant below you cannot even *inspect* the menu (every probe returns `-1719`), so the menu looks missing. Fix the permission, then re-check.
 
-4. **macOS Accessibility for the process that runs `osascript` (launch prerequisite — the #1 fresh-setup blocker).** The bridge is launched by UI-scripting Octane X's Script menu via `osascript`, which the OctaneX MCP **server** spawns. macOS evaluates the Accessibility (TCC) entitlement on the *process whose descendant runs `osascript`* — for this project that is the **Hermes agent runtime**, NOT `Hermes.app` the GUI:
+4. **macOS Accessibility (TCC) — the #1 launch blocker, VERIFIED 2026-07-10.** The bridge is launched by UI-scripting Octane X's Script menu via `osascript`, which the OctaneX MCP **server** spawns. The RELIABLE fix (proven end-to-end this session) is:
 
-   - Process tree: the `octanex-mcp` server (`…/octanex-mcp/.venv/bin/python3`) is a child of `uv run` → `/Users/craig/.hermes/hermes-agent/venv/bin/python` (PID 924, the Hermes **agent runtime**). `Hermes.app` (the desktop GUI) is a *separate* process and is NOT in this chain.
-   - **Grant Accessibility to `/Users/craig/.hermes/hermes-agent/venv/bin/python`** (the agent runtime binary), not `Hermes.app`. Adding `Hermes.app` alone will NOT clear `-1719` because the osascript caller is the runtime python.
-   - If the binary is awkward to select in the TCC UI, grant Accessibility to the **Terminal** app you launch Hermes from as a fallback, or to the parent `uv`/shell — TCC walks up to the nearest granted ancestor of the osascript caller.
-   - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` must return the menu list (incl. `"Script"`) instead of `-1719`.
-   - On `-1719` the bridge now returns `tcc_blocked: true` with the exact fix instead of the old misleading `"script not found"` `-2700`.
-
-   > **CORRECTED 2026-07-09 (this session):** the previously-documented target `Hermes.app` is wrong for this deployment — the MCP server runs under the agent-runtime python, so that binary (or its shell/terminal ancestor) must be granted Accessibility. A live `-1719` against a supposedly-granted `Hermes.app` is the tell.
+   - **Grant Accessibility to `Hermes.app`** — `/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app` — then **fully quit and relaunch Hermes** (not just the MCP server). TCC evaluates the entitlement on the *nearest granted ancestor* of the `osascript` caller; Hermes.app is the signed root of the whole process tree (Hermes.app → `mcp_stdio_watchdog` → `uv run octanex-mcp` → `octanex-mcp` server → `osascript`), so granting it covers every child via the ancestor walk.
+   - **Why NOT the python binaries:** the server runs under `uv`-managed python (`/Users/craig/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/bin/python3.12`, and the hermes-agent venv `cpython-3.11.15…`). Granting these directly was tested and **did NOT clear `-1719`** — unsigned/ad-hoc-signed binaries are unreliable TCC targets on this macOS. The earlier "grant the agent-runtime python, NOT Hermes.app" guidance (2026-07-09) is **RETRACTED**: it was wrong, and following it left the bridge permanently TCC-denied.
+   - **Full relaunch is mandatory.** TCC re-evaluates the entitlement per process launch. A long-running Hermes/MCP process spawned *before* the grant keeps its old (denied) token until it restarts. Grant → quit Hermes entirely → reopen. (A plain `/reload-mcp` is not enough; the app process itself must restart.)
+   - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` must return the menu list (incl. `"Script"`) instead of `-1719`. Also `osascript -e 'tell application "System Events" to return count of menu bar items of menu bar 1 of process "Octane X"'` must return a number (e.g. `7`), not `-1719`.
+   - On `-1719` the bridge returns `tcc_blocked: true` with the exact fix instead of the old misleading `"script not found"` `-2700`.
 
 ## Standard Agent Loop
 
@@ -166,9 +164,9 @@ Do not use this skill for arbitrary Lua execution. The bridge is intentionally a
    | Symptom / code | Class | Action |
    |---|---|---|
    | `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry **once**; if it persists, restart Octane. |
-   | `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`). Fallback: the shell/terminal that launches Hermes. |
+   | `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to **`Hermes.app`** (`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`), then **fully quit + relaunch Hermes**. Do NOT grant the `uv` python binaries — they are unreliable TCC targets and will NOT clear `-1719` (RETRACTED 2026-07-09 guidance). |
    | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
-   | `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Scripts-menu click path instead. |
+   | `-2741` expected end of line | `wrong_trigger` | Historically caused by `run script file` on Lua. **Also** caused (2026-07-10) by a real AppleScript **syntax bug** in the generated launcher: `if (exists process "Octane X")` written at the *top level* (outside `tell application "System Events"`) — that is a compile error on this Octane build. **FIXED in `src/octanex_mcp/bridge_control.py`** (`render_launch_and_run_applescript` now wraps the probe in `tell application "System Events"` and adds an activate+settle before probing the menu bar, absorbing transient `-1728`). If you still see `-2741`, the running server has stale code — restart Hermes so it reloads the fixed module. |
    | `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
 
    The bridge launch now also **waits for Octane X's menu bar to become UI-ready**
@@ -510,48 +508,40 @@ session, then drain.
 > idle-detection fix) are captured in
 > `references/wp4-create-light-and-render-start-hang.md`.
 
-## Live-verification gate: macOS TCC / Accessibility for the Hermes agent-runtime python
+## Live-verification gate: macOS TCC / Accessibility (VERIFIED 2026-07-10)
 
 A real Octane render — and therefore any honest `native_octane_verified` flip —
 requires the bridge to actually launch. That launch is gated by macOS
-Accessibility (TCC) on **the process whose descendant runs `osascript`** — for this
-deployment that is the **Hermes agent-runtime python**
-(`/Users/craig/.hermes/hermes-agent/venv/bin/python`), **NOT `Hermes.app`**. If the
-grant is missing or its token is stale, every launch fails with
-`osascript error -1719: assistive access denied`. This is invisible to the code;
-the bridge/queue/`request_render_restart` are all fine — only the OS permission
-stops the click. Granting `Hermes.app` alone does NOT clear the `-1719` because the
-osascript caller is the agent-runtime python, not the desktop GUI. Fallback if the
-binary is awkward to select: grant the shell/terminal that launches Hermes (its
-launchd ancestor in the process tree).
+Accessibility (TCC). **The reliable fix (proven end-to-end 2026-07-10) is to
+grant `Hermes.app` and fully relaunch Hermes** — NOT the `uv` python binaries.
 
-**Traps observed 2026-07-09:**
-- **`run_recipe(..., drain_timeout=N)` HANGS on TCC denial.** `verify_recipes`
-  enqueues AND launches; the launch blocks on the denied `osascript`, so the
-  foreground Python call sits until `drain_timeout` (and may hit the *caller's*
-  own wall first — a 120 s terminal timeout fired before the 45 s drain returned).
-  Never start a live sweep without first confirming TCC is granted.
-- **Reopening Octane X does NOT clear the -1719** — the block is on the process
-  running `osascript` (the agent-runtime python), not Octane.
-- **`bridge_status` can be hours-stale** during a TCC block (launch never ran).
-  Trust the launch response's `tcc_blocked: true` field over cached `status.json`.
+- **Grant `Hermes.app`** (`/Users/craig/.hermes/hermes-agent/apps/desktop/release/mac-arm64/Hermes.app`). `Hermes.app` is the signed root of the process tree that spawns `osascript` (Hermes.app → `mcp_stdio_watchdog` → `uv run octanex-mcp` → `octanex-mcp` server → `osascript`), so TCC's ancestor walk covers every child.
+- **Do NOT grant the python binaries.** The server runs under `uv`-managed python (`cpython-3.12.12…` / hermes-agent `cpython-3.11.15…`). Granting these directly was tested 2026-07-10 and **did NOT clear `-1719`** — unsigned/ad-hoc-signed binaries are unreliable TCC targets. The 2026-07-09 "grant the agent-runtime python, NOT Hermes.app" guidance is **RETRACTED**.
+- **Full Hermes relaunch is mandatory.** TCC re-evaluates per process launch; a process spawned before the grant keeps its denied token. Grant → quit Hermes entirely → reopen. `/reload-mcp` alone is insufficient.
+- If the grant is missing or stale, every launch fails with `osascript error -1719: assistive access denied`. The bridge/queue/`request_render_restart` are fine — only the OS permission stops the click.
+
+**Traps (still valid):**
+- **`run_recipe(..., drain_timeout=N)` HANGS on TCC denial.** Never start a live sweep without first confirming TCC is green.
+- **`bridge_status` can be hours-stale** during a TCC block (launch never ran). Trust the launch response's `tcc_blocked: true` field over cached `status.json`.
 
 **Fix (user action — agent cannot grant):** System Settings → Privacy & Security →
-Accessibility → grant `/Users/craig/.hermes/hermes-agent/venv/bin/python`
-(re-add + enable refreshes a stale token if needed), then restart Hermes + Octane.
-Confirm with a dry `octane_run_oneshot_bridge` → expect `ok: true`, not
-`tcc_blocked`.
+Accessibility → grant `Hermes.app` (re-add + enable refreshes a stale token),
+then **fully quit and relaunch Hermes**. Confirm with a dry
+`octane_run_oneshot_bridge` → expect `ok: true` with `stdout: "clicked … via Script"`, not `tcc_blocked`.
 
-Only after a green launch should you enqueue a recipe, run the oneshot bridge, and
-gate the `native_octane_verified` flip on a real pixel-QA pass. Condensed
+Only after a green launch should you enqueue a recipe, run the oneshot bridge,
+and gate the `native_octane_verified` flip on a real pixel-QA pass. Condensed
 diagnostic + recovery: `references/live-verify-tcc-gate.md`.
 
-**Proven end-to-end path:** a crash-proof bridge (`request_render_restart` wrapped
-in one pcall, `do_start` deferred to `save_preview`) plus the agent-runtime python
-TCC grant. A full `data-bars` run then drained 8/8 commands (0 failed),
-`octane.render.start{renderTargetNode=rt}` returned `ok=true`, and `save_preview`
-completed with a real multi-bar frame confirmed by vision. Full sequence +
-gotchas: `references/data-bars-verified-and-pitfalls.md`.
+**Proven end-to-end path (2026-07-10):** the `-2741` AppleScript syntax bug
+**fixed in `src/octanex_mcp/bridge_control.py`** (top-level `exists process`
+wrapped in `tell application "System Events"`; activate+settle before menu
+probe absorbs transient `-1728`) **plus the `Hermes.app` TCC grant + full
+Hermes relaunch**. With both in place, `octane_run_oneshot_bridge` autonomously
+clicks the bridge, drains the entire queue, and `save_preview` writes a real
+frame (verified: a 17-command photoreal butterfly scene rendered end-to-end with
+zero manual clicks, surviving an OOM crash + recovery). Condensed recovery:
+`references/butterfly-session-recovery.md`.
 
 ## Agentic Canvas Dashboard (thin native client)
 
