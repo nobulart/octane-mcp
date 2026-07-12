@@ -42,7 +42,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ## 3DXM Minimal-Surface Gallery Pass (WP9 visualisation)
 
-- **Outcome:** success (gyroid verified; pipeline + palette established for remaining 36)
+- **Outcome:** success (gyroid #1 + neovius #2 verified; pipeline + palette established for remaining 35)
 - **Recorded:** 2026-07-13
 - **Context:** Visualise the 37 surfaces of the 3DXM Virtual Math Museum gallery in OctaneX, one at a time, awaiting review after each. Surfaces with closed-form implicit equations are meshed directly; others need parametric/Weierstrass embedding later.
 
@@ -72,6 +72,28 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Non-implicit surfaces (Enneper, Costa, Kusner, Catenoid, Scherk, etc.) need parametric UV meshes or Weierstrass embedding — not yet implemented.
 - A background monitor PID (`/tmp/monitor_render.py`) can watch the preview PNG while the long render runs, so prep for the next surface proceeds in parallel. Still stop and await user review before queuing the next surface.
 - Reset between surfaces with `File > New` (warm reset), NOT a full Octane relaunch (relaunch purges the scene and can leave `save_preview` polling stalled).
+
+## Surface #1 — Gyroid (single manifold, correct equation)
+
+- **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
+- **Recorded:** 2026-07-13
+- **Context:** First surface in the 3DXM gallery pass. Established the implicit-surface pipeline: mesh → single-material OBJ → queue → one-shot bridge → ~5000 SPP render → viewport capture.
+
+### Steps
+- Mesh via `scripts/gen_implicit_surface.py gyroid gyroid 132 2.5 1` (periods=1 → ONE fundamental domain).
+- Equation (verified against Wikipedia/Wolfram): `sin x cos y + sin y cos z + sin z cos x = 0`.
+- Keep ONLY the largest connected component (single manifold). Mesh: 84,354 verts / 166,368 faces, **1 connected component**.
+- Material: blue `[0.12, 0.45, 0.92]` (one solid glossy colour, per-surface palette).
+- Camera auto-framed from OBJ bounds (centre 0, radius 2.5). NOTE: the live viewport may show an unfamiliar form until the ~5000 SPP render converges AND the view is oriented — an intermediate/rotated low-SPP frame can look like a wrong surface (e.g. a "flower/starfish"); wait for convergence and orient before judging.
+- Capture the 1280×1280 render box from the Octane window (display 2, upper-left): `screencapture -R <live window bounds>` then crop the bright render region.
+
+### Signals / evidence
+- Local qwen2.5vl + native vision both confirm: correct gyroid twisting labyrinth, single connected manifold, no straight lines, triply-periodic symmetry.
+- User visual approval: "your new one looks correct."
+
+### Follow-ups
+- Same per-surface lessons as Neovius (see below) apply. Gyroid is the reference pipeline for all remaining implicit surfaces.
+- Promote this exact OBJ + preview into `examples/recipes/gyroid/` (done: `neovius.obj`/`octane-preview.png` precedent).
 
 ## Surface #2 — Neovius (single manifold, correct equation)
 
