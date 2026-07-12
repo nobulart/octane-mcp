@@ -1229,3 +1229,10 @@ geometry, the launcher `-2741` bug, and TCC.
 - Do NOT treat the post-save RT re-activation as a queue-duplication bug. If a *genuine* double write is suspected, count `save attempt saveImage` lines in `bridge.log` — there should be exactly one per drain.
 - If the post-save restart is undesirable (engine churn between recipes), it is a candidate for removal in `hermes_bridge_oneshot_v2.lua`; confirm with the user before editing the bridge template.
 
+
+## Surface (autonomous) — schwarz_p
+
+- **Outcome:** success (autonomous sequential run, 2026-07-13)
+- **Equation:** cos x + cos y + cos z = 0
+- **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_p schwarz_p 132 2.5 1`
+- **VLM check:** YES. The image appears to correctly represent a single-connected manifold with the correct topology and symmetry of the Schwarz P surface as depicted in the canonical reference.
