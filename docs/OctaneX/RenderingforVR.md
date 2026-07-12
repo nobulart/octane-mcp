@@ -1,0 +1,27 @@
+Once OctaneRender® is up and running, you can start viewing the provided samples. For a more immersive experience, use the Samsung Gear [VR](javascript:void(0);) Innovator Edition head-mounted display (HMD) with the Oculus 360 Photos and Oculus 360 Videos apps, which you can download through the Oculus Store on the Samsung GALAXY Note 4.
+
+Besides the sample images, you can create your own. It is just like rendering a 2D image in OctaneRender as a 360x180 panorama. When you are happy with how your panorama looks, turn on stereo cube map rendering in the Camera node and make sure post processing is off. Finally, select the Gear VR stereo cube map resolution and start rendering.
+
+Here are 10 useful guidelines for rendering scenes for VR headsets:
+
+1.  1.  Turn off Post-Processing - the glare and bloom cross over the cube map edges. It is less necessary than you think, as VR renders are very different than images on a plane. For example, there is no [DOF](javascript:void(0);) or vignetting in VR renders. You are not experiencing this render through a camera lens, but through something much more like the human eye. 
+    2.  Make sure the scene units are in meters in the Geometry Import preferences (figure 1). Inter-Pupillary Distance (IPD) is set in real-world metric units, and scale matters a lot. This is also going to be critical for light-field VR renders in the future.
+
++-----------------------------------+------------------------------------------------+
+| ![](images/NewItem_453.png)       | Setting Scene to Meters                        |
+|                                   |                                                |
+|                                   | ![](images/Rendering_For_VR_Fig01_SE_2023.jpg) |
++-----------------------------------+------------------------------------------------+
+
+Figure 1: Setting Length Unit to Meters
+
+1.  1.  Make sure that objects in the view are at least 10x the stereo offset distance. If your default IPD is 65 - 125 mm (e.g., 125 mm if you want to double the stereo strength), then the nearest object should be 70 cm - 1.5 meters from the camera.
+    2.  Keep the camera upright and the horizon as a straight line in front of the viewer, especially for environment renders (interiors or exteriors). The Keep Upright option in the Panoramic Camera node should be activated so that looking at panoramas through the HMD is as comfortable as possible.
+    3.  Set up your scene using a preview Render Target, with a normal spherical pano camera at low resolution. Preview your scene with a cube map projection with anaglyph stereo rendering or side-by-side stereo rendering to test stereo offset easily (we may support 3D displays if enough users have this). When you are satisfied, you can then create a final quality Render Target for the 18K cube map render that shares the camera position and orientation of the preview one. Make sure that your scene covers all directions. The VR feeling is more realistic if you have something underneath or behind you and you're not just floating in space. If your scene is supposed to be viewed from a regular viewpoint, we recommend placing the camera somewhere between 1.4 - 1.7meters above the ground.
+    4.  Because these renders are so large, it is recommended to use region rendering on noisy areas that show up early in the render. A stereo region render tool might be available in future releases to make sure the region render is added to each eye identically. Currently, this is a manual process, and it is very important not to have one eye have more noise than the other or you get bad stereo speckling.
+    5.  Lighting is important. Part of the VR feeling comes from the fact that the lighting is very realistic. You are also inclined to look at the image and be immersed in it for a longer time than usual. Make sure that lighting is as realistic as possible --- for example, try the Pathtracing or PMC kernels. Also use hot pixel removal to get rid of the very bright fireflies, as fireflies in stereo are distracting. They often show up in one eye and not the other. We used .75 on the Keloid example to remove all fireflies with a 1000 spp render.
+    6.  Play with IPD scale value if you have a macro object that you want to give a bird's-eye view. The space station sample has an IPD of 4 meters to give the effect that you are looking at a miniature. But it also makes all the contours vivid and is a worthwhile way to show off details of a free-floating model suspended in a space or air.
+    7.  Experiment often with subtle tone mapping, lower contrast imager settings, and test multiple tone mapping exports in the VR viewer app as you make WIP tests. You may find harsh tone mapping and contrast that make a 2D image look great, don't work at all with VR. In VR you have bright high-contrast OLED pixels right in front of your eyes and no ambient light that frames the render as you do with an image or video.
+    8.  OctaneRender's specular, glossy, and metallic surfaces can look stunning in VR, especially when you find the sweet spot that gives an awesome sense of 3D realism. Making your VR render take advantage of OctaneRender's specular, glossy, and metallic surfaces is an important tool that sets Octane-rendered VR content apart from rasterized VR or VR photos or videos, which have trouble matching this level of fidelity, especially on mobile.
+
+For more information about OctaneVR, see the dedicated discussion forum at: <http://render.otoy.com/forum/viewforum.php?f=98>

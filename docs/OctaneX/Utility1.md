@@ -1,0 +1,1 @@
+The Utility Output AOV nodes provide two node types for use in the compositing tree. The Switch nodes can be used to design various versions of a compositing tree and have the ability to switch between these various versions. The Layer Group (Pass-Through) node can be used to pass networks of output AOV nodes together up the compositing stack to Output AOV nodes.

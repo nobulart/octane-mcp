@@ -14,7 +14,9 @@ docs/                   command-schema, recipe-book, octane-bridge, roadmap,
                         recipe-library, visual-grammar, visual-iteration-protocol,
                         agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan,
                         benchmark-suite, WIP, coord-protocol, octane-x-no-cli,
-                        octane-lua-api-bridge-review, canvas-implementation-roadmap
+                        octane-lua-api-bridge-review, canvas-implementation-roadmap,
+                        OctaneX/ (offline Markdown mirror of the OT oy Standalone
+                        user manual — 430 pages + images/, local research copy)
 benchmarks/            progressive visualisation benchmark suite (spec/acceptance/harness)
 tests/                  parity + schema + benchmark tests
 ```

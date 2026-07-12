@@ -1,0 +1,9 @@
+The goal of deep image rendering is to improve the compositing workflow by storing Z-depth with samples. It works best in scenarios where traditional compositing fails, like masking out overlapping objects, working with images that have depth-of-field or motion blur, or compositing footage in rendered volumes. Most major compositing applications now support deep image compositing. The disadvantage of deep image rendering is the large amounts of memory required to render and store deep images.
+
+The standard output format is OpenEXR.
+
+ 
+
+### What Is A Deep Image?
+
+Instead of having single rGBA values for a pixel, a deep image stores multiple RGBA channel values per pixel together with a front and back Z-depth (Z and ZBack channels, respectively). This tuple (R, G, B, A, Z, ZBack) is called a deep sample. Deep samples come in two flavors: point samples, which have a front depth specified (Z \>= ZBack) and volume samples, which have a front and a back depth (Z \< ZBack). Hard surfaces visible through a pixel are point samples, and visible volumes are volume samples. From these samples, two functions can be calculated: A(Z) and C(Z), representing the alpha and color of the pixel not further away than Z. These two functions are the basis of depth compositing, and allow you to compose footage together at any distance Z instead of just composing image A over image B. These functions are calculated by the compositing application - OctaneRender® just calculates the samples. You can read a more thorough explanation at the fxguide.com article called \"The Art Of Deep Compositing\" (https://www.fxguide.com/?p=48850) along with [\"Interpreting OpenEXR Deep Pixels\"](https://openexr.com/en/latest/InterpretingDeepPixels.md) and [\"Theory of Deep Samples\"](https://openexr.com/en/latest/TheoryDeepPixels.md).
