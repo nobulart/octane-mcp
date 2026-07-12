@@ -1243,3 +1243,10 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Equation:** n/a
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py lidinoid lidinoid 132 2.5 1`
 - **VLM check:** YES. Your render appears to capture the essential characteristics and topology of a lidinoid surface, including its single-connected manifold structure and symmetrical features. However, it may not pe
+
+## Surface (autonomous) — schwarz_p
+
+- **Outcome:** success (autonomous sequential run, 2026-07-13)
+- **Equation:** cos x + cos y + cos z = 0
+- **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_p schwarz_p 132 2.5 1`
+- **VLM check:** YES. The image appears to have the correct topology and symmetry for a Schwarz P surface, which typically exhibits a complex, interconnected structure with multiple arms extending from a central point

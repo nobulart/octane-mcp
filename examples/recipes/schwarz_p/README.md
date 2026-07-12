@@ -5,4 +5,4 @@
 - **Material:** per-surface palette (see docs/recipe-book.md)
 - **Camera:** oblique (60° X, 30° Z)
 - **Render:** 1280×1280, ~5000 SPP
-- **Status:** ✅ rendered (autonomous run 2026-07-13); VLM check: YES. The image appears to correctly represent a single-connected manifold with the correct topology and symmetry of the Schwarz P surface as depicted in the canonical reference.
+- **Status:** ✅ rendered (autonomous run 2026-07-13); VLM check: YES. The image appears to have the correct topology and symmetry for a Schwarz P surface, which typically exhibits a complex, interconnected structure with multiple arms extending from a central point
