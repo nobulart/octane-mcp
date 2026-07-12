@@ -1,9 +1,11 @@
--- Hermes / OctaneX MCP shared command handlers.
+-- Hermes / OctaneX MCP command-handler reference copy.
 -- Each handler accepts a parsed command table and returns (ok, handled, message).
 --
--- These are the *single-source-of-truth* handlers for both the one-shot and
--- persistent bridge bridges. The generated entry-point scripts simply dofile
--- runtime.lua and handlers.lua, then call handle_command(cmd).
+-- IMPORTANT: current generated bridge entrypoints are self-contained and inline
+-- their handler bodies from the *_v2/_v1 template files. `octanex-mcp init` does
+-- NOT splice this file into the generated scripts. Keep this file useful as a
+-- readability/reference mirror, but make behavior changes in BOTH bridge
+-- templates and run tests.test_lua_bridge_parity.
 
 local runtime = require("lib.runtime")
 local handlers = {}

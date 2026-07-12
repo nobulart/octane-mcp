@@ -2,9 +2,10 @@
 -- Self-contained Lua library: file I/O, JSON (uses dofile json.lua or inline decoder),
 -- status/result writing, logging, and queue lifecycle helpers (queue -> processing -> processed|failed).
 --
--- Both one-shot and persistent bridges can require or dofile this file.
--- If Octane cannot reliably require repo-local modules, the init scripts
--- inline the contents; the source-of-truth code lives here.
+-- Current one-shot and persistent generated bridges are self-contained and do
+-- not require/dofile this file at runtime. This file is a readability/reference
+-- mirror only until WP12 single-source generation is implemented; behavior
+-- changes must land in the bridge templates and be regenerated.
 
 local runtime = {}
 
@@ -171,6 +172,7 @@ function runtime.ensure_octane()
 end
 
 function runtime.scene_graph()
+    if not octane then return nil end
     if octane.project and octane.project.getSceneGraph then
         return octane.project.getSceneGraph()
     end

@@ -30,6 +30,7 @@ class LuaBridgeParityTests(unittest.TestCase):
     def test_scene_handler_semantics_match_between_one_shot_and_persistent_bridges(self) -> None:
         for name in [
             "latest_imported_geometry_fallback",
+            "json_encode",
             "handle_import_geometry",
             "handle_create_material",
             "handle_assign_material",
@@ -129,6 +130,42 @@ class LuaBridgeParityTests(unittest.TestCase):
             self.assertIn("pong from payload", valid_result["message"])
             self.assertFalse(bad_result["success"])
             self.assertIn("invalid JSON", bad_result["message"])
+
+    def test_oneshot_scene_harvest_writes_valid_json_result_without_octane(self) -> None:
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua executable not available")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            for name in ["queue", "processing", "processed", "failed", "results", "renders"]:
+                (workspace / name).mkdir(parents=True)
+
+            command = {
+                "schema_version": "1.0",
+                "id": "scene-harvest",
+                "op": "scene_harvest",
+                "payload": {"dry_run": True},
+                "created_at": "2026-01-01T00:00:00Z",
+                "source": "octanex-mcp",
+            }
+            (workspace / "queue" / "scene-harvest.json").write_text(json.dumps(command), encoding="utf-8")
+
+            env = os.environ.copy()
+            env["OCTANEX_MCP_WORKSPACE"] = str(workspace)
+            proc = subprocess.run([lua, str(ONESHOT)], cwd=ROOT, env=env, text=True, capture_output=True, timeout=30)
+
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertTrue((workspace / "processed" / "scene-harvest.json").exists())
+            harvest = json.loads((workspace / "results" / "scene_harvest.json").read_text(encoding="utf-8"))
+            self.assertEqual(harvest["count"], 0)
+            self.assertEqual(harvest["nodes"], [])
+            self.assertTrue(harvest["dry_run"])
+            self.assertIn("timestamp", harvest)
+
+            result = json.loads((workspace / "results" / "scene-harvest.json").read_text(encoding="utf-8"))
+            self.assertTrue(result["success"])
+            self.assertIn("scene harvested: 0 nodes", result["message"])
 
 
 if __name__ == "__main__":

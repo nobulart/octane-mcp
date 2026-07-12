@@ -204,6 +204,41 @@ local function json_escape(s)
     return s
 end
 
+local function json_encode(value)
+    local value_type = type(value)
+    if value_type == "nil" then return "null" end
+    if value_type == "boolean" then return tostring(value) end
+    if value_type == "number" then return tostring(value) end
+    if value_type == "string" then return "\"" .. json_escape(value) .. "\"" end
+    if value_type ~= "table" then return "\"" .. json_escape(tostring(value)) .. "\"" end
+
+    local is_array = true
+    local max_index = 0
+    for k, _ in pairs(value) do
+        if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
+            is_array = false
+            break
+        end
+        if k > max_index then max_index = k end
+    end
+
+    local parts = {}
+    if is_array then
+        for i = 1, max_index do
+            parts[#parts + 1] = json_encode(value[i])
+        end
+        return "[" .. table.concat(parts, ",") .. "]"
+    end
+
+    local keys = {}
+    for k, _ in pairs(value) do keys[#keys + 1] = tostring(k) end
+    table.sort(keys)
+    for _, k in ipairs(keys) do
+        parts[#parts + 1] = "\"" .. json_escape(k) .. "\":" .. json_encode(value[k])
+    end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
 local function write_status(state, extra, stage_info)
     -- stage_info (optional table) carries the dashboard's honest render pipeline
     -- state. Unknown numeric fields are emitted as JSON null (never a fake 0%).
@@ -282,6 +317,7 @@ local function ensure_octane()
 end
 
 local function scene_graph()
+    if not octane then return nil end
     if octane.project and octane.project.getSceneGraph then
         return octane.project.getSceneGraph()
     end
@@ -1041,10 +1077,10 @@ end
 
 local function harvest_scene_graph()
     local graph = scene_graph()
-    if not graph then return {} end
+    if not graph then return { nodes = {}, count = 0, timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") } end
     local items = {}
     local ok, all_items = pcall(function() return graph:getOwnedItems() end)
-    if not ok or not all_items then return {} end
+    if not ok or not all_items then return { nodes = {}, count = 0, timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") } end
     for _, node in ipairs(all_items) do
         local node_data = serialize_node(node)
         node_data.visible = node.isVisible and node:isVisible() or true
@@ -1066,21 +1102,8 @@ end
 local function handle_scene_harvest(cmd)
     local result = harvest_scene_graph()
     local path = RESULTS .. "/scene_harvest.json"
-    write_file(path, json_escape(result) and (tostring(result) or "{}") or "{}")
-    if not cmd or not (cmd.dry_run or cmd.payload and cmd.payload.dry_run) then
-        local raw_result = harvest_scene_graph()
-        local json_out = "{\n"
-        json_out = json_out .. "  \"nodes\": [\n"
-        for i, node in ipairs(raw_result.nodes or {}) do
-            json_out = json_out .. "    {\"name\": \"" .. tostring(node.name or "") .. "\", \"type\": \"" .. tostring(node.type or "unknown") .. "\", \"has_geometry\": " .. tostring(node.has_geometry or false) .. ", \"has_material\": " .. tostring(node.has_material or false) .. ", \"visible\": " .. tostring(node.visible or true) .. "}"
-            if i < #raw_result.nodes then json_out = json_out .. "," end
-            json_out = json_out .. "\n"
-        end
-        json_out = json_out .. "  ],\n"
-        json_out = json_out .. "  \"count\": " .. tostring(raw_result.count or 0) .. "\n"
-        json_out = json_out .. "}"
-        write_file(path, json_out)
-    end
+    result.dry_run = (cmd and (cmd.dry_run or (cmd.payload and cmd.payload.dry_run))) == true
+    write_file(path, json_encode(result) .. "\n")
     return true, "scene harvested: " .. tostring(result.count or 0) .. " nodes"
 end
 

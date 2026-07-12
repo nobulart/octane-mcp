@@ -19,12 +19,12 @@ The current bridge works, but much of its Octane API knowledge is empirical: fal
    - Commit exported corpora under `docs/reference/octane-lua-api/` after live Octane runs, keyed by Octane X build/version.
 
 2. **WP11 — Schema/dispatch/capability parity.**
-   - Add a guard test that compares Python `ALLOWED_OPS`, `PAYLOAD_VALIDATORS`, `command_schema()["operations"]`, MCP queueing tools, and Lua `handle_command` dispatch branches.
-   - Formalize any intentional Lua-only operations, or remove them. Immediate candidate to reconcile: `scene_harvest` is dispatched by Lua and queued by `bridge.py`, but was observed absent from `models.ALLOWED_OPS` during the 2026-07-12 review.
+   - `tests/test_bridge_contract_parity.py` now guards Python `ALLOWED_OPS`, `PAYLOAD_VALIDATORS`, `command_schema()["operations"]`, and Lua `handle_command` dispatch branches across both bridge templates. Intentional generic-ack Lua ops are explicit in the test.
+   - `scene_harvest` was the first found mismatch and is now part of `models.ALLOWED_OPS`, `PAYLOAD_VALIDATORS`, and `command_schema()["operations"]`; it is also explicitly dispatched in both Lua templates and covered by the parity guard.
    - Add `octane_capabilities()` so agents can see active corpus version, known-good save-preview signature, material/light support, and transport readiness before queueing commands.
 
 3. **WP12 — Single-source Lua handler generation.**
-   - Resolve the current ambiguity where `octane_lua/lib/*.lua` are described in places as source-of-truth but the runtime entrypoints still inline handler copies.
+   - Resolve the current implementation gap: `octane_lua/lib/*.lua` are now documented as reference mirrors, while the runtime entrypoints still inline handler copies.
    - Make `octanex-mcp init` generate one-shot/persistent entrypoints from one handler/runtime source, or correct the docs/comments to explicitly say the libs are reference-only.
    - Replace manual byte-identical dual-template edits with generated chunks/source hashes while preserving self-contained `.generated.lua` scripts for Octane X's sandboxed Script menu.
 
@@ -72,7 +72,7 @@ Live-checked 2026-07-10 (autonomous hourly steward, HEAD `7d30b26`). Re-grounded
 
 **Shipped (previously listed under Priority A — do not redo):**
 
-- **WP1 — Shared Lua runtime/handler extraction.** `octane_lua/lib/runtime.lua` and `octane_lua/lib/handlers.lua` exist and are the documented source of truth; the one-shot/persistent entrypoints route through `handle_command`. Note: the entrypoint scripts still *inline* their own handler copies (the parity test enforces byte-identical inline copies), so `lib/handlers.lua` is currently reference-only. Handler edits must be mirrored into both `hermes_bridge_oneshot_v2.lua` and `hermes_bridge_persistent_v1.lua` and kept identical.
+- **WP1 — Shared Lua runtime/handler extraction.** `octane_lua/lib/runtime.lua` and `octane_lua/lib/handlers.lua` exist as readability/reference mirrors, but they are **not** the runtime source of truth today. The one-shot/persistent entrypoints still inline their own handler copies from the bridge templates (the parity test enforces byte-identical inline copies), so handler edits must be mirrored into both `hermes_bridge_oneshot_v2.lua` and `hermes_bridge_persistent_v1.lua` and kept identical until WP12 single-source generation lands.
 - **WP2 — `octane_patch_scene`.** Implemented in `src/octanex_mcp/scene.py` / `bridge.py`.
 - **WP3 — Preview comparison + richer QA.** `compare_previews()` implemented in `src/octanex_mcp/review.py`.
 - **WP5 — Render-review orchestration.** `octane_render_review_loop()` implemented in `src/octanex_mcp/server.py` (+ `bridge.py`/`recipes.py`).
@@ -125,7 +125,7 @@ The repository already has more than the old review baseline:
 
 Important current constraints:
 
-- The shared `lib/runtime.lua`/`lib/handlers.lua` exist as documented source of truth, but the one-shot/persistent entrypoints still *inline* handler copies (parity test enforces byte-identical copies). Lua handler edits must be made in BOTH entrypoints and kept identical, or the parity test fails.
+- The shared `lib/runtime.lua`/`lib/handlers.lua` exist only as readability/reference mirrors today. The one-shot/persistent entrypoints still *inline* handler copies from their templates (parity test enforces byte-identical copies). Lua handler edits must be made in BOTH entrypoints and kept identical, or the parity test fails.
 - Scene manifest v2 is present but not yet rich enough for the full desired grammar: no cones, tubes, arrows, polyline tubes, point clouds, text-label placeholders, timelines, or complete patch grammar.
 - Material/light payloads remain shallow compared with actual Octane material needs — WP4 is the active fix (PBR fields + light ops).
 - Recipe tools can index/load/queue recipes, but recipe promotion into dedicated high-level tools is not complete (WP6).

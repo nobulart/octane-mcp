@@ -89,6 +89,35 @@ class CommandSchemaTests(unittest.TestCase):
 
         self.assertTrue(result.ok, result.errors)
 
+    def test_scene_harvest_is_a_valid_allowlisted_command(self) -> None:
+        command = {
+            "schema_version": SCHEMA_VERSION,
+            "id": "cmd-harvest",
+            "op": "scene_harvest",
+            "payload": {"dry_run": False},
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+
+        result = validate_command(command)
+
+        self.assertTrue(result.ok, result.errors)
+
+    def test_scene_harvest_rejects_non_boolean_dry_run(self) -> None:
+        command = {
+            "schema_version": SCHEMA_VERSION,
+            "id": "cmd-harvest-bad",
+            "op": "scene_harvest",
+            "payload": {"dry_run": "false"},
+            "created_at": "2026-01-01T00:00:00Z",
+            "source": "octanex-mcp",
+        }
+
+        result = validate_command(command)
+
+        self.assertFalse(result.ok)
+        self.assertIn("payload.dry_run.type", {error["code"] for error in result.error_details})
+
     def test_validate_command_rejects_unsafe_paths_colors_and_camera_ranges(self) -> None:
         commands = [
             ("import_geometry", {"path": "../escape.obj"}, "payload.path.unsafe"),

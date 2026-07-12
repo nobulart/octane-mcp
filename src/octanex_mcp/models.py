@@ -43,6 +43,7 @@ ALLOWED_OPS = {
     "pause_render",
     "save_preview",
     "save_scene",
+    "scene_harvest",
     "scene_summary",
     "build_concept",
     "set_object_transform",
@@ -291,6 +292,13 @@ class SceneSummaryPayload(PayloadValidator):
     pass
 
 
+class SceneHarvestPayload(PayloadValidator):
+    def validate(self, payload: Mapping[str, Any], errors: _Collector) -> None:
+        dry_run = payload.get("dry_run")
+        if dry_run is not None and not isinstance(dry_run, bool):
+            errors.error("payload.dry_run.type", "payload.dry_run must be a boolean for scene_harvest", "payload.dry_run")
+
+
 class BuildConceptPayload(PayloadValidator):
     def validate(self, payload: Mapping[str, Any], errors: _Collector) -> None:
         self.require_string(payload, "prompt", errors)
@@ -310,6 +318,7 @@ PAYLOAD_VALIDATORS: dict[str, type[PayloadValidator]] = {
     "pause_render": PayloadValidator,
     "save_preview": SavePreviewPayload,
     "save_scene": PayloadValidator,
+    "scene_harvest": SceneHarvestPayload,
     "scene_summary": SceneSummaryPayload,
     "build_concept": BuildConceptPayload,
 }
@@ -378,6 +387,7 @@ def command_schema() -> dict[str, Any]:
             "pause_render": {"fields": {}},
             "save_preview": {"fields": {"path": {"type": "safe path", "required": False}, "width": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "height": {"type": "number", "min": 1, "max": MAX_RENDER_DIMENSION}, "samples": {"type": "number", "min": 1, "max": 1_000_000}, "min_samples": {"type": "number", "min": 0, "max": 1_000_000}, "timeout_seconds": {"type": "number", "min": 0, "max": 600}}},
             "save_scene": {"fields": {"path": {"type": "safe path", "required": False}}},
+            "scene_harvest": {"fields": {"dry_run": {"type": "boolean", "required": False}}},
             "scene_summary": {"fields": {}},
             "build_concept": {"fields": {"prompt": {"type": "string", "required": True}}},
         },

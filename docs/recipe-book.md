@@ -540,7 +540,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `octane_record_recipe` MCP tool was absent in-session → record inline in `NOTES-*.md` / `docs/recipe-book.md`.
 
 ### Follow-ups
-- Keep `octane-viz` / `octanex-mcp` skills pointing at the current bridge templates + lib (source of truth), regenerate `.generated.lua` after edits, restart Octane to reload.
+- Keep `octane-viz` / `octanex-mcp` skills pointing at the current bridge templates as the behavior source of truth; `octane_lua/lib/*.lua` are reference mirrors until WP12 single-source generation lands. Regenerate `.generated.lua` after template edits, restart Octane to reload.
 - Reproductions: `references/photoreal-math-surface.md` + `references/render-convergence-tiers.md` (bundled octanex-mcp skill); generator `scripts/gen_math_surface.py`.
 
 ## WP4 create_light shipped + render-start hang regression (pitfall)
@@ -692,13 +692,13 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 
 - **Outcome:** success
 - **Recorded:** 2026-07-09 (local)
-- **Context:** Final unverified recipe. Closed by rendering live in Octane X via the 8-step render protocol (launch → reset → flush stale queue → build+queue scene → start renderer → drain → reselect RT → save).
+- **Context:** Final unverified recipe. Closed by rendering live in Octane X via the then-current 8-step render protocol. **2026-07-10 correction:** the "manual reselect RT" interpretation below was later refuted for the current bridge; blank frames from that period were stale-code / queue / scene-geometry issues, not a durable active-RT API limitation.
 
 ### Steps
 - Mirror `scene.obj` into container `assets/recipe_avatar-guide.obj`; rewrite `import_geometry` path to container FS; **drop the `start_render` op** (handler already calls `request_render_restart` → collision).
 - Queue: import + 5 `create_material` (base/navy/cyan/gold/violet) + `set_camera` + `set_lighting` (soft_studio) + `save_preview` → container `renders/recipe_avatar-guide_octane-preview.png`.
 - One-shot bridge drains (queue 9→0); `bridge.log` shows RT activated, `restart() ok=true`, render active.
-- **Critical:** after start, the render did NOT begin until the "Hermes Render Target" node was **manually re-selected in the UI**. `octane.project.setSelection{rt}` (bridge `activate_render_target`) is insufficient on this build — the RT must be made the active render target explicitly.
+- **Historical observation, now refuted for current bridge:** after start, this run appeared to need manual UI re-selection of the "Hermes Render Target" node. Later 2026-07-10 live debugging showed the current generated bridge does activate the RT; if this symptom recurs, first check stale in-memory bridge code, stale queue, and blank/coplanar scene geometry before adding a manual RT step.
 - Re-queue `save_preview` + drain → `saveImage ... ok=true ... exists=true`, PNG written (607 KB).
 
 ### Signals / evidence
@@ -707,15 +707,17 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - `native_octane_verified=true` set in `scene.json`; PNG copied to `examples/recipes/avatar-guide/octane-preview.png`. Genuine library verification is **17/18** (`math-surface` flag reverted — no native PNG on disk; `earth-moon-space` + `helicoid-spiral` still unverified).
 
 ### Follow-ups
-- Bridge fix: make `activate_render_target` actually select the RT as the active render target (e.g. `octane.render.setActiveRenderTarget` / nodegraph select), so the manual UI reselection is unnecessary.
+- Keep this as a historical note only. Do not add a manual RT reselection requirement to the current render protocol unless a fresh live probe proves it; current guidance is to diagnose stale bridge code / queue pollution / scene geometry first.
 - Note: avatar-guide OBJ uses `usemtl` groups but the recipe has no `assign_material` op, so the mesh renders with the RT default material (cool palette) — consistent with the geometric-guide intent; not a defect.
 
 ---
 
-## RT-selection limitation — manual reselect still required (2026-07-09)
+## RT-selection limitation — manual reselect still required (2026-07-09; REFUTED 2026-07-10)
 
-- **Outcome:** pitfall (documented, NOT fixed)
-- **Context:** After the 8-step protocol builds + drains a scene, the render does NOT begin until the "Hermes Render Target" node is **manually re-selected in the Octane UI**. The bridge's `activate_render_target` calls `octane.project.setSelection{rt}` but that only selects the node in the graph — it does NOT make the RT the *active* render target the engine renders to / `saveImage()` reads.
+- **Outcome:** historical pitfall, later refuted for the current generated bridge.
+- **Context:** A 2026-07-09 run appeared to require manually re-selecting the "Hermes Render Target" node in Octane UI. 2026-07-10 follow-up debugging superseded this: the current generated bridge activates the RT; blank frames from that period were traced to stale in-memory bridge code, queue pollution, and scene/camera geometry issues. Preserve the details below as historical diagnostic context, not as current operating procedure.
+
+> **Current rule:** do **not** require a manual RT click for autonomous operation. If a frame is blank, first run the stale-code checklist (`bridge.log` for nil globals), verify a fresh one-shot bridge was loaded, flush stale queue, and pixel-check the scene/camera geometry.
 
 ### Empirical probe (safe, non-wedging)
 - `activate_render_target` now probes 5 setter candidates, each `pcall`-wrapped, non-fatal: `octane.render.setRenderTargetNode`, `octane.project.setRenderTargetNode`, `octane.project.setActiveRenderTarget`, `octane.render.setRenderTarget`, `octane.project.setRenderTarget`.
@@ -723,9 +725,7 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
 - The probe is left in place: if a future Octane build exposes a setter, the bridge will auto-use it and log which one worked — no code change needed.
 
 ### Conclusion
-- This is a **genuine Octane X API limitation**, not a bridge defect we can code around blindly. `octane.render.start{renderTargetNode=rt}` is documented to WEDGE forever, so it is unsafe. The only reliable mechanism to make our RT active is the manual UI reselection.
-- **Protocol impact:** the 8-step render protocol MUST include an explicit manual "re-select the Hermes Render Target node in the UI" step after starting the renderer, before the frame will render. Until Otoy exposes a setter, this remains a required human step.
-- Do NOT claim the RT auto-activates — it does not on this build.
+- **Superseded conclusion:** the manual-RT interpretation is no longer accepted for the current bridge. Do not encode it in new runbooks; use it only as a reminder that stale bridge code can masquerade as an Octane RT limitation.
 
 ### Further test (2026-07-09): delayed re-activation ALSO fails
 - User suggested: after the scene loads, wait ~5s, then re-issue RT-select + render-start (hypothesis: immediate setSelection races Octane's node-graph registration).
@@ -734,7 +734,7 @@ Pixel QA alone cannot catch a wrong-subject render (a grey cylinder passes `non_
   2. Top-level 5s sleep after the queue loop drains (script context alive) — FIRES (`top-level delayed RT re-activation` logged, `activated render target` + `restart ok=true`) BUT the RT is STILL not the active target: the subsequent `save_preview` returns an empty buffer (PNG not rewritten).
 - Decisive user observation: the render fires the instant the RT node is **manually selected in the UI**. So the trigger is the UI *selection event*, which `octane.project.setSelection{rt}` (Lua API) does NOT generate — neither immediately nor after a 5s delay.
 - **Conclusion:** programmatic `setSelection` (immediate or delayed) cannot activate the RT on this build. Only the UI selection event works. The bridge now keeps the top-level delayed kick (harmless; may help on builds where it IS a race), but it is NOT a fix. Real automation requires simulating the UI click (AppleScript/System Events selecting the RT node) to emit the same selection event — a follow-up, not yet implemented.
-- Do NOT claim the RT auto-activates — it does not on this build.
+- **Superseded conclusion:** do not use this paragraph as current guidance; fresh evidence from 2026-07-10 restored the autonomous RT path.
 
 
 
@@ -825,7 +825,7 @@ geometry, the launcher `-2741` bug, and TCC.
   (cyc / surface / wing / body / sb_key / sb_fill / sb_top). Rendered autonomously
   via `octane_run_oneshot_bridge` (one queue of 17 commands → click → drains →
   `save_preview`) after the `-2741` launcher bug was fixed and TCC was granted to
-  `Hermes.app` + full Hermes relaunch. Survived a system OOM crash + recovery and
+  the Hermes agent-runtime python (`/Users/craig/.hermes/hermes-agent/venv/bin/python`) + full Hermes relaunch. Survived a system OOM crash + recovery and
   re-rendered identically.
 - **Generator:** `scripts/gen_butterfly_studio.py` (writes
   `…/OctaneMCP/assets/butterfly_studio.obj`). Smooth wings via Catmull-Rom

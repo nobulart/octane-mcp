@@ -86,9 +86,9 @@ Hermes MCP tool
 | Weakness | Evidence | Impact |
 | --- | --- | --- |
 | Lua API knowledge is not yet first-class | No committed `octane_lua_api.txt` / JSON corpus exists; only exporter scripts are present. | Bridge code must guess constants/pins/functions instead of validating against the active Octane X build. |
-| Handler source-of-truth is confused | `octane_lua/lib/handlers.lua` says generated entrypoints `dofile` shared handlers, but AGENTS.md and current bridge templates state `lib/*.lua` are reference-only and handlers are inline. | Future agents may edit the wrong file and produce no runtime change. |
+| Handler source-of-truth is still split | The stale `octane_lua/lib/handlers.lua` comments have now been corrected to say the lib files are reference mirrors, but one-shot and persistent bridge templates still manually duplicate handler bodies. | Future agents are less likely to edit the wrong file now, but handler edits remain expensive and error-prone until WP12 generates both entrypoints from one source. |
 | One-shot and persistent bridge duplicate large handler bodies | Parity test compares function bodies byte-for-byte across templates. | Better than drift, but still makes edits expensive and error-prone. |
-| Schema includes ops not in Python `ALLOWED_OPS` | Lua has `scene_harvest`; `bridge.py::scene_harvest()` queues it, but `models.ALLOWED_OPS` shown in the inspected file does not include `scene_harvest`. | This class of mismatch causes runtime failures or forces direct queue bypasses. It should be contract-tested automatically. |
+| Schema/dispatch parity still needs a mechanical Lua guard | The review found `scene_harvest` in Lua/`bridge.py` but absent from `models.ALLOWED_OPS`; this has now been reconciled in the typed command model. | The broader class still matters: Python ops, schema operations, MCP queueing helpers, and Lua dispatch branches should be compared automatically so future drift fails tests. |
 | Material/light support is empirical | `handle_create_light()` comments say native light constants are nil on this Octane build and falls back to environment/emissive proxies. | Acceptable fallback, but should be captured as a build capability record, not a hardcoded anecdote. |
 | Render/image-save API signatures are probed ad hoc | `handle_save_preview()` tries `saveImage`, `saveImage2`, `saveImage3`, `saveRenderPass` variants. | Practical, but opaque. A capability registry could select known-good calls for the current build and warn on drift. |
 | Web/offline documentation drift | Skills contain some stale contradictory statements; `docs/roadmap.md` carries both current status and older roadmap sections. | Agents can reintroduce already-fixed bugs. This repo already recognizes this as a functional regression risk. |
@@ -340,7 +340,7 @@ Tasks:
    - `command_schema()["operations"]`
    - MCP tool queueing ops
    - Lua `handle_command` dispatch branches
-2. Add missing ops intentionally or remove unsupported ones. Immediate candidate: formalize `scene_harvest` if it is meant to be supported.
+2. Add missing ops intentionally or remove unsupported ones. The immediate `scene_harvest` mismatch found in this review has been formalized in the typed command model; keep the parity test as the durable guard for the next mismatch.
 3. Add capability-aware warnings when a command is valid but unsupported on the active Octane build.
 
 Acceptance criteria:
@@ -416,9 +416,9 @@ Acceptance criteria:
 
 ## Immediate high-value fixes discovered during this review
 
-1. **Resolve `scene_harvest` contract mismatch.** The Lua bridge dispatches `scene_harvest`, and `bridge.py::scene_harvest()` queues it, but inspected `models.ALLOWED_OPS` did not include it. Add it with a payload validator, or change `scene_harvest()` to use a supported path. This should be covered by a dispatch/schema parity test.
+1. **Resolved during follow-up: `scene_harvest` contract mismatch.** The Lua bridge dispatches `scene_harvest`, and `bridge.py::scene_harvest()` queues it; the typed model now includes it with a `dry_run` boolean validator and schema entry. `tests/test_bridge_contract_parity.py` now parses both Lua bridge templates and compares their dispatch sets against the Python command contract, with intentional generic-ack ops listed explicitly.
 
-2. **Correct `octane_lua/lib/handlers.lua` comments or generation behavior.** The file claims it is the source of truth and that generated entrypoints `dofile` it. Current project rules say handler copies are inline and `lib/*.lua` are reference-only. This is exactly the kind of stale bridge documentation that causes agents to patch the wrong file.
+2. **Resolved during follow-up: correct `octane_lua/lib/*.lua` comments.** The files now explicitly say they are readability/reference mirrors only; behavior changes still belong in BOTH bridge templates until WP12 single-source generation lands.
 
 3. **Promote `export_api_docs_v2.lua` to a real artifact pipeline.** It already knows about `octane.help`; it just needs structured output, versioning, and ingestion.
 
