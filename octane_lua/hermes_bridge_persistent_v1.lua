@@ -414,6 +414,36 @@ local function delete_items_by_name(name, keep_first)
     return deleted
 end
 
+local function create_node(type_id, name, position)
+    if not type_id then return nil, "missing node type for " .. tostring(name) end
+    -- FIX (2026-07-12): target the MAIN scene graph explicitly via
+    -- graphOwner=octane.project.getSceneGraph() (or nodegraph.getRootGraph()).
+    -- Without this, octane.node.create lands nodes in the SCRIPT-local
+    -- graph: they render (RT references them) but are NOT visible/editable
+    -- in Octane's main outliner, so manual env/light edits in the UI
+    -- hit a different graph and the scene looks like "only the RT node".
+    -- The API export (octane_lua_api.txt line ~638) confirms node.create
+    -- accepts a graphOwner field.
+    -- NOTE: defined BEFORE ensure_canonical so the local is in scope
+    -- at the call site (Lua local-forward-reference would be nil).
+    local g = nil
+    pcall(function()
+        if octane.project and octane.project.getSceneGraph then g = octane.project.getSceneGraph() end
+    end)
+    if not g then pcall(function()
+        if octane.nodegraph and octane.nodegraph.getRootGraph then g = octane.nodegraph.getRootGraph() end
+    end) end
+    local ok, node_or_err = pcall(function()
+        if g then
+            return octane.node.create{ type=type_id, name=name, position=position or {500, 500}, graphOwner=g }
+        else
+            return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
+        end
+    end)
+    if ok then return node_or_err, nil end
+    return nil, tostring(node_or_err)
+end
+
 -- Ensure exactly one canonical node of (type, name): delete duplicate orphans,
 -- reuse the first if present, else create it. Then run setup(node). Returns the
 -- canonical node (or nil).
@@ -430,15 +460,6 @@ local function ensure_canonical(type_id, name, position, setup)
         if not ok then append_log("ensure_canonical setup failed " .. tostring(name) .. " err=" .. tostring(em)) end
     end
     return node
-end
-
-local function create_node(type_id, name, position)
-    if not type_id then return nil, "missing node type for " .. tostring(name) end
-    local ok, node_or_err = pcall(function()
-        return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
-    end)
-    if ok then return node_or_err, nil end
-    return nil, tostring(node_or_err)
 end
 
 local function set_pin_value(node, pin, value)
