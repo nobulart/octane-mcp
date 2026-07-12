@@ -896,21 +896,30 @@ local function handle_create_light(cmd)
         append_log("post-light render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
         return true, "created environment light " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
     end
-    -- emissive-material proxy for all other light types
+    -- emissive-material proxy: build a small sphere/box mesh at cmd.position
+    -- (default above the scene) with an emissive material, so it actually
+    -- emits light into the scene (a material-only node is an orphan with no
+    -- geometry to glow from). Native NT_LIGHT_* node types are nil on this
+    -- build, so this is the only scriptable local-light path.
     local existing = find_item_by_name(name)
     if existing then return true, "light/material exists " .. tostring(name) end
-    local mat, err = create_node(octane.NT_MAT_EMISSIVE or octane.NT_MAT_DIFFUSE, name, {760, 500})
-    if not mat then return false, "create light material failed: " .. tostring(err) end
-    local function setdef(pin, val)
-        if val ~= nil then
-            local okp, w = pcall(set_pin_value, mat, pin, val)
-            if not okp then append_log("light pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
-        end
+    local pos = cmd.position or {0, 8, 6}
+    local geo_type = octane.NT_GEO_SPHERE or octane.NT_GEO_BOX or octane.NT_GEO_PLANE
+    if not geo_type then
+        return true, "no primitive geometry node type available for light proxy"
     end
+    local mesh, merr = create_node(geo_type, name, {760, 500})
+    if not mesh then return false, "create light mesh failed: " .. tostring(merr) end
+    -- shrink the proxy so it reads as a light, not a boulder
+    pcall(function() set_pin_value(mesh, octane.P_SCALE or "scale", {1.2, 1.2, 1.2}) end)
+    pcall(function() set_pin_value(mesh, "position", pos) end)
+    local mat, err = create_node(octane.NT_MAT_EMISSIVE or octane.NT_MAT_DIFFUSE, name .. "_mat", {820, 500})
+    if not mat then return false, "create light material failed: " .. tostring(err) end
     local rgb = cmd.color or {1.0, 0.95, 0.85}
-    setdef(octane.P_EMISSION or "emission", {rgb[1] or 1, rgb[2] or 1, rgb[3] or 1})
-    setdef(octane.P_POWER or "power", intensity)
-    return true, "created emissive light proxy " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
+    pcall(set_pin_value, mat, octane.P_EMISSION or "emission", {rgb[1] or 1, rgb[2] or 1, rgb[3] or 1})
+    pcall(set_pin_value, mat, octane.P_POWER or "power", intensity)
+    connect_to(mesh, octane.P_MATERIAL or "material", mat)
+    return true, "created emissive light proxy " .. tostring(name) .. " (" .. tostring(light_type) .. ") at " .. tostring(pos[1]) .. "," .. tostring(pos[2]) .. "," .. tostring(pos[3])
 end
 
 local function handle_assign_material(cmd)
@@ -979,30 +988,21 @@ local function handle_set_lighting(cmd)
     activate_render_target(rt)
     local preset = cmd.preset or "default"
     if preset == "dark_studio" then
-        -- True dark studio: Octane X on this build does NOT expose
-        -- NT_ENV_TEXTURE / NT_TEX_RGB, so we cannot build a solid-color
-        -- texture env. Instead we use the DAYLIGHT env that DOES exist and
-        -- force it dark by best-effort setting every candidate dark pin
-        -- (sky/sun/horizon color + intensities). Valid pins apply; unknown
-        -- ones are silently ignored via pcall, so this is robust across
-        -- Octane builds. The result is a near-black environment, not a sky.
-        local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
-        if not env_type then return true, "no known environment node type constant" end
-        local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
+        -- True dark studio (VERIFIED 2026-07-12): build an NT_ENV_TEXTURE
+        -- fed by a near-black NT_TEX_RGB. Both node types exist + are
+        -- creatable on this build (probe DARK_ENV.built=true). This gives
+        -- a real dark background (no blue daylight sky) and replaces the
+        -- earlier no-op daylight-env darkening (env attrs are opaque:
+        -- getAttributeCount()==1, no settable sun/sky pins).
+        -- Native NT_LIGHT_* node types are nil on this build, so local
+        -- illumination comes from emissive-material proxies (see
+        -- handle_create_light), positioned at the subject.
+        local tex = create_node(octane.NT_TEX_RGB, "Hermes Dark Color", {200, 700})
+        if not tex then return false, "dark studio color texture failed" end
+        set_pin_value(tex, octane.P_COLOR or "color", {0.015, 0.015, 0.02})
+        local env = create_node(octane.NT_ENV_TEXTURE, "Hermes Environment", {300, 680})
         if not env then return false, "dark studio environment create failed" end
-        -- Best-effort dark. NOTE (2026-07-12): this Octane X build's
-        -- Lua API does NOT expose env attribute constants (octane.A_* are
-        -- nil) nor enumerable attributes (getAttributeCount() errors /
-        -- returns 0). The bridge CANNOT darken the daylight sky
-        -- programmatically. The reliable dark-studio path is to set the
-        -- environment's sky/sun/intensity in Octane X's UI (or use an
-        -- HDR/texture env) once. These attempts are no-ops on this
-        -- build but harmless and document intent.
-        local dark_color = {0.015, 0.015, 0.02}
-        for _, pin in ipairs({"skyColor", "sunColor", "horizonColor", "sunsetColor", "sunIntensity", "daylightIntensity", "intensity"}) do
-            pcall(function() env:setAttribute(pin, dark_color, true) end)
-        end
-        pcall(function() env:setAttribute("intensity", 0.08, true) end)
+        connect_to(env, octane.P_TEXTURE or "texture", tex)
         connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-lighting(dark_studio) render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -1173,6 +1173,88 @@ local function handle_scene_harvest(cmd)
     return true, "scene harvested: " .. tostring(result.count or 0) .. " nodes"
 end
 
+local function handle_probe_types(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local out = {}
+    local function test(t)
+        local exists = (octane[t] ~= nil)
+        local created, cerr = nil, "not tried"
+        if exists then
+            created, cerr = create_node(octane[t], "probe_" .. t, {500, 500})
+        end
+        out[t] = string.format("exists=%s created=%s err=%s", tostring(exists), tostring(created ~= nil), tostring(cerr))
+    end
+    test("NT_LIGHT_AREA")
+    test("NT_LIGHT_SUN")
+    test("NT_LIGHT_DAYLIGHT")
+    test("NT_ENV_DAYLIGHT")
+    test("NT_ENV_TEXTURE")
+    test("NT_TEX_RGB")
+    test("NT_ENV_THIN")
+    test("NT_GEO_SPHERE")
+    test("NT_GEO_BOX")
+    test("NT_GEO_PLANE")
+    -- Enumerate daylight env node's real attribute pin names so we can
+    -- bind sun/sky intensity for a true dark studio.
+    local env_probe = {}
+    pcall(function()
+        local env = octane.node.create{ type=octane.NT_ENV_DAYLIGHT, name="probe_env_attrs", graphOwner=octane.project.getSceneGraph() }
+        if env then
+            local n = 0
+            pcall(function() n = env:getAttributeCount() end)
+            for i = 0, (n > 0 and n - 1 or 0) do
+                local info = nil
+                pcall(function() info = env:getAttributeInfo(i) end)
+                if info and info.name then
+                    env_probe[info.name] = info.type or "?"
+                end
+            end
+            env_probe["_attrCount"] = n
+        end
+    end)
+    out["ENV_ATTRS"] = env_probe
+    -- Test dark environment via NT_ENV_TEXTURE + NT_TEX_RGB (both exist).
+    local dark = {}
+    pcall(function()
+        local tex = octane.node.create{ type=octane.NT_TEX_RGB, name="probe_dark_tex", graphOwner=octane.project.getSceneGraph() }
+        if tex then
+            set_pin_value(tex, octane.P_COLOR or "color", {0.02, 0.02, 0.03})
+            local envt = octane.node.create{ type=octane.NT_ENV_TEXTURE, name="probe_dark_env", graphOwner=octane.project.getSceneGraph() }
+            if envt then
+                connect_to(envt, octane.P_TEXTURE or "texture", tex)
+                dark["built"] = true
+                dark["tex_node"] = tostring(tex)
+                dark["env_node"] = tostring(envt)
+            else
+                dark["built"] = false
+                dark["env_err"] = "NT_ENV_TEXTURE create failed"
+            end
+        else
+            dark["built"] = false
+            dark["tex_err"] = "NT_TEX_RGB create failed"
+        end
+    end)
+    out["DARK_ENV"] = dark
+    -- Test scene reset API.
+    local reset = {}
+    pcall(function()
+        if octane.project and octane.project.newScene then
+            reset["newScene"] = "exists"
+        else
+            reset["newScene"] = "nil"
+        end
+        if octane.nodegraph and octane.nodegraph.getRootGraph then
+            reset["getRootGraph"] = "exists"
+        else
+            reset["getRootGraph"] = "nil"
+        end
+    end)
+    out["RESET"] = reset
+    append_log("PROBE_TYPES " .. json_encode(out))
+    return true, "probe logged"
+end
+
 local function handle_command(cmd)
     append_log("persistent command " .. tostring(cmd.id) .. " op=" .. tostring(cmd.op))
     if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
@@ -1186,6 +1268,7 @@ local function handle_command(cmd)
     if cmd.op == "start_render" then return handle_start_render(cmd) end
     if cmd.op == "save_preview" then return handle_save_preview(cmd) end
     if cmd.op == "scene_harvest" then return handle_scene_harvest(cmd) end
+    if cmd.op == "probe_types" then return handle_probe_types(cmd) end
     return true, "acknowledged " .. tostring(cmd.op)
 end
 
