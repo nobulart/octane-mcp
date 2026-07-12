@@ -1286,35 +1286,17 @@ local function start_timer()
         append_log("persistent timer API unavailable; manual button only")
         return false
     end
-    local attempts = {
-        function() return octane.timer.create{ interval=1.0, callback=timer_tick } end,
-        function() return octane.timer.create{ time=1.0, callback=timer_tick } end,
-        function() return octane.timer.create(1.0, timer_tick) end,
-        function() return octane.timer.create(timer_tick) end,
-    }
-    for i, fn in ipairs(attempts) do
-        local ok, timer_or_err = pcall(fn)
-        if ok and timer_or_err then
-            bridge_timer = timer_or_err
-            local started = false
-            local ok_start = pcall(function() bridge_timer:start() end)
-            if ok_start then started = true end
-            if not started then ok_start = pcall(function() octane.timer.start(bridge_timer) end); if ok_start then started = true end end
-            if started then
-                append_log("persistent timer started attempt=" .. tostring(i))
-                return true
-            end
-            -- Octane X's timer.create(interval, callback) returns a timer object
-            -- that can still fire during showWindow() even when explicit
-            -- timer:start()/octane.timer.start(timer) reject the object. Treat a
-            -- successful create as active; the runtime log confirms ticks by
-            -- subsequent command processing.
-            append_log("persistent timer created attempt=" .. tostring(i) .. "; explicit start unavailable, assuming active during showWindow")
-            return true
-        else
-            append_log("timer create attempt " .. tostring(i) .. " failed: " .. tostring(timer_or_err))
-        end
+    -- Octane X build (2026-07-12): octane.timer.create takes
+    -- POSITIONAL (interval:number, callback:function). Table-form
+    -- calls (create{interval=..,callback=..}) error with
+    -- "bad argument #1 to 'create' (number expected, got table)".
+    local ok, timer_or_err = pcall(function() return octane.timer.create(1.0, timer_tick) end)
+    if ok and timer_or_err then
+        bridge_timer = timer_or_err
+        append_log("persistent timer created (interval=1.0, callback=timer_tick)")
+        return true
     end
+    append_log("persistent timer create failed: " .. tostring(timer_or_err))
     append_log("persistent timer not started; manual button only")
     return false
 end
