@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.7
+|version: 1.9.8
 |author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -168,6 +168,17 @@ op generalizes to animating materials/lights/cameras/scene state later.
    - **Full relaunch is mandatory.** TCC re-evaluates the entitlement per process launch. A long-running Hermes/MCP process spawned *before* the grant keeps its old (denied) token until it restarts. Grant → quit Hermes entirely → reopen. (A plain `/reload-mcp` is not enough; the app process itself must restart.)
    - Verify: `osascript -e 'tell application "System Events" to tell process "Octane X" to get name of every menu bar item'` must return the menu list (incl. `"Script"`) instead of `-1719`. Also `osascript -e 'tell application "System Events" to return count of menu bar items of menu bar 1 of process "Octane X"'` must return a number (e.g. `7`), not `-1719`.
    - On `-1719` the bridge returns `tcc_blocked: true` with the exact fix instead of the old misleading `"script not found"` `-2700`.
+
+## Octane X has NO command-line Lua entry point
+
+Do **not** attempt `open -a "Octane X" --args <script.lua>` or any `octane://` URL / `.lua` double-click launch — **none of these work**, and this is a product boundary, not a bug to work around. Verified by inspecting the installed app (2026-07-12, see `docs/octane-x-no-cli.md`):
+
+- The main `Octane X` binary has **zero** references to script execution, `argv` parsing, `no-gui`, or URL/Apple-Event handlers. It is a pure Cocoa/Metal GUI app.
+- `Info.plist` registers **no** URL scheme and **no** document-type handlers.
+- The Lua engine exists only inside `octanesdk.framework` (`LuaScriptingComponent::runScript`), but the app's `main()` never wires `argv` → `runScript`.
+- The `--no-gui -s script.lua` invocation seen in OTOY docs is for **OctaneRender Standalone** (Linux/Windows) — there is **no Mac CLI standalone**.
+
+Consequence: the Scripts-menu / `osascript` path used here is the *only* supported way to run Lua in Octane X on macOS. A real GUI session is mandatory; there is no headless/CI path. If you find yourself wanting a CLI, the realistic options are OctaneRender Standalone on Linux/Windows, Render Network dispatch, or staying on the Scripts-menu path.
 
 ## Standard Agent Loop
 

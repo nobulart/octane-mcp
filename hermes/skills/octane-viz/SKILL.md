@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.3.1
+version: 1.3.2
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -23,6 +23,10 @@ metadata:
 Detect prompts that start with `Visualise` (case-insensitive).
 
 The skill is triggered when the prompt prefix matches "Visualise" (accepting "Visualize" as a variant). On trigger, the default action is to produce a **real OctaneX render** via the octanex-mcp project and return the PNG preview inline in the chat.
+
+## Octane X has NO command-line Lua entry point
+
+Never try to launch the render via `open -a "Octane X" --args <script.lua>`, an `octane://` URL, or `.lua` double-click — Octane X is a pure GUI Cocoa/Metal app with no argv/URL/doc-type handler, and the Lua engine inside `octanesdk.framework` is only exposed through the in-app **Scripts menu**. The `--no-gui -s script.lua` form is **OctaneRender Standalone** (Linux/Windows only), not available on macOS. This project drives Lua via `osascript` UI-scripting of the Scripts menu — the only supported path. A live GUI session is mandatory; there is no headless/CI render on this Mac. Evidence: `docs/octane-x-no-cli.md` (inspected 2026-07-12).
 
 ### Examples of Triggering Prompts
 
