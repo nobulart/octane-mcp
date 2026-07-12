@@ -1,7 +1,7 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-10** (steward run `7d30b26`; suite re-grounded: 237 ran / 0 failures / 4 skipped).
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-10** (re-grounded against HEAD `8606d92`). The "16-recipe honesty gap" framing in this board is STALE — the library is 20/22 verified; the 2 remaining gaps are live-render closure items (see §Direction A live-closure status).
 
 ## Current state (evidence, 2026-07-10 — steward run 7d30b26)
 
@@ -12,19 +12,18 @@ brainstorm, kept as a fast-glance status doc. Last updated **2026-07-10** (stewa
 | Octane X | not exercised this run (headless cron host). Live drains + `earth-moon-space` native render remain open (user-owned). Default OctaneMCP workspace is large enough that `octane_status`/`read_status`/`validate_queue` **hang** on this host — use `OCTANEX_MCP_WORKSPACE=<small dir>`. |
 | Server boot | `run_octanex_mcp.sh` (PYTHONPATH unset) boots `build_mcp()`. (Earlier red runs were an env artifact: `uv run` inherited the Hermes-runtime venv — broken `pydantic_core`, no `mcp`. Fix: `uv run --project /Users/craig/octanex-mcp` with `PYTHONPATH`/`VIRTUAL_ENV` unset.) |
 | Benchmarks | 18/18 native-Octane verified (Tiers 1–6) — per roadmap §benchmark-suite recorded table (not re-rendered this run). |
-| Recipe library | **22 recipe dirs; 21 `native_octane_verified=true`; 1 declared-pending** (`earth-moon-space` — `scene.json` says `native_octane_verified:false`, no preview PNG). Ground truth via `_recipe_dirs` + `scene.json`. The old "18/18 no gap" line was stale. |
+| Recipe library | **22 recipe dirs; 20 `native_octane_verified=true` (each carries an `octane-preview.png`); 2 honestly-declared pending.** Pending: `earth-moon-space` (no PNG on disk) + `helicoid-spiral` (PNG present but BLANK — 94% near-white, the documented render-target failure mode, so correctly pending). Ground truth via `_recipe_dirs` + `scene.json` + pixel QA on the committed PNG. The old "18/18" / "21/22" / "16-recipe gap" lines were all stale. |
 | Core mechanics | solid: bridge, schema, pixel-QA, render-review loop, scene v2, PBR mats/lights, bounds-camera, recipe registry, WP6 promoted tools, WP7 geo (`octane_visualize_geojson`), WP8 animation model+tool, WP9 corpus + `octane_find_grammar` + iteration loop, `swap_geometry` streaming primitive + `octane_swap_geometry` tool. |
-| Unscaffolded | `earth-moon-space` native render (the 1 honest gap), WP6/WP8 **live end-to-end drains**, WP7 **live-`geo` exercise**, Agentic Canvas Phase B+, Studio multi-host, visual memory |
+| Unscaffolded | `earth-moon-space` native render + `helicoid-spiral` re-render after a fresh Octane restart (the 2 honest gaps), WP6/WP8 **live end-to-end drains**, WP7 **live-`geo` exercise**, Agentic Canvas Phase B+, Studio multi-host, visual memory |
 
 **WP8 live-drain notes (this session):** the `octane_build_animation` tool was drained live. Found + fixed a path bug: `build_animation_commands` must emit a **relative** `renders/frame_XXXX.png` path (matching how `octane_save_preview` writes `octane-preview.png`). An absolute `/…/OctaneMCP/renders/…` path is re-based by Octane's `saveImage` to the sandbox `Data/renders/`, losing the `OctaneMCP` segment; a relative `renders/…` resolves correctly under `OctaneMCP/renders/`. The empty-scene orbit shows camera motion against an empty stage — the tool is a camera-motion primitive; pair with an imported mesh for a subject.
-
-**Bottom line:** reliability + core mechanics + recipe-library honesty are now **fully closed** (18/18 verified). The remaining open work is *surface area + polish*: WP8 ffmpeg encode, geo live-`geo` exercise, Canvas Phase B, Studio multi-host, visual memory.
+**Bottom line:** reliability + core mechanics are solid, and recipe-library honesty is now explicit rather than inflated: **20/22 verified**, with 2 live-render closure items still open. The remaining open work is live closure + surface area/polish.
 
 ## Backlog (from brainstorm 2026-07-09, re-ranked 2026-07-09 run 3ad0094)
 
 Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
-|1. **A — Recipe verification (close the last honest gap)** (LOW effort / HIGH integrity): the one remaining gap is **`earth-moon-space`** (`scene.json` declares `native_octane_verified=false`, no preview PNG on disk). Re-render it live and, if it passes pixel QA, flip the flag + append `docs/recipe-book.md`. The old "18/18 verified" / "math-surface gap" lines in this board were stale — `math-surface` is closed and the library now holds 22 recipes. *First step:* `verify_recipe_library(live=True, copy_back=True, slug='earth-moon-space')` against a running Octane session (user-owned; needs Octane).
+1. **A — Recipe verification (close the honest gaps)** (LOW effort / HIGH integrity): the remaining gaps are **`earth-moon-space`** (`scene.json` declares `native_octane_verified=false`, no preview PNG on disk) and **`helicoid-spiral`** (`scene.json` declares false because the committed PNG is a blank frame). Re-render them live after confirming Octane is running a fresh bridge script, and if they pass pixel QA, flip the flags + append `docs/recipe-book.md`. The old "18/18 verified" / "math-surface gap" lines in this board were stale — `math-surface` is closed and the library now holds 22 recipes. *First step:* `verify_recipe_library(live=True, copy_back=True, slug='earth-moon-space')`, then `slug='helicoid-spiral'`, against a running Octane session (user-owned; needs Octane).
 2. **B — Geo / terrain grammar live path** (HIGH strategic fit; **MCP tool SHIPPED**): `octane_visualize_geojson` registers on the MCP server (graceful `GeoDependencyError` → `uv sync --extra geo` hint; tests in `tests/test_geo_tool.py` + `tests/test_geo_grammar.py`). *Remaining:* exercise the shapely-backed path live under a `geo` extra env.
 3. **C — Agentic Canvas app** (biggest unbuilt): Phase B wiring — connect `gateway.read_status()` + `/mcp/call` to a live dashboard (intent command bar → `octane_build_concept` / `octane_queue_recipe`; status pill from `render_stage`). Phase A slice (shell + viewport + command bar + `OCTANEX_RENDER_HOST` flag) from `docs/canvas-implementation-roadmap.md`. Swift/JS workstream.
 4. **D — Autonomous loop**: bounded 2-iteration `octane_render_review_loop` over one recipe, driven end-to-end.
@@ -35,11 +34,11 @@ Ranked by effort × strategic fit (reviewer's call — none committed yet):
 
 ## Recommended next move
 
-**Live closure first (user-owned, needs Octane session):** (1) the one honest gap is **`earth-moon-space`** — re-render it live to flip `native_octane_verified=true`; (2) run a real Octane drain of `octane_build_animation` to render a genuine orbit clip. Both require a live Octane session, not code — the autonomous steward cannot do them. For safe code work the steward can take next: **B live-`geo` exercise** (needs `uv sync --extra geo`, still offline-testable after sync) or deepen C/E surface.
+**Live closure first (user-owned, needs Octane session):** (1) the two honest recipe gaps are **`earth-moon-space`** and **`helicoid-spiral`** — re-render them live to flip `native_octane_verified=true`; (2) run a real Octane drain of `octane_build_animation` to render a genuine orbit clip. Both require a live Octane session, not code — the autonomous steward cannot do them. For safe code work the steward can take next: **B live-`geo` exercise** (needs `uv sync --extra geo`, still offline-testable after sync) or deepen C/E surface.
 
 ## In progress / this session
 
-_No uncommitted library work this run. Steward fixed 1 stale test (`test_validate_recipe_library_reports_every_checked_in_recipe_ok`) and re-grounded the docs snapshot against HEAD `7d30b26`. Recipe-verified ground truth: **21/22** `native_octane_verified=true`; `earth-moon-space` is the lone honestly-declared pending recipe (no live render yet)._
+_No uncommitted library work this run. Re-grounded the docs snapshot against HEAD `8606d92`. Recipe-verified ground truth: **20/22** `native_octane_verified=true` (each with a real `octane-preview.png`); **2 honestly-declared pending** — `earth-moon-space` (no PNG) and `helicoid-spiral` (PNG on disk but a blank frame: mean RGB ~242, 94% near-white, the documented render-target failure). The old "21/22 / lone gap" line was stale._
 
 ## Done recently
 
