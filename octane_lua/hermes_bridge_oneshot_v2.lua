@@ -515,25 +515,43 @@ local function connect_material_to_mesh_pins(mesh, mat, group_index)
     if not mesh or not mat then return connected end
     local ok_count, pin_count = pcall(function() return mesh:getPinCount() end)
     if not (ok_count and pin_count) then return connected end
-    local material_pin_ix = 0
+    -- Each usemtl group becomes a material INPUT pin named after the group.
+    -- This build does NOT expose octane.PT_MATERIAL (the pins report type=7),
+    -- and connectTo by numeric index fails — the pin must be addressed by its
+    -- NAME (e.g. "earth_ice"). Record both index and name; connect by name.
+    local material_pins = {}  -- list of {index, name}
+    local NON_MATERIAL = {
+        position = true, rotation = true, scale = true, transform = true,
+        geometry = true, ["imported mesh"] = true, mesh = true,
+        ["object layer"] = true, visibility = true, ["medium"] = true,
+        displacement = true, ["hdr tail"] = true,
+    }
     for i = 1, pin_count do
         local ok_info, info = pcall(function() return mesh:getPinInfoIx(i) end)
         if not ok_info then ok_info, info = pcall(function() return mesh:getPinInfoIx(i - 1) end) end
         if ok_info and info then
-            local is_material = (octane.PT_MATERIAL and info.type == octane.PT_MATERIAL) or info.label == "Material" or info.name == "Material"
+            local nm = tostring(info.name or "")
+            local lbl = string.lower(tostring(info.label or ""))
+            local is_material = (octane.PT_MATERIAL and info.type == octane.PT_MATERIAL)
+                or (lbl == "material")
+                or (nm ~= "" and not NON_MATERIAL[string.lower(nm)] and not NON_MATERIAL[lbl])
             if is_material then
-                material_pin_ix = material_pin_ix + 1
-                if group_index and material_pin_ix ~= tonumber(group_index) then
-                    append_log("skipping material pin #" .. tostring(material_pin_ix) .. " (group filter " .. tostring(group_index) .. ")")
-                else
-                    if info.name then connected = connect_to(mesh, info.name, mat) or connected end
-                    if info.id then connected = connect_to(mesh, info.id, mat) or connected end
-                end
+                material_pins[#material_pins + 1] = { index = i, name = nm }
             end
         end
     end
+    local n_pins = #material_pins
     if group_index then
-        append_log("material pin #" .. tostring(group_index) .. " target on mesh (of " .. tostring(material_pin_ix) .. " material pins)")
+        local target = tonumber(group_index)
+        local p = material_pins[target]
+        append_log("material group #" .. tostring(target) .. " -> pin " .. tostring(p and p.name) .. " (of " .. tostring(n_pins) .. " material pins)")
+        if p and p.name then
+            connected = connect_to(mesh, p.name, mat) or connected
+        end
+    else
+        for _, p in ipairs(material_pins) do
+            if p.name then connected = connect_to(mesh, p.name, mat) or connected end
+        end
     end
     return connected
 end
@@ -831,8 +849,75 @@ local function handle_create_material(cmd)
         setdef(octane.P_CLEARCOAT or "clearcoat", cmd.clearcoat)
         setdef(octane.P_ANISOTROPY or "anisotropy", cmd.anisotropy)
         setdef(octane.P_EMISSION or "emission", cmd.emission)
-        if cmd.texture_path then setdef(octane.P_DIFFUSE_TEXTURE or "diffuse_texture", cmd.texture_path) end
-        if cmd.normal_path then setdef(octane.P_NORMAL_TEXTURE or "normal_texture", cmd.normal_path) end
+        -- File paths are not valid scalar values for material texture pins.
+        -- Build an image-texture node, load its filename attribute, then wire
+        -- the node into the material's first texture-type pin.  We do NOT
+        -- hardcode the pin name (P_DIFFUSE / P_ALBEDO / etc.) because the
+        -- exported API corpus does not enumerate per-build pin constants;
+        -- instead we scan the material node's pins for one whose value type
+        -- is PT_TEXTURE and connect there.  The earlier direct
+        -- set_pin_value(path) silently produced a white material.
+        --
+        -- The image node type may be octane.NT_TEX_IMAGE in this build, or it
+        -- may be absent.  We resolve it at runtime: try NT_TEX_IMAGE; if that
+        -- global is nil or node.create fails, fall back to NT_TEX_RGB (which
+        -- the corpus confirms exists) and log which type actually worked.
+        local function make_image_node(node_name, file_path)
+            local tried, made, errmsg = nil, nil, nil
+            for _, t in ipairs({octane.NT_TEX_IMAGE, octane.NT_TEX_RGB}) do
+                if t then
+                    tried = tostring(t)
+                    local n, e = create_node(t, node_name, {600, 560})
+                    if n then
+                        local loaded = pcall(function() n:setAttribute(octane.A_FILENAME, file_path, true) end)
+                        return n, tried, loaded
+                    else
+                        errmsg = tostring(e)
+                    end
+                end
+            end
+            return nil, tried, false, errmsg
+        end
+        if cmd.texture_path then
+            local tex, ntype, loaded = make_image_node(name .. "_albedo", cmd.texture_path)
+            if tex then
+                local wired_pin = nil
+                pcall(function()
+                    local count = m:getPinCount()
+                    for i = 0, count - 1 do
+                        local info = m:getPinInfoIx(i)
+                        if info and (info.type == 4 or info.type == "PT_TEXTURE") then
+                            if connect_to(m, i, tex) then wired_pin = tostring(info.name or i); break end
+                        end
+                    end
+                end)
+                append_log("image texture albedo node=" .. tostring(ntype)
+                    .. " path=" .. tostring(cmd.texture_path)
+                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wired_pin))
+            else
+                append_log("image texture albedo FAILED node=" .. tostring(ntype) .. " path=" .. tostring(cmd.texture_path))
+            end
+        end
+        if cmd.normal_path then
+            local normal, ntype, loaded = make_image_node(name .. "_normal", cmd.normal_path)
+            if normal then
+                local wired_pin = nil
+                pcall(function()
+                    local count = m:getPinCount()
+                    for i = 0, count - 1 do
+                        local info = m:getPinInfoIx(i)
+                        if info and (info.type == 4 or info.type == "PT_TEXTURE") then
+                            if connect_to(m, i, normal) then wired_pin = tostring(info.name or i); break end
+                        end
+                    end
+                end)
+                append_log("image texture normal node=" .. tostring(ntype)
+                    .. " path=" .. tostring(cmd.normal_path)
+                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wired_pin))
+            else
+                append_log("image texture normal FAILED node=" .. tostring(ntype) .. " path=" .. tostring(cmd.normal_path))
+            end
+        end
     end)
     if not mat then return false, "create material failed: " .. tostring(name) end
     return true, "created material " .. tostring(name)
@@ -897,10 +982,24 @@ local function handle_assign_material(cmd)
     if not mesh then return false, "unknown object " .. tostring(cmd.object_name) end
     if not mat then return false, "unknown material " .. tostring(cmd.material_name) end
     local group_index = cmd.group_index or cmd.payload and cmd.payload.group_index
+    -- DIAGNOSTIC (2026-07-12): dump the mesh's pin structure so we learn the
+    -- real material-pin identifier on this build (octane.PT_MATERIAL appears
+    -- nil, and no pin is literally named "Material"). Remove once wired.
+    pcall(function()
+        local okc, pc = pcall(function() return mesh:getPinCount() end)
+        if okc and pc then
+            local parts = {}
+            for i = 1, pc do
+                local oki, info = pcall(function() return mesh:getPinInfoIx(i) end)
+                if oki and info then
+                    parts[#parts + 1] = string.format("#%d name=%s type=%s label=%s", i,
+                        tostring(info.name), tostring(info.type), tostring(info.label))
+                end
+            end
+            append_log("MESH_PINS(" .. tostring(pc) .. "): " .. table.concat(parts, " | "))
+        end
+    end)
     local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
-    for _, pin in ipairs({"default", "Material", "material", "m1", "mat", octane.P_MATERIAL}) do
-        if pin then connected = connect_to(mesh, pin, mat) or connected end
-    end
     if connected then
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -920,6 +1019,26 @@ local function handle_set_camera(cmd)
         if cmd.fov then set_pin_value(c, octane.P_FOV or "fov", cmd.fov) end
         if cmd.position then set_pin_value(c, octane.P_POSITION or "pos", cmd.position) end
         if cmd.target then set_pin_value(c, octane.P_TARGET or "target", cmd.target) end
+        -- FOCUS FIX (2026-07-12): NT_CAM_THINLENS renders soft unless focus
+        -- distance + aperture are set. Default aperture has a finite DOF so the
+        -- spheres come out blurry. Force a near-pinhole aperture and set focus
+        -- distance to camera->target so the subject is sharp. Pin names vary by
+        -- build, so probe a list of candidate names and log which stuck.
+        for _, ap in ipairs({octane.P_APERTURE or "aperture", "aperture", "fstop", "fStop", "lensRadius", "apertureRadius"}) do
+            set_pin_value(c, ap, 0.0)
+        end
+        local dist = 10.0
+        if cmd.position and cmd.target then
+            local dx = (cmd.position[1] or 0) - (cmd.target[1] or 0)
+            local dy = (cmd.position[2] or 0) - (cmd.target[2] or 0)
+            local dz = (cmd.position[3] or 0) - (cmd.target[3] or 0)
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+        end
+        if cmd.focus_distance then dist = cmd.focus_distance end
+        for _, fd in ipairs({octane.P_FOCUSDISTANCE or "focusDistance", "focusDistance", "focusDist", "focalDepth", "focus"}) do
+            set_pin_value(c, fd, dist)
+        end
+        append_log("camera focus dist=" .. tostring(dist))
     end)
     if not cam then return false, "camera create failed" end
     connect_to(rt, octane.P_CAMERA or "camera", cam)

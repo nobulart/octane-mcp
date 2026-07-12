@@ -1,13 +1,13 @@
-# material defs (documentation; bridge uses explicit create_material)
-newmtl earth_surface
-Ka 1.0 1.0 1.0
-Kd 0.1000 0.3500 0.7500
-Ks 0.5 0.5 0.5
-Ns 48.0
-d 1.0
-newmtl moon_surface
-Ka 1.0 1.0 1.0
-Kd 0.7200 0.7200 0.6800
-Ks 0.5 0.5 0.5
-Ns 9.6
-d 1.0
+# Material intent ONLY (colors applied via create_material + assign_material(group_index)).
+newmtl earth_ocean
+Kd 0.02 0.10 0.32
+newmtl earth_shallow
+Kd 0.04 0.30 0.52
+newmtl earth_land
+Kd 0.16 0.36 0.14
+newmtl earth_ice
+Kd 0.85 0.92 0.97
+newmtl moon_maria
+Kd 0.28 0.27 0.26
+newmtl moon_highland
+Kd 0.62 0.61 0.58
