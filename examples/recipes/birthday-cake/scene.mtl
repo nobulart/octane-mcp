@@ -1,0 +1,145 @@
+{
+  "mat_plate": {
+    "kind": "glossy",
+    "color": [
+      0.9,
+      0.9,
+      0.93
+    ],
+    "roughness": 0.45
+  },
+  "mat_icing_lower": {
+    "kind": "glossy",
+    "color": [
+      0.93,
+      0.52,
+      0.66
+    ],
+    "roughness": 0.5
+  },
+  "mat_icing_upper": {
+    "kind": "glossy",
+    "color": [
+      0.97,
+      0.63,
+      0.78
+    ],
+    "roughness": 0.5
+  },
+  "mat_drip_a": {
+    "kind": "glossy",
+    "color": [
+      0.55,
+      0.92,
+      0.78
+    ],
+    "roughness": 0.4
+  },
+  "mat_drip_b": {
+    "kind": "glossy",
+    "color": [
+      0.98,
+      0.86,
+      0.35
+    ],
+    "roughness": 0.4
+  },
+  "mat_drip_c": {
+    "kind": "glossy",
+    "color": [
+      0.45,
+      0.72,
+      0.96
+    ],
+    "roughness": 0.4
+  },
+  "mat_candle": {
+    "kind": "diffuse",
+    "color": [
+      0.96,
+      0.96,
+      0.92
+    ]
+  },
+  "mat_flame": {
+    "kind": "glossy",
+    "color": [
+      1.0,
+      0.6,
+      0.12
+    ],
+    "roughness": 0.15
+  },
+  "mat_sprinkle1": {
+    "kind": "glossy",
+    "color": [
+      1.0,
+      0.2,
+      0.2
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle2": {
+    "kind": "glossy",
+    "color": [
+      0.2,
+      0.8,
+      0.2
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle3": {
+    "kind": "glossy",
+    "color": [
+      0.2,
+      0.4,
+      1.0
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle4": {
+    "kind": "glossy",
+    "color": [
+      1.0,
+      0.8,
+      0.1
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle5": {
+    "kind": "glossy",
+    "color": [
+      1.0,
+      0.4,
+      0.7
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle6": {
+    "kind": "glossy",
+    "color": [
+      0.0,
+      0.9,
+      0.9
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle7": {
+    "kind": "glossy",
+    "color": [
+      1.0,
+      0.5,
+      0.0
+    ],
+    "roughness": 0.45
+  },
+  "mat_sprinkle8": {
+    "kind": "glossy",
+    "color": [
+      0.6,
+      0.0,
+      0.8
+    ],
+    "roughness": 0.45
+  }
+}

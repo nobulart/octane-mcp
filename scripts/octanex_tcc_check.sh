@@ -83,23 +83,28 @@ echo
 
 # 2) Recommend the stable grant targets.
 echo "=== RECOMMENDED ACCESSIBILITY GRANT TARGETS (System Settings > Privacy & Security > Accessibility) ==="
-echo "  Grant these STABLE paths (they survive Hermes updates):"
-echo "    [1] /usr/bin/osascript   <- THE requesting process for ALL System Events UI-scripting."
-echo "        macOS keys the grant on the process that EMITS the accessibility request, which is"
-echo "        osascript itself (TCC does NOT walk up to uv/python/Hermes.app ancestors). This is"
-echo "        the durable fix: osascript lives at a fixed system path and never relinks on update."
-echo "    [2] Terminal.app / iTerm.app  <- covers manual terminal osascript tests (some setups"
-echo "        also need the launcher granted, but osascript is the required one)."
-echo "    [3] /opt/homebrew/bin/uv   <- optional; does NOT by itself clear -1719 (ancestor grants"
-echo "        do not propagate to osascript), but harmless to include."
+echo "  TCC attributes a UI-scripting request to the process that INITIATED osascript, walking"
+echo "  UP the chain to the nearest granted ancestor. The live chains are:"
+echo "    terminal:  osascript <- /bin/bash <- hermes-agent/venv/python(serve) <- Hermes.app"
+echo "    MCP:       osascript <- octanex-mcp/.venv/python3 <- /opt/homebrew/bin/uv <- hermes-agent/venv/python(serve) <- Hermes.app"
+echo "  The shared, stable ancestor is the SHELL that launched Hermes. Grant that."
 echo
-echo "  Do NOT rely on these (they do not clear -1719 for osascript):"
-echo "    - /Users/craig/.hermes/hermes-agent/venv/bin/python   (symlink, repointed on update; AND"
-echo "      TCC keys on osascript, not this ancestor)"
+echo "  PRIMARY (covers both chains, never relinks):"
+echo "    [1] /bin/bash        <- the shell that spawns osascript in both chains (FIXED system path)"
+echo "    [2] /bin/zsh         <- add too if your login shell is zsh"
+echo "  ALSO grant (cheap, covers direct invocations):"
+echo "    [3] /usr/bin/osascript  <- the requesting process itself"
+echo "    [4] /opt/homebrew/bin/uv  <- MCP path launcher (ancestor of octanex-mcp server)"
+echo
+echo "  Do NOT rely on (they relink or do not propagate to osascript):"
+echo "    - /Users/craig/.hermes/hermes-agent/venv/bin/python   (symlink, repointed on update;"
+echo "      and TCC keys on the launcher/shell, not this ancestor)"
 echo "    - Hermes.app  (launched by launchd; grant does not reach subprocess osascript)"
 echo
-echo "  How to add: System Settings > Privacy & Security > Accessibility > '+' > Shift-Cmd-G >"
-echo "  paste /usr/bin/osascript > Open. If already listed, remove + re-add to refresh the token."
+echo "  Add: System Settings > Privacy & Security > Accessibility > '+' > Shift-Cmd-G >"
+echo "  paste /bin/bash > Open. Repeat for /bin/zsh and /usr/bin/osascript. If already"
+echo "  listed, remove + re-add to refresh the token. A logout/relogin is the nuclear fix"
+echo "  if a grant still will not stick (stuck tccd cache)."
 echo
 
 # 3) Detect TRUE duplicate instances (robust: scan full arg list).
@@ -148,7 +153,10 @@ else
     echo "  RESULT: PASS — System Events can drive Octane X. TCC is correctly granted."
   else
     echo "  RESULT: FAIL — $out"
-    echo "  ACTION: grant /opt/homebrew/bin/uv (and Terminal.app) in System Settings, then re-run this script."
+    echo "  ACTION: grant /bin/bash, /bin/zsh, /usr/bin/osascript (and /opt/homebrew/bin/uv) in"
+    echo "          System Settings > Privacy & Security > Accessibility. If already listed and"
+    echo "          still failing, remove + re-add to refresh, then LOG OUT / LOG BACK IN (nuclear"
+    echo "          fix for a stuck tccd cache where grants are recorded but not applied)."
   fi
 fi
 echo

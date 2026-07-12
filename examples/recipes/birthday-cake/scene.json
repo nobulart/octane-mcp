@@ -10,14 +10,14 @@
     "fov": 38
   },
   "materials": {
-    "mat_plate": {"kind": "glossy", "color": [0.92, 0.92, 0.95], "roughness": 0.3},
-    "mat_icing_lower": {"kind": "glossy", "color": [0.95, 0.55, 0.7], "roughness": 0.35},
-    "mat_icing_upper": {"kind": "glossy", "color": [0.98, 0.65, 0.8], "roughness": 0.35},
-    "mat_drip_a": {"kind": "glossy", "color": [0.5, 0.9, 0.75], "roughness": 0.3},
-    "mat_drip_b": {"kind": "glossy", "color": [0.98, 0.85, 0.3], "roughness": 0.3},
-    "mat_drip_c": {"kind": "glossy", "color": [0.4, 0.7, 0.95], "roughness": 0.3},
-    "mat_candle": {"kind": "diffuse", "color": [0.95, 0.95, 0.9]},
-    "mat_flame": {"kind": "glossy", "color": [1.0, 0.55, 0.1], "roughness": 0.2},
+    "mat_plate": {"kind": "glossy", "color": [0.90, 0.90, 0.93], "roughness": 0.45},
+    "mat_icing_lower": {"kind": "glossy", "color": [0.93, 0.52, 0.66], "roughness": 0.5},
+    "mat_icing_upper": {"kind": "glossy", "color": [0.97, 0.63, 0.78], "roughness": 0.5},
+    "mat_drip_a": {"kind": "glossy", "color": [0.55, 0.92, 0.78], "roughness": 0.4},
+    "mat_drip_b": {"kind": "glossy", "color": [0.98, 0.86, 0.35], "roughness": 0.4},
+    "mat_drip_c": {"kind": "glossy", "color": [0.45, 0.72, 0.96], "roughness": 0.4},
+    "mat_candle": {"kind": "diffuse", "color": [0.96, 0.96, 0.92]},
+    "mat_flame": {"kind": "glossy", "color": [1.0, 0.6, 0.12], "roughness": 0.15},
     "mat_sprinkle1": {"kind": "glossy", "color": [1.0, 0.2, 0.2], "roughness": 0.4},
     "mat_sprinkle2": {"kind": "glossy", "color": [0.2, 0.8, 0.2], "roughness": 0.4},
     "mat_sprinkle3": {"kind": "glossy", "color": [0.2, 0.4, 1.0], "roughness": 0.4},
@@ -36,14 +36,14 @@
         "name": "birthday_cake"
       }
     },
-    {"op": "create_material", "payload": {"name": "mat_plate", "kind": "glossy", "color": [0.92, 0.92, 0.95], "roughness": 0.3}},
-    {"op": "create_material", "payload": {"name": "mat_icing_lower", "kind": "glossy", "color": [0.95, 0.55, 0.7], "roughness": 0.35}},
-    {"op": "create_material", "payload": {"name": "mat_icing_upper", "kind": "glossy", "color": [0.98, 0.65, 0.8], "roughness": 0.35}},
-    {"op": "create_material", "payload": {"name": "mat_drip_a", "kind": "glossy", "color": [0.5, 0.9, 0.75], "roughness": 0.3}},
-    {"op": "create_material", "payload": {"name": "mat_drip_b", "kind": "glossy", "color": [0.98, 0.85, 0.3], "roughness": 0.3}},
-    {"op": "create_material", "payload": {"name": "mat_drip_c", "kind": "glossy", "color": [0.4, 0.7, 0.95], "roughness": 0.3}},
-    {"op": "create_material", "payload": {"name": "mat_candle", "kind": "diffuse", "color": [0.95, 0.95, 0.9]}},
-    {"op": "create_material", "payload": {"name": "mat_flame", "kind": "glossy", "color": [1.0, 0.55, 0.1], "roughness": 0.2}},
+    {"op": "create_material", "payload": {"name": "mat_plate", "kind": "glossy", "color": [0.90, 0.90, 0.93], "roughness": 0.45}},
+    {"op": "create_material", "payload": {"name": "mat_icing_lower", "kind": "glossy", "color": [0.93, 0.52, 0.66], "roughness": 0.5}},
+    {"op": "create_material", "payload": {"name": "mat_icing_upper", "kind": "glossy", "color": [0.97, 0.63, 0.78], "roughness": 0.5}},
+    {"op": "create_material", "payload": {"name": "mat_drip_a", "kind": "glossy", "color": [0.55, 0.92, 0.78], "roughness": 0.4}},
+    {"op": "create_material", "payload": {"name": "mat_drip_b", "kind": "glossy", "color": [0.98, 0.86, 0.35], "roughness": 0.4}},
+    {"op": "create_material", "payload": {"name": "mat_drip_c", "kind": "glossy", "color": [0.45, 0.72, 0.96], "roughness": 0.4}},
+    {"op": "create_material", "payload": {"name": "mat_candle", "kind": "diffuse", "color": [0.96, 0.96, 0.92]}},
+    {"op": "create_material", "payload": {"name": "mat_flame", "kind": "glossy", "color": [1.0, 0.6, 0.12], "roughness": 0.15}},
     {"op": "create_material", "payload": {"name": "mat_sprinkle1", "kind": "glossy", "color": [1.0, 0.2, 0.2], "roughness": 0.4}},
     {"op": "create_material", "payload": {"name": "mat_sprinkle2", "kind": "glossy", "color": [0.2, 0.8, 0.2], "roughness": 0.4}},
     {"op": "create_material", "payload": {"name": "mat_sprinkle3", "kind": "glossy", "color": [0.2, 0.4, 1.0], "roughness": 0.4}},
@@ -88,7 +88,7 @@
       }
     }
   ],
-  "preview_note": "octane-preview.png is the native Octane render. Usable convergence ~30s; a 256-spp pass ran a few minutes for a clean frame. v1 baseline; realism iteration in progress (see iterations/).",
+  "preview_note": "octane-preview.png is the native Octane render. Usable convergence ~30s; a 256-spp pass ran a few minutes for a clean frame. v2 realism pass DONE: round board, hanging frosting drips, rod sprinkles, teardrop flame, satin icing. Re-render committed as octane-preview.png.",
   "quality_checklist": [
     "Preview is non-blank; the full cake (board, two tiers, candle, flame) is framed with margin.",
     "Each tier shows its bound color (pink lower, lighter-pink upper) — not default white/grey.",
@@ -148,5 +148,5 @@
     "note": "The final iterated native Octane render and all reproduction assets should be checked in with this recipe before marking native_octane_verified true."
   },
   "native_octane_verified": false,
-  "status": "native_candidate_available (2026-07-12, v1 baseline)"
+  "status": "native_candidate_available (2026-07-12, v2 realism pass DONE)"
 }
