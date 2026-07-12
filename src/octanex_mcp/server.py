@@ -14,6 +14,7 @@ from .bridge import (
     read_recipe_book,
     read_status,
     record_recipe_entry,
+    scene_harvest as _scene_harvest,
     write_command,
 )
 from .bridge_control import octane_process_status, reset_octane_scene, run_bridge_script
@@ -90,6 +91,30 @@ def build_mcp() -> Any:
     def octane_status() -> str:
         """Return Octane X app, bridge heartbeat, and command queue status."""
         return _json({"app": octane_app_status(), "commands": list_commands()})
+
+    @mcp.tool()
+    def octane_scene_harvest() -> str:
+        """Harvest the live OctaneX scene graph in real time.
+
+        This queries the running OctaneX application directly (via the persistent
+        Lua bridge's scene_graph() API) and returns all scene nodes as a JSON
+        array of node objects. Each node includes:
+          - name: the node's display name
+          - type: the node type (camera, mesh, material, light, etc.)
+          - position: [x, y, z] in world coordinates
+          - scale: [x, y, z] scale factors
+          - rotation: [rx, ry, rz] rotation (if available)
+          - has_geometry: boolean — does this node have mesh geometry?
+          - has_material: boolean — is a material connected?
+          - connected: list of connected node names (if applicable)
+
+        This is the tool the agent uses to see what the user is working on
+        in the OctaneX viewport — camera position, scene objects, materials,
+        all live. The agent can call this after the user moves the camera,
+        adds objects, or modifies the scene to get a fresh snapshot.
+        """
+        result = _scene_harvest()
+        return _json(result)
 
     @mcp.tool()
     def octane_bridge_process_status() -> str:

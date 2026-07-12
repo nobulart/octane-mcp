@@ -562,7 +562,18 @@ local function try_render_call(label, fn)
     return ok, result
 end
 
-local function request_render_restart(samples, width, height, do_start)
+-- Defined before request_render_restart so the `local` is bound at call time
+-- (a `local function` is only visible after its declaration line).
+local function sleep_seconds(seconds)
+    seconds = tonumber(seconds) or 0.25
+    if octane and octane.sleep then
+        local ok = pcall(function() octane.sleep(seconds) end)
+        if ok then return end
+    end
+    os.execute("sleep " .. tostring(seconds))
+end
+
+local function request_render_restart(samples, width, height, do_start, max_render_time)
     -- Bulletproof: called from EVERY scene-assembly handler (import_geometry,
     -- create_material, set_camera, set_lighting, save_preview). A hard error
     -- here would abort the whole drain script and strand the rest of the queue,
@@ -587,6 +598,23 @@ local function request_render_restart(samples, width, height, do_start)
         pcall(activate_render_target, rt)
         pcall(set_render_resolution, rt, width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
         samples = samples or 64
+        -- Bound the actual render to the requested convergence ceiling. Without
+        -- this, octane.render.start{} runs to the RT film's pre-existing
+        -- maxSamples (e.g. 5000) and ignores cmd.samples/timeout entirely.
+        local film = ensure_film_settings(rt)
+        if film then
+            local max_spp = tonumber(samples) or 64
+            for _, pin in ipairs({octane.A_MAX_SAMPLES, "maxSamples", "maxsamples"}) do
+                if pin then pcall(function() film:setAttribute(pin, max_spp, true) end) end
+            end
+            local mrt = tonumber(max_render_time)
+            if mrt and mrt > 0 then
+                for _, pin in ipairs({octane.A_MAX_RENDER_TIME, "maxRenderTime", "maxrendertime"}) do
+                    if pin then pcall(function() film:setAttribute(pin, mrt, true) end) end
+                end
+            end
+            append_log("film cap set maxSamples=" .. tostring(max_spp) .. " maxRenderTime=" .. tostring(mrt or "unset"))
+        end
         -- Camera guard: octane.render.start{} must NOT run until a camera is
         -- connected to the RT. During scene assembly the camera is not wired
         -- yet, and start{} with no camera aborts the script. Defer the start to
@@ -648,15 +676,6 @@ end
 local function render_stat_number(stats, key)
     if type(stats) ~= "table" then return 0 end
     return tonumber(stats[key]) or 0
-end
-
-local function sleep_seconds(seconds)
-    seconds = tonumber(seconds) or 0.25
-    if octane and octane.sleep then
-        local ok = pcall(function() octane.sleep(seconds) end)
-        if ok then return end
-    end
-    os.execute("sleep " .. tostring(seconds))
 end
 
 local function wait_for_render_ready(min_samples, timeout_seconds)
@@ -851,6 +870,40 @@ local function handle_set_lighting(cmd)
     local rt, rt_err = get_or_create_render_target()
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
     activate_render_target(rt)
+    local preset = cmd.preset or "default"
+    if preset == "dark_studio" then
+        -- True dark studio: Octane X on this build does NOT expose
+        -- NT_ENV_TEXTURE / NT_TEX_RGB, so we cannot build a solid-color
+        -- texture env. Instead we use the DAYLIGHT env that DOES exist and
+        -- force it dark by best-effort setting every candidate dark pin
+        -- (sky/sun/horizon color + intensities). Valid pins apply; unknown
+        -- ones are silently ignored via pcall, so this is robust across
+        -- Octane builds. The result is a near-black environment, not a sky.
+        local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
+        if not env_type then return true, "no known environment node type constant" end
+        local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
+        if not env then return false, "dark studio environment create failed" end
+        local dark_color = {0.015, 0.015, 0.02}
+        -- Candidate dark pins (names differ across Octane builds); set all that exist.
+        for _, pin in ipairs({
+            octane.A_SKY_COLOR, octane.A_SUN_COLOR, octane.A_HORIZON_COLOR,
+            octane.A_SUNSET_COLOR, "skyColor", "sunColor", "horizonColor",
+            "sky_color", "sun_color", "horizon_color", "sunsetColor",
+        }) do
+            if pin then pcall(function() env:setAttribute(pin, dark_color, true) end) end
+        end
+        for _, pin in ipairs({
+            octane.A_SUN_INTENSITY, octane.A_DAYLIGHT_INTENSITY,
+            octane.A_INTENSITY, "sunIntensity", "daylightIntensity",
+            "intensity", "power", "sunPower",
+        }) do
+            if pin then pcall(function() env:setAttribute(pin, 0.08, true) end) end
+        end
+        connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
+        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
+        append_log("post-lighting(dark_studio) render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+        return true, "dark studio environment connected"
+    end
     local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
     if not env_type then return true, "no known environment node type constant" end
     -- Canonical environment: delete orphan Hermes Environment nodes, keep one.
@@ -859,7 +912,7 @@ local function handle_set_lighting(cmd)
     connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
     local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
     append_log("post-lighting render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
-    return true, "lighting preset " .. tostring(cmd.preset or "default") .. " connected"
+    return true, "lighting preset " .. tostring(preset) .. " connected"
 end
 
 local function handle_set_object_transform(cmd)
@@ -882,7 +935,7 @@ local function handle_set_object_transform(cmd)
 end
 
 local function handle_start_render(cmd)
-    return request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
+    return request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT, true, cmd.max_render_time)
 end
 
 local function candidates_png_type()
@@ -906,7 +959,7 @@ local function handle_save_preview(cmd)
     set_render_resolution(rt, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
     os.execute("mkdir -p '" .. dirname(path):gsub("'", "'\\''") .. "'")
 
-    local refreshed, refresh_msg = request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT)
+    local refreshed, refresh_msg = request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT, true, cmd.max_render_time)
     append_log("pre-save render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
     if not refreshed then return false, tostring(refresh_msg) end
     local ready, ready_msg = wait_for_render_ready(cmd.min_samples or 16, cmd.timeout_seconds or 10)
@@ -968,6 +1021,69 @@ local function handle_save_preview(cmd)
     return false, "save preview failed: " .. tostring(last_err)
 end
 
+local function serialize_node(node)
+    if not node or type(node) ~= "table" then
+        return { type = type(node) or "nil" }
+    end
+    local result = { type = node._type or tostring(node) }
+    local props = node:getProperties()
+    if props then
+        result.name = props.name or ""
+        result.id = props.id or ""
+        if props.position then result.position = props.position end
+        if props.scale then result.scale = props.scale end
+        if props.rotation then result.rotation = props.rotation end
+    end
+    result.has_geometry = node.getGeometry and (pcall(function() return node:getGeometry() end) and true or false)
+    result.has_material = node.getMaterial and (pcall(function() return node:getMaterial() end) and true or false)
+    return result
+end
+
+local function harvest_scene_graph()
+    local graph = scene_graph()
+    if not graph then return {} end
+    local items = {}
+    local ok, all_items = pcall(function() return graph:getOwnedItems() end)
+    if not ok or not all_items then return {} end
+    for _, node in ipairs(all_items) do
+        local node_data = serialize_node(node)
+        node_data.visible = node.isVisible and node:isVisible() or true
+        if node.getConnectedNodes then
+            local connected = {}
+            local ok2, pins = pcall(function() return node:getConnectedNodes() end)
+            if ok2 and pins then
+                for _, cn in ipairs(pins) do
+                    table.insert(connected, cn.name or tostring(cn))
+                end
+            end
+            node_data.connected = connected
+        end
+        items[#items + 1] = node_data
+    end
+    return { nodes = items, count = #items, timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") }
+end
+
+local function handle_scene_harvest(cmd)
+    local result = harvest_scene_graph()
+    local path = RESULTS .. "/scene_harvest.json"
+    write_file(path, json_escape(result) and (tostring(result) or "{}") or "{}")
+    if not cmd or not (cmd.dry_run or cmd.payload and cmd.payload.dry_run) then
+        local raw_result = harvest_scene_graph()
+        local json_out = "{\n"
+        json_out = json_out .. "  \"nodes\": [\n"
+        for i, node in ipairs(raw_result.nodes or {}) do
+            json_out = json_out .. "    {\"name\": \"" .. tostring(node.name or "") .. "\", \"type\": \"" .. tostring(node.type or "unknown") .. "\", \"has_geometry\": " .. tostring(node.has_geometry or false) .. ", \"has_material\": " .. tostring(node.has_material or false) .. ", \"visible\": " .. tostring(node.visible or true) .. "}"
+            if i < #raw_result.nodes then json_out = json_out .. "," end
+            json_out = json_out .. "\n"
+        end
+        json_out = json_out .. "  ],\n"
+        json_out = json_out .. "  \"count\": " .. tostring(raw_result.count or 0) .. "\n"
+        json_out = json_out .. "}"
+        write_file(path, json_out)
+    end
+    return true, "scene harvested: " .. tostring(result.count or 0) .. " nodes"
+end
+
 local function handle_command(cmd)
     append_log("v2 command " .. tostring(cmd.id) .. " op=" .. tostring(cmd.op))
     if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
@@ -980,6 +1096,7 @@ local function handle_command(cmd)
     if cmd.op == "set_object_transform" then return handle_set_object_transform(cmd) end
     if cmd.op == "start_render" then return handle_start_render(cmd) end
     if cmd.op == "save_preview" then return handle_save_preview(cmd) end
+    if cmd.op == "scene_harvest" then return handle_scene_harvest(cmd) end
     return true, "acknowledged " .. tostring(cmd.op)
 end
 

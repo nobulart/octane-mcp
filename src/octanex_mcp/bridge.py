@@ -581,3 +581,56 @@ def octane_render_review_loop(
         "checkpoint": str(reviews_dir / f"checkpoint_{iteration:04d}.json"),
         "all_checks": list(dict.fromkeys(k for i in iterations for k in i.keys())),
     }
+
+
+# ============================================================================
+# Scene graph harvest (real-time OctaneX scene graph query)
+# ============================================================================
+
+def scene_harvest(workspace: Optional[Workspace] = None) -> Dict[str, Any]:
+    """Query the live OctaneX scene graph and serialize it to JSON.
+
+    This reads the current scene graph from Octane X's node graph,
+    harvesting all nodes with their names, types, properties, and connections.
+    Returns the harvest result as a dictionary that can be inspected by the agent.
+    """
+    if workspace is None:
+        workspace = Workspace()
+    ws = workspace
+    ws.ensure()
+
+    # Write the scene_harvest command to the queue
+    harvest_cmd = {
+        "op": "scene_harvest",
+        "payload": {"dry_run": False},
+    }
+    cmd_path = write_command("scene_harvest", {"dry_run": False}, ws)
+
+    # Read the harvest result from results/scene_harvest.json
+    results_dir = ws.results_dir
+    harvest_path = results_dir / "scene_harvest.json"
+
+    # Wait briefly for the bridge to produce the harvest result
+    import time
+    harvest_data: Dict[str, Any] = {"nodes": [], "count": 0, "timestamp": "", "source": str(cmd_path)}
+    for _ in range(5):
+        if harvest_path.exists():
+            try:
+                raw = harvest_path.read_text(encoding="utf-8")
+                if raw.strip():
+                    import json
+                    try:
+                        harvest_data = json.loads(raw)
+                    except json.JSONDecodeError:
+                        harvest_data = {"nodes": [], "count": 0, "raw": raw[:500], "source": str(cmd_path)}
+                    break
+            except Exception as exc:
+                harvest_data["error"] = str(exc)
+                break
+        time.sleep(0.5)
+
+    if not harvest_data.get("nodes"):
+        harvest_data["nodes"] = []
+        harvest_data["count"] = 0
+
+    return harvest_data
