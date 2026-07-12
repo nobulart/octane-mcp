@@ -37,10 +37,10 @@ The recipe library starts with copyable visual targets, not just prose. The head
 | [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) | [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
 | Damped radial surface for mathematical explanation. | Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
 
-| Wave interference | Vision feedback loop |
-| --- | --- |
-| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) |
-| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. |
+| Wave interference | Vision feedback loop | Desk fan |
+| --- | --- | --- |
+| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) | [![Desk fan with cord and plug](examples/recipes/desk-fan/octane-preview.png)](examples/recipes/desk-fan/) |
+| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. | Native Octane desk-fan prop with tubular cage, cord, plug, and prongs. |
 
 ## What this is for
 

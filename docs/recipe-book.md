@@ -17,6 +17,29 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - What a future agent should try, avoid, or verify.
 
+## Desk fan with tubular cord and cage guard
+
+- **Outcome:** success
+- **Recorded:** 2026-07-12 21:32 UTC
+- **Context:** Converted an ad-hoc Octane render of “Visualise a desk fan with a cord and plug” into a checked-in recipe after iterative user review of focus, cable shape, and guard geometry.
+
+### Steps
+- Built the fan as one combined OBJ so it survives the single render-target mesh pin.
+- Modeled the guard as a cage: front and rear torus rings, radial guard wires on both sides of the blades, and depth ties between rings.
+- Replaced the flattened cable strip with a true tubular cord and kept a plug body plus two brass prongs visible.
+- Set camera `focus_distance` to the camera-target distance after the first render showed thin-lens depth-of-field blur.
+- Promoted assets into `examples/recipes/desk-fan/` with `scene.obj`, `scene.mtl`, `scene.json`, `README.md`, and native `octane-preview.png`; added deterministic generator `scripts/gen_desk_fan.py`.
+
+### Signals / evidence
+- Native Octane render saved at `examples/recipes/desk-fan/octane-preview.png` from the 2026-07-12 one-shot bridge refinement pass.
+- Pixel QA for the final native PNG: 1280×1280, 560,789 bytes, sampled non-background 92.93%, edge_std 20.27, blank=false.
+- The final `scene.json` emits one `assign_material` command per `usemtl` group index, including repeated cage/cord groups, plus explicit material creation and camera focus metadata.
+
+### Follow-ups
+- If the guard aliases at small sizes, increase torus/wire segment density or slightly thicken `mat_cage` tubes; do not revert to bead-only rings.
+- Keep the cord as tube geometry rather than a rectangular strip.
+- If a future render looks soft, verify the generated bridge honors `focus_distance` before changing geometry.
+
 ## Seed: prefer one-shot bridge for multi-command scenes
 
 - **Outcome:** success

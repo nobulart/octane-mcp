@@ -39,6 +39,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Green Chess Pawn (Studio)](../examples/recipes/green-pawn/README.md) | Photoreal/PBR rendering | `green-pawn` | A single photorealistic green glossy chess pawn under soft studio lighting, built from a lathed surface-of-revolution OBJ (not a primitive). |
 | [Green Chess Pawn on a Studio Chessboard](../examples/recipes/green-pawn-board/README.md) | Photoreal/PBR rendering | `green-pawn-board` | A green glossy pawn on an 8×8 chessboard under studio lighting, with three group-indexed materials (board slab, light squares, pawn). |
 | [Bowl of Fruit (Studio)](../examples/recipes/bowl-of-fruit/README.md) | Product / prop studio | `bowl-of-fruit` | A stylised ceramic bowl of glossy fruit, demonstrating a reusable multi-group still-life OBJ with explicit material binding. |
+| [Desk Fan with Cord and Plug](../examples/recipes/desk-fan/README.md) | Product / prop studio | `desk-fan` | A stylised desk fan with blue blades, tubular front/back guard cage, stand/base, tubular cord, plug body, and brass prongs. |
 
 ## Recommended agent loop
 
@@ -62,7 +63,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 - **Annotation/text:** block-letter labels, backing plates, and callouts as OBJ geometry.
 - **Image processing/vision:** scalar heatmaps, segmentation masks, and OCR/document layouts as raised tile geometry.
 - **LLM interpretability:** attention/saliency matrices as token-aligned heightfields.
-- **Photoreal / product props:** product-studio, multi-vase studio, bowl-of-fruit, Earth, and Saturn scenes with PBR/studio material and lighting intent plus target/native renders.
+- **Photoreal / product props:** product-studio, multi-vase studio, bowl-of-fruit, desk-fan, Earth, and Saturn scenes with PBR/studio material and lighting intent plus target/native renders.
 
 ## Recipe registry tools
 

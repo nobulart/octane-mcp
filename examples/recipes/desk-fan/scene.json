@@ -1,0 +1,1023 @@
+{
+  "slug": "desk-fan",
+  "title": "Desk Fan with Cord and Plug",
+  "category": "Product / prop studio",
+  "purpose": "Render a stylised desk fan with blue blades, a tubular front/back cage guard, stand/base, black tubular power cord, plug body, and brass prongs under soft studio lighting.",
+  "prompt": "Visualise a desk fan with a cord and plug",
+  "camera": {
+    "position": [
+      2.6,
+      2.95,
+      8.4
+    ],
+    "target": [
+      0.65,
+      1.58,
+      -0.28
+    ],
+    "fov": 38.0,
+    "focus_distance": 9.0012110296337
+  },
+  "materials": {
+    "mat_base": {
+      "name": "mat_base",
+      "kind": "glossy",
+      "color": [
+        0.1,
+        0.12,
+        0.14
+      ],
+      "roughness": 0.35
+    },
+    "mat_stand": {
+      "name": "mat_stand",
+      "kind": "metallic",
+      "color": [
+        0.7,
+        0.72,
+        0.74
+      ],
+      "roughness": 0.22
+    },
+    "mat_motor": {
+      "name": "mat_motor",
+      "kind": "glossy",
+      "color": [
+        0.12,
+        0.15,
+        0.18
+      ],
+      "roughness": 0.28
+    },
+    "mat_cage": {
+      "name": "mat_cage",
+      "kind": "metallic",
+      "color": [
+        0.62,
+        0.66,
+        0.7
+      ],
+      "roughness": 0.2
+    },
+    "mat_blade": {
+      "name": "mat_blade",
+      "kind": "glossy",
+      "color": [
+        0.2,
+        0.46,
+        0.88
+      ],
+      "roughness": 0.18
+    },
+    "mat_hub": {
+      "name": "mat_hub",
+      "kind": "metallic",
+      "color": [
+        0.93,
+        0.86,
+        0.54
+      ],
+      "roughness": 0.2
+    },
+    "mat_cord": {
+      "name": "mat_cord",
+      "kind": "glossy",
+      "color": [
+        0.015,
+        0.015,
+        0.018
+      ],
+      "roughness": 0.5
+    },
+    "mat_prong": {
+      "name": "mat_prong",
+      "kind": "metallic",
+      "color": [
+        0.9,
+        0.86,
+        0.72
+      ],
+      "roughness": 0.18
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/desk-fan/scene.obj",
+        "format": "obj",
+        "name": "desk_fan"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_base",
+        "kind": "glossy",
+        "color": [
+          0.1,
+          0.12,
+          0.14
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_stand",
+        "kind": "metallic",
+        "color": [
+          0.7,
+          0.72,
+          0.74
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_motor",
+        "kind": "glossy",
+        "color": [
+          0.12,
+          0.15,
+          0.18
+        ],
+        "roughness": 0.28
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_cage",
+        "kind": "metallic",
+        "color": [
+          0.62,
+          0.66,
+          0.7
+        ],
+        "roughness": 0.2
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_blade",
+        "kind": "glossy",
+        "color": [
+          0.2,
+          0.46,
+          0.88
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_hub",
+        "kind": "metallic",
+        "color": [
+          0.93,
+          0.86,
+          0.54
+        ],
+        "roughness": 0.2
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_cord",
+        "kind": "glossy",
+        "color": [
+          0.015,
+          0.015,
+          0.018
+        ],
+        "roughness": 0.5
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_prong",
+        "kind": "metallic",
+        "color": [
+          0.9,
+          0.86,
+          0.72
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_base",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_base",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_stand",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_motor",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_stand",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 8
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 10
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 11
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 12
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 13
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 14
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 15
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 16
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 17
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 18
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 19
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 20
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 21
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 22
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 23
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 24
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 25
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 26
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 27
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 28
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 29
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 30
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 31
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 32
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 33
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 34
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 35
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 36
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 37
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 38
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 39
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 40
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 41
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 42
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 43
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 44
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 45
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 46
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 47
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 48
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 49
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 50
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 51
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 52
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 53
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 54
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 55
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 56
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 57
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 58
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 59
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 60
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 61
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 62
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 63
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 64
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 65
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 66
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 67
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 68
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 69
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 70
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cage",
+        "group_index": 71
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_blade",
+        "group_index": 72
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_blade",
+        "group_index": 73
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_blade",
+        "group_index": 74
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_hub",
+        "group_index": 75
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cord",
+        "group_index": 76
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cord",
+        "group_index": 77
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cord",
+        "group_index": 78
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cord",
+        "group_index": 79
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_cord",
+        "group_index": 80
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_prong",
+        "group_index": 81
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "desk_fan",
+        "material_name": "mat_prong",
+        "group_index": 82
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          2.6,
+          2.95,
+          8.4
+        ],
+        "target": [
+          0.65,
+          1.58,
+          -0.28
+        ],
+        "fov": 38.0,
+        "focus_distance": 9.0012110296337
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/desk-fan/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 96,
+        "min_samples": 24,
+        "timeout_seconds": 120
+      }
+    }
+  ],
+  "acceptance": [
+    {
+      "kind": "non_empty",
+      "min_mean_dev": 2.0,
+      "min_nonbg": 2.0
+    },
+    {
+      "kind": "review_ok",
+      "fail_on": [
+        "mostly near-black",
+        "very low contrast",
+        "mostly near-white",
+        "likely object too small"
+      ]
+    }
+  ],
+  "preview_note": "octane-preview.png is the native Octane X render from 2026-07-12 after three refinement passes. Pixel QA: 1280x1280, 560,789 bytes, sampled non-background 92.93%, edge_std 20.27, blank=false. Visual QA confirmed a desk fan with a cage guard, blue blades, stand/base, tubular cord, plug, and brass prongs.",
+  "quality_checklist": [
+    "The fan silhouette is readable at thumbnail size: guard cage, hub, three blades, stand, and base.",
+    "The guard is modeled as a cage: front and rear circular wire rings plus radial wires and depth ties around the blades.",
+    "The power cable is a real tube, not a flat strip, and leads to a visible plug with two brass prongs.",
+    "Explicit create_material + assign_material commands bind every OBJ usemtl group by 1-based group_index.",
+    "Camera focus_distance is set to the camera-target distance to avoid the thin-lens depth-of-field blur seen in the first render."
+  ],
+  "known_pitfalls": [
+    "The guard wires are true mesh tubes, but at small preview sizes dense wires can alias; inspect the native PNG rather than only the thumbnail.",
+    "OBJ/MTL colours are only hints: Octane colour correctness depends on the explicit create_material + assign_material commands in scene.json.",
+    "Thin-lens focus must be set for this scene; otherwise the cage and plug can render soft. The recipe sets focus_distance explicitly.",
+    "The desk plate is a simple product-shot ground plane, not a full environment or room model."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/desk-fan/octane-preview.png",
+    "candidate_image": "examples/recipes/desk-fan/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "guard cage readability",
+      "cord/plug readability",
+      "focus/sharpness",
+      "material binding",
+      "framing"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "focus_distance",
+      "materials",
+      "lighting"
+    ],
+    "required_evidence": [
+      "bridge result metadata for queued commands",
+      "native Octane candidate preview at octane-preview.png",
+      "glm-ocr reference and candidate review notes",
+      "one bounded patch plan per iteration",
+      "final native Octane render bundled as octane-preview.png",
+      "iteration review/patch records under iterations/"
+    ],
+    "stop_conditions": [
+      "candidate content and major silhouettes match the reference or stated recipe intent",
+      "task-critical colors/materials/labels are visually distinguishable",
+      "camera/framing and lighting are close enough for the task",
+      "remaining gaps require bridge schema or native material capability work"
+    ],
+    "baseline_sweep": {
+      "enabled": true,
+      "purpose": "Rapidly compare fan front, three-quarter, plug-emphasis, and top-oblique variants before fine visual matching.",
+      "camera_or_scene_variants": [
+        {
+          "name": "front",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 10
+        },
+        {
+          "name": "right_three_quarter",
+          "azimuth_degrees": 28,
+          "elevation_degrees": 12
+        },
+        {
+          "name": "plug_emphasis",
+          "azimuth_degrees": 18,
+          "elevation_degrees": 8
+        },
+        {
+          "name": "top_oblique",
+          "azimuth_degrees": 0,
+          "elevation_degrees": 35
+        }
+      ],
+      "visual_grammar_axes": [
+        "cage_wire_density",
+        "cord_tube_readability",
+        "plug_prong_visibility",
+        "camera_distance",
+        "focus_depth"
+      ],
+      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/desk-fan/octane-preview.png",
+    "iteration_dir": "examples/recipes/desk-fan/iterations",
+    "final_review": "examples/recipes/desk-fan/iterations/final-review.json",
+    "result_metadata_pattern": "workspace/results/<command_id>.json copied or summarized into iterations/",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "octane-preview.png"
+    ],
+    "status": "native_candidate_available",
+    "note": "The final native Octane render is bundled as octane-preview.png; material binding depends on group_index order."
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (manual one-shot bridge refinement, 2026-07-12)"
+}
