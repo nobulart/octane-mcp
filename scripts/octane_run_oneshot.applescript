@@ -1,0 +1,60 @@
+(*
+ * octane_run_oneshot.applescript
+ * ------------------------------------------------------------------
+ * On-demand control #3: click Octane X > Script > hermes_bridge_oneshot.generated
+ * One click drains the ENTIRE command queue (the Lua bridge loops over all
+ * queued JSON until empty), renders, and exits. This script only FIRES the
+ * click — it does not wait. For fire-and-wait, use octane_drain.applescript.
+ *
+ * Exit codes:
+ *   0  clicked
+ *   non-zero  not found / TCC (-1719) / app not running (-600)
+ *
+ * RUN:
+ *   osascript scripts/octane_run_oneshot.applescript
+ *)
+set appName to "Octane X"
+set target to "hermes_bridge_oneshot.generated"
+set clickedName to ""
+
+tell application "System Events"
+  if not (exists process appName) then
+    error "Octane X not running — launch it first (octane_launch.applescript)."
+  end if
+  tell process appName
+    set frontmost to true
+    set menuCandidates to {"Script", "Scripts", "Lua", "File"}
+    repeat with menuTitle in menuCandidates
+      try
+        set candidateMenu to menu 1 of menu bar item (menuTitle as text) of menu bar 1
+        repeat with directItem in menu items of candidateMenu
+          set itemName to name of directItem
+          if itemName contains target then
+            click directItem
+            set clickedName to itemName
+            exit repeat
+          end if
+        end repeat
+        if clickedName is not "" then exit repeat
+        repeat with submenuItem in menu items of candidateMenu
+          try
+            repeat with nestedItem in menu items of menu 1 of submenuItem
+              set nestedName to name of nestedItem
+              if nestedName contains target then
+                click nestedItem
+                set clickedName to nestedName
+                exit repeat
+              end if
+            end repeat
+          end try
+          if clickedName is not "" then exit repeat
+        end repeat
+      end try
+      if clickedName is not "" then exit repeat
+    end repeat
+    if clickedName is "" then
+      error "Could not find '" & target & "' in Octane X Scripts menu. Confirm Preferences -> Scripts path points to the repo octane_lua directory."
+    end if
+  end tell
+end tell
+return "clicked " & clickedName
