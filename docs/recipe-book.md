@@ -42,7 +42,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ## 3DXM Minimal-Surface Gallery Pass (WP9 visualisation)
 
-- **Outcome:** success (gyroid #1 + neovius #2 verified; pipeline + palette established for remaining 35)
+- **Outcome:** success (gyroid #1 + neovius #2 + schwarz_h #3 verified; pipeline + palette + oblique camera established for remaining 34)
 - **Recorded:** 2026-07-13
 - **Context:** Visualise the 37 surfaces of the 3DXM Virtual Math Museum gallery in OctaneX, one at a time, awaiting review after each. Surfaces with closed-form implicit equations are meshed directly; others need parametric/Weierstrass embedding later.
 
@@ -135,6 +135,28 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Promote `gen_implicit.py` (with single-manifold extraction + correct equations) into `scripts/` as the canonical generator for the remaining implicit surfaces.
 - Build a `research_surface.py` helper: given a surface name, SearXNG-fetch its source page + reference image, extract/verify the equation, and confirm single-manifold form. Run it before every surface #3–#37.
 - Remaining implicit surfaces in gallery: schwarz_h (green), lidinoid (magenta), schwarz_pd (cyan), diamond (+ continuing hue rotation). Then non-implicit ones (Enneper, Costa, etc.) need parametric/Weierstrass meshes.
+
+## Surface #3 — Schwarz H (oblique camera, correct equation)
+
+- **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
+- **Recorded:** 2026-07-13
+- **Context:** Third surface. Established the per-surface equation research catch: Schwarz P/H/D are DIFFERENT surfaces with different equations.
+
+### Steps
+- Mesh via `scripts/gen_implicit_surface.py schwarz_h schwarz_h 132 2.5 1` (periods=1).
+- Equation (verified Wikipedia): `sin x cos y cos z + cos x sin y cos z + cos x cos y sin z = 0`.
+  - **DO NOT CONFLATE:** Schwarz **P** = `cos x + cos y + cos z = 0`; Schwarz **D** = `cos x cos y cos z − sin x sin y sin z = 0`. The generator's `schwarz`/`schwarz_p` formula is P, `schwarz_h` is H, `schwarz_pd` is D.
+- Mesh: 64,554 verts / 127,937 faces, **1 connected component** (single manifold).
+- Material: green `[0.20, 0.80, 0.40]`.
+- **Camera: oblique** — 60° about X, 30° about Z (user-specified; TPMS read better from an oblique angle than head-on). Baked into `camera_from_bounds(rot_x_deg=60, rot_z_deg=30)`.
+
+### Signals / evidence
+- Local qwen2.5vl + native vision: correct Schwarz H (hexagonal/3-fold symmetry, two intertwined labyrinths), single manifold, oblique view well-framed, no clipping.
+- User: "better" (after camera rotation applied).
+
+### Follow-ups
+- Same per-surface lessons as #1/#2. The oblique camera is now the default for all remaining TPMS.
+- The `research_surface.py` helper (SearXNG equation + reference verify) is still TODO — build it before the non-implicit surfaces.
 
 ## Seed: prefer one-shot bridge for multi-command scenes
 

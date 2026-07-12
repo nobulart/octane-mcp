@@ -74,12 +74,26 @@ def obj_bounds(obj_path):
     return [cx, cy, cz], r
 
 
-def camera_from_bounds(center, radius, fov_deg=40.0, margin=1.25, direction=(0.8, 0.55, 1.0)):
+def camera_from_bounds(center, radius, fov_deg=40.0, margin=1.25,
+                      direction=(1.0, 0.35, 1.0), rot_x_deg=0.0, rot_z_deg=0.0):
+    import math as _m
     dx, dy, dz = direction
-    norm = math.sqrt(dx * dx + dy * dy + dz * dz)
+    norm = _m.sqrt(dx * dx + dy * dy + dz * dz)
     dx, dy, dz = dx / norm, dy / norm, dz / norm
-    half = math.radians(fov_deg) / 2.0
-    dist = (radius / math.tan(half)) * margin
+    # Apply rotation about X axis, then Z axis (user-specified oblique view).
+    rx = _m.radians(rot_x_deg); rz = _m.radians(rot_z_deg)
+    # rot X
+    y1 = dy * _m.cos(rx) - dz * _m.sin(rx)
+    z1 = dy * _m.sin(rx) + dz * _m.cos(rx)
+    dy, dz = y1, z1
+    # rot Z
+    x1 = dx * _m.cos(rz) - dy * _m.sin(rz)
+    y1 = dx * _m.sin(rz) + dy * _m.cos(rz)
+    dx, dy = x1, y1
+    n2 = _m.sqrt(dx*dx + dy*dy + dz*dz)
+    dx, dy, dz = dx/n2, dy/n2, dz/n2
+    half = _m.radians(fov_deg) / 2.0
+    dist = (radius / _m.tan(half)) * margin
     pos = [center[0] + dx * dist, center[1] + dy * dist, center[2] + dz * dist]
     return pos, list(center)
 
@@ -93,7 +107,7 @@ def main():
         preview.unlink()
 
     center, radius = obj_bounds(obj_path)
-    cam_pos, target = camera_from_bounds(center, radius)
+    cam_pos, target = camera_from_bounds(center, radius, rot_x_deg=60.0, rot_z_deg=30.0)
     print(f"bounds center={[round(c, 3) for c in center]} radius={radius:.3f} cam={[round(c, 3) for c in cam_pos]}")
 
     # Per-surface palette (distinct solid colour per surface) — from docs/recipe-book.md.
@@ -102,6 +116,7 @@ def main():
         "gyroid":   [0.12, 0.45, 0.92],
         "neovius":  [0.95, 0.55, 0.15],
         "schwarz_h":[0.20, 0.80, 0.40],
+        "schwarz_p":[0.20, 0.80, 0.40],
         "schwarz":  [0.20, 0.80, 0.40],
         "lidinoid": [0.92, 0.30, 0.70],
         "schwarz_pd":[0.15, 0.80, 0.90],

@@ -33,8 +33,15 @@ X, Y, Z = np.meshgrid(dom, dom, dom, indexing="ij")
 
 if FORMULA == "gyroid":
     F = np.sin(X)*np.cos(Y) + np.sin(Y)*np.cos(Z) + np.sin(Z)*np.cos(X)
-elif FORMULA == "schwarz":
+elif FORMULA in ("schwarz", "schwarz_p"):
+    # Schwarz P (primitive) approximation (Wikipedia): cos x + cos y + cos z = 0
     F = np.cos(X) + np.cos(Y) + np.cos(Z)
+elif FORMULA == "schwarz_h":
+    # Schwarz H (hexagonal) approximation (Wikipedia): sin x cos y cos z
+    #   + cos x sin y cos z + cos x cos y sin z = 0
+    F = (np.sin(X)*np.cos(Y)*np.cos(Z)
+         + np.cos(X)*np.sin(Y)*np.cos(Z)
+         + np.cos(X)*np.cos(Y)*np.sin(Z))
 elif FORMULA == "schwarz_pd":
     F = (np.cos(X)*np.cos(Y)*np.cos(Z)
          - np.sin(X)*np.sin(Y)*np.sin(Z))
