@@ -21,9 +21,10 @@ from .bridge_control import octane_process_status, reset_octane_scene, run_bridg
 from .config import doctor, initialize_environment, resolve_config
 from .recipes import load_recipe, queue_recipe, recipe_index, validate_recipe_library
 from .corpus import find_grammar
+from .api_corpus import inspect_command
 from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
-from .models import QUALITY_TIERS
+from .models import DEFAULT_QUALITY, QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object, group_objects, modify_objects, animate_objects
 from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
@@ -57,12 +58,22 @@ def _build_save_preview_envelope(
     Shared by the MCP tool and the HTTP gateway so both stay in parity.
     ``progressive=True`` additionally emits an early low-spp frame at
     ``preview_progressive.png`` before the final frame (see bridge C1).
+
+    Convergence defaults follow ``DEFAULT_QUALITY`` (the ``fast`` tier,
+    500 s/px). Octane X ships a film ``maxSamples`` of 5000, so a
+    caller that passes no samples/quality would otherwise inherit Octane's own
+    5000-s/px crawl; the bridge overrides the film's maxSamples with
+    the command's ``samples`` on every render, but only if we emit one.
+    The default here therefore bakes in 500 s/px so a scene builds and
+    renders in 1-3 s rather than crawling to full convergence.
     """
     tier = None
     if quality:
         if quality not in QUALITY_TIERS:
             raise ValueError(f"quality must be one of {sorted(QUALITY_TIERS)}")
         tier = QUALITY_TIERS[quality]
+    else:
+        tier = QUALITY_TIERS.get(DEFAULT_QUALITY)
     resolved = {
         "path": path,
         "width": width,
@@ -93,7 +104,32 @@ def build_mcp() -> Any:
         return _json({"app": octane_app_status(), "commands": list_commands()})
 
     @mcp.tool()
-    def octane_scene_harvest() -> str:
+    def octane_capabilities() -> str:
+        """Report Octane X capability/version from the live API corpus.
+
+        Reads the most recent OctaneMCP/octane_lua_api.<build>.json
+        (emitted by export_api_docs_v3.lua inside Octane X) and
+        returns: which Octane build is in play, which runtime probes
+        (scene graph, node.create, render.start, saveImage, statistics)
+        actually exist, which key constants (node types, pins, maxSamples)
+        are present, the bridge's implied lighting strategy, and whether
+        the known-good save_preview signature is available. This is the
+        "what does THIS build support" answer so the agent never has
+        to guess against hardcoded folklore.
+        """
+        from .api_corpus import inspect_command
+        return _json(inspect_command())
+
+    @mcp.tool()
+    def octane_api_corpus_export() -> str:
+        """Instructions for producing the live Octane X API corpus.
+
+        Octane X has no CLI entry point (docs/octane-x-no-cli.md), so
+        the corpus exporter runs from the in-app Scripts menu, not a
+        shell. This returns the script to fire and where the JSON lands.
+        """
+        from .api_corpus import export_command
+        return _json(export_command())
         """Harvest the live OctaneX scene graph in real time.
 
         This queries the running OctaneX application directly (via the persistent
@@ -847,7 +883,7 @@ def _format_doctor(result: Dict[str, Any]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Octane X MCP server")
-    parser.add_argument("command", nargs="?", choices=["init", "doctor", "bridge-status", "run-oneshot", "start-persistent"], help="run a setup/diagnostic/bridge command instead of starting MCP stdio")
+    parser.add_argument("command", nargs="?", choices=["init", "doctor", "bridge-status", "run-oneshot", "start-persistent", "api-corpus"], help="run a setup/diagnostic/bridge command instead of starting MCP stdio")
     parser.add_argument("--self-test", action="store_true", help="create workspace and queue a ping without starting MCP stdio")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON for init/doctor/bridge output")
     parser.add_argument("--no-create", action="store_true", help="doctor only: do not create missing workspace folders")
@@ -872,6 +908,26 @@ def main() -> None:
         return
     if args.command == "start-persistent":
         print(_json(run_bridge_script("persistent", dry_run=args.dry_run, timeout_seconds=args.timeout)))
+        return
+    if args.command == "api-corpus":
+        if args.json:
+            print(_json(inspect_command()))
+        else:
+            result = inspect_command()
+            if not result.get("ok"):
+                print("Octane API corpus not found yet.")
+                print("  Fire this in Octane X (Scripts menu): export_api_docs_v3.lua")
+                print("  Then re-run: octanex-mcp api-corpus --json")
+                if result.get("next_steps"):
+                    for step in result["next_steps"]:
+                        print("   - " + step)
+            else:
+                cap = result.get("validation", {}).get("capabilities", {})
+                print("Octane X API corpus")
+                print("  source: " + str(result.get("source_path", "")))
+                print("  build : " + str(cap.get("build_tag", "unknown")))
+                print("  lighting strategy: " + str(cap.get("lighting_strategy", "?")))
+                print("  save_preview signature known: " + str(cap.get("save_preview_signature_known")))
         return
     build_mcp().run()
 

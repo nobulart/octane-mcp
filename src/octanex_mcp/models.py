@@ -21,13 +21,22 @@ MAX_RENDER_DIMENSION = 8192
 # timeout_seconds (Lua poll ceiling). Both act as caps; whichever is hit
 # first stops the render. min_samples / samples are targets only.
 QUALITY_TIERS: dict[str, dict[str, Any]] = {
+    # `fast` is the creator default (500 s/px). Octane X ships a film
+    # `maxSamples` of 5000, which makes every scene-render crawl to an
+    # irrelevant convergence. The bridge overrides the film's maxSamples with
+    # the command's `samples` field on every render, so a 500-s/px
+    # target gets a clean, presentable frame in 1-3 s instead of 30+ s.
+    "fast": {"max_render_time": 6, "timeout_seconds": 10, "min_samples": 64, "samples": 500},
     "preview": {"max_render_time": 10, "timeout_seconds": 10, "min_samples": 16, "samples": 256},
     "standard": {"max_render_time": 30, "timeout_seconds": 30, "min_samples": 24, "samples": 512},
     "high": {"max_render_time": 60, "timeout_seconds": 60, "min_samples": 48, "samples": 1024},
     "ultra": {"max_render_time": 120, "timeout_seconds": 120, "min_samples": 96, "samples": 2048},
     "final": {"max_render_time": 0, "timeout_seconds": 600, "min_samples": 1024, "samples": 1_000_000},
 }
-DEFAULT_QUALITY = "standard"
+# Creator default: 500 s/px `fast` tier. Overrides Octane X's
+# 5000 s/px film default on every render (see request_render_restart),
+# so scenes build/render in 1-3 s instead of crawling to convergence.
+DEFAULT_QUALITY = "fast"
 
 
 ALLOWED_OPS = {
