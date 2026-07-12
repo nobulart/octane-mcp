@@ -40,6 +40,80 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Keep the cord as tube geometry rather than a rectangular strip.
 - If a future render looks soft, verify the generated bridge honors `focus_distance` before changing geometry.
 
+## 3DXM Minimal-Surface Gallery Pass (WP9 visualisation)
+
+- **Outcome:** success (gyroid verified; pipeline + palette established for remaining 36)
+- **Recorded:** 2026-07-13
+- **Context:** Visualise the 37 surfaces of the 3DXM Virtual Math Museum gallery in OctaneX, one at a time, awaiting review after each. Surfaces with closed-form implicit equations are meshed directly; others need parametric/Weierstrass embedding later.
+
+### Steps
+- Implicit TPMS (gyroid, Schwarz H/PD, Neovius, Lidinoid, diamond) → `marching_cubes` on a sampled scalar field, centred + scaled to radius 2.5, written as a **plain single-material OBJ** (no `usemtl` groups, no `vc`, no bands).
+- Queue: `import_geometry → create_material (one glossy, ONE solid colour) → assign_material → set_camera (auto-framed from OBJ bounds) → set_lighting (dark_studio) → save_preview`.
+- Each surface gets a **distinct solid material colour** (see palette). No gradient.
+
+### Signals / evidence
+- Gyroid verified correct (triply-periodic minimal surface, ~27% frame coverage, centred).
+- `save_preview` saves via `octane.render.saveImage(imageSaveType.PNG8)`.
+
+### CRITICAL — render samples are NOT overridable from Lua
+- The Octane X build **ignores** film `maxSamples` / `maxRenderTime` set from Lua. Renders run to **~5000 SPP** regardless. `wait_for_render_ready` cannot shorten this — just let it run and capture when done. Do NOT attempt to cap SPP from Lua; it has no effect.
+- Baked OBJ vertex colours (`vc`) are **ignored** by the importer. Texture-node colours (`NT_TEX_RGB` / `NT_TEX_GRADIENT` / `NT_TEX_OSL`) **cannot be set** (pin + attribute both fail). `NT_TEX_VERTEXCOLOR` does **not exist** on this build.
+- Conclusion: the only working colour path is the **material diffuse (solid)**. Gradient / banded meshes are unreliable — use one solid colour per surface.
+
+### Colour palette (distinct per surface, rotate hue)
+- gyroid: blue `[0.12, 0.45, 0.92]`
+- neovius: amber `[0.95, 0.55, 0.15]`
+- schwarz_h: green `[0.20, 0.80, 0.40]`
+- lidinoid: magenta `[0.92, 0.30, 0.70]`
+- schwarz_pd: cyan `[0.15, 0.80, 0.90]`
+- (continue rotating for the rest)
+
+### Follow-ups
+- Non-implicit surfaces (Enneper, Costa, Kusner, Catenoid, Scherk, etc.) need parametric UV meshes or Weierstrass embedding — not yet implemented.
+- A background monitor PID (`/tmp/monitor_render.py`) can watch the preview PNG while the long render runs, so prep for the next surface proceeds in parallel. Still stop and await user review before queuing the next surface.
+- Reset between surfaces with `File > New` (warm reset), NOT a full Octane relaunch (relaunch purges the scene and can leave `save_preview` polling stalled).
+
+## Surface #2 — Neovius (single manifold, correct equation)
+
+- **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
+- **Recorded:** 2026-07-13
+- **Context:** Second surface in the 3DXM gallery pass. First attempt used a WRONG implicit equation and produced a multi-fragment mesh; corrected after per-surface research.
+
+### Steps
+- Mesh via `/tmp/gen_implicit.py neovius neovius 132 2.5 1` (periods=1 → ONE fundamental domain).
+- Equation (verified against Wikipedia/HandWiki/Wolfram): `3(cos x + cos y + cos z) + 4 cos x cos y cos z = 0`.
+  - WRONG form that was tried first: `3cos x + 4 cos x cos y cos z + cos2x cos2y + ...` (double-angle) — does NOT produce the Neovius.
+- Keep ONLY the largest connected component of the marching-cubes output (see "single manifold" below).
+- Material: amber `[0.95, 0.55, 0.15]` (one solid glossy colour, matches palette).
+- Camera auto-framed from OBJ bounds (centre 0, radius 2.5).
+
+### Signals / evidence
+- Mesh: 86,256 verts / 170,444 faces, **1 connected component** (single manifold).
+- Local qwen2.5vl confirmed: single connected manifold, shape matches Wikipedia "Neovius in a unit cell" reference.
+- User visual approval: "Excellent. You got it right."
+
+### CRITICAL LESSONS (apply to every remaining surface)
+1. **Per-surface research is a prerequisite.** Before building any surface, fetch its source page (SearXNG → Virtual Math Museum / Wikipedia / MathCurve) and confirm the EXACT implicit/parametric equation. The Neovius wrong-equation mistake would have shipped a non-Neovius without this step.
+2. **Single manifold, not multiple cells.** The gallery examples are almost all a SINGLE manifold (one fundamental domain / unit cell). Meshing `[-2π,2π]³` (multiple periods) yields a dense multi-cell lattice that does NOT match the reference. Use `periods=1` (`[-π,π]³`) and keep only the largest connected component — marching-cubes over a periodic field at level 0 produces disconnected boundary fragments.
+3. **Use the LOCAL qwen2.5vl vision model for visual analysis** (`http://localhost:11434/api/generate`, model `qwen2.5vl:7b`), NOT the cloud vision path — cloud hallucinates on mathematical surfaces. Resize images to ~640px first (use `/opt/homebrew/bin/python3` + Pillow; the Hermes venv PIL is broken). Two-image compare calls work (pass both base64 in `images:[]`).
+4. **Capture the Octane viewport, not the full display.** `screencapture -D 3` grabbed a cluttered desktop (other app windows overlap Octane on that display). The reliable path: `screencapture -R <x>,<y>,<w>,<h>` on the Octane window's global bounds (get via `osascript -e 'tell app "System Events" to tell process "Octane X" to get {position,size} of window 1'`), then crop the central viewport (skip ~380px L, ~420px R, ~60px T, ~120px B) to drop UI panels. Display numbering under the hood differs from the logical "Octane is on display 3" description.
+5. **One-shot trigger reliability.** `uv run octanex-mcp run-oneshot` sometimes returns without draining the queue; the direct `osascript scripts/octane_run_oneshot.applescript` ("clicked hermes_bridge_oneshot.generated") is the dependable trigger. Queue must be flushed first (`rm -f queue/*`).
+6. **Bridge edits require a real Octane relaunch** to clear the in-memory Lua cache. After editing `octane_lua/hermes_bridge_oneshot_v2.lua`, run `octanex-mcp init`, then fully quit + reopen Octane X (PID changes). Verify the reloaded script executed via a fresh `v2 bridge starting` / `ping → pong` log line.
+7. **Dead probe code must be removed, not left in.** A 171-line gradient-probe block was added during the (reverted) gradient investigation and silently kept the bridge "changed" → Octane ran stale Lua. If you revert an investigation, `git checkout` the template and re-apply only the functional fix, then regenerate.
+8. **MATERIAL COLOR IS PER-SURFACE — never hardcode.** `queue_surface.py` originally hardcoded the gyroid blue `[0.12,0.45,0.92]` for EVERY surface, so Neovius rendered blue despite the amber intent. Fixed by adding a `PALETTE` dict keyed by surface name (matches the gallery colour palette below) and passing `color=PALETTE.get(name, ...)` into `create_material`. Always drive material colour from the surface name, never a literal.
+
+### Colour palette (distinct per surface, rotate hue)
+- gyroid: blue `[0.12, 0.45, 0.92]`
+- neovius: amber `[0.95, 0.55, 0.15]`
+- schwarz_h / schwarz: green `[0.20, 0.80, 0.40]`
+- lidinoid: magenta `[0.92, 0.30, 0.70]`
+- schwarz_pd: cyan `[0.15, 0.80, 0.90]`
+- diamond: yellow `[0.80, 0.80, 0.20]`
+- (continue rotating for the rest)
+- Promote `gen_implicit.py` (with single-manifold extraction + correct equations) into `scripts/` as the canonical generator for the remaining implicit surfaces.
+- Build a `research_surface.py` helper: given a surface name, SearXNG-fetch its source page + reference image, extract/verify the equation, and confirm single-manifold form. Run it before every surface #3–#37.
+- Remaining implicit surfaces in gallery: schwarz_h (green), lidinoid (magenta), schwarz_pd (cyan), diamond (+ continuing hue rotation). Then non-implicit ones (Enneper, Costa, etc.) need parametric/Weierstrass meshes.
+
 ## Seed: prefer one-shot bridge for multi-command scenes
 
 - **Outcome:** success

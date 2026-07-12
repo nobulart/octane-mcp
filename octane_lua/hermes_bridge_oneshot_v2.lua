@@ -759,10 +759,12 @@ local function wait_for_render_ready(min_samples, timeout_seconds)
         return true, "render statistics unavailable; continuing"
     end
     local last = "no statistics yet"
+    local got_stats = false
     local attempts = math.max(1, math.floor((timeout_seconds / 0.5) + 0.5))
     for _ = 1, attempts do
         local ok, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
         if ok and type(stats) == "table" then
+            got_stats = true
             local beauty = render_stat_number(stats, "beautySamplesPerPixel")
             local info = render_stat_number(stats, "infoSamplesPerPixel")
             local pending = stats.hasPendingUpdates == true
@@ -773,12 +775,17 @@ local function wait_for_render_ready(min_samples, timeout_seconds)
                 return true, last
             end
         else
-            last = tostring(stats)
+            last = "stats err/nil: " .. tostring(stats)
         end
         sleep_seconds(0.5)
     end
-    append_log("render preview readiness timeout: " .. tostring(last))
-    return false, last
+    -- If we never got valid stats, the render loop may still be producing a
+    -- frame; don't block the capture on a polling API that returned nil.
+    append_log("render preview readiness: got_stats=" .. tostring(got_stats) .. " last=" .. last)
+    if got_stats then
+        return false, last
+    end
+    return true, "stats unavailable after polling; attempting save anyway"
 end
 
 local function latest_imported_geometry_fallback()
