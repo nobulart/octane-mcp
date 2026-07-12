@@ -1250,3 +1250,10 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Equation:** cos x + cos y + cos z = 0
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_p schwarz_p 132 2.5 1`
 - **VLM check:** YES. The image appears to have the correct topology and symmetry for a Schwarz P surface, which typically exhibits a complex, interconnected structure with multiple arms extending from a central point
+
+## Surface (autonomous) — schwarz_pd
+
+- **Outcome:** success (autonomous sequential run, 2026-07-13)
+- **Equation:** cos x cos y cos z - sin x sin y sin z = 0
+- **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_pd schwarz_pd 132 2.5 1`
+- **VLM check:** YES. The image appears to correctly represent the Schwarz P-dodecahedron surface with a single connected manifold and the expected symmetry. However, it's important to note that 3D rendering can somet
