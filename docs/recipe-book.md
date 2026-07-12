@@ -1257,3 +1257,10 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Equation:** cos x cos y cos z - sin x sin y sin z = 0
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_pd schwarz_pd 132 2.5 1`
 - **VLM check:** YES. The image appears to correctly represent the Schwarz P-dodecahedron surface with a single connected manifold and the expected symmetry. However, it's important to note that 3D rendering can somet
+
+## Surface (autonomous) — diamond
+
+- **Outcome:** success (autonomous sequential run, 2026-07-13)
+- **Equation:** cos x cos y cos z - sin x sin y sin z = 0
+- **Mesh:** single manifold via `scripts/gen_implicit_surface.py diamond schwarz_pd 132 2.5 1`
+- **VLM check:** NO. The image you provided appears to be a stylized or abstract representation rather than a realistic depiction of a diamond's surface. A real diamond would have a more crystalline and faceted appear
