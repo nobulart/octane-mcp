@@ -1,5 +1,7 @@
 # Gyroid — 3DXM Minimal-Surface Gallery (Surface #1)
 
+![preview](octane-preview.png)
+
 A single blue gyroid minimal surface — the first surface in the 3DXM gallery pass.
 
 - **Equation:** `sin x cos y + sin y cos z + sin z cos x = 0` (verified against Wikipedia / Wolfram)

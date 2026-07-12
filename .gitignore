@@ -54,3 +54,6 @@ scripts/queue_butterfly_raw.py
 # OctaneX manual mirror (docs/OctaneX/): keep the cleaned Markdown pages +
 # per-page .json sidecars in git; the downloaded images/ stay local only.
 docs/OctaneX/images/
+
+# Autonomous-run scratch: reference-image fetch dirs (not recipes)
+examples/recipes/_*/

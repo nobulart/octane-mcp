@@ -1,5 +1,7 @@
 # lidinoid — 3DXM Minimal-Surface Gallery
 
+![preview](octane-preview.png)
+
 - **Equation:** n/a (parametric)
 - **Form:** single manifold (mesh verified, 1 connected component)
 - **Material:** per-surface palette (see docs/recipe-book.md)

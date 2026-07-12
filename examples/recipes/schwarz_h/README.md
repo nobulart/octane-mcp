@@ -1,5 +1,7 @@
 # Schwarz H — 3DXM Minimal-Surface Gallery (Surface #3)
 
+![preview](octane-preview.png)
+
 A single green Schwarz H minimal surface — the hexagonal/3-fold-symmetry triply-periodic surface.
 
 - **Equation:** `sin x cos y cos z + cos x sin y cos z + cos x cos y sin z = 0` (Wikipedia Schwarz H approximation; verified vs Wikipedia / Virtual Math Museum reference)

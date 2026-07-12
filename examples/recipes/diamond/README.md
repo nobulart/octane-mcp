@@ -1,5 +1,7 @@
 # diamond — 3DXM Minimal-Surface Gallery
 
+![preview](octane-preview.png)
+
 - **Equation:** cos x cos y cos z - sin x sin y sin z = 0
 - **Form:** single manifold (mesh verified, 1 connected component)
 - **Material:** per-surface palette (see docs/recipe-book.md)

@@ -1,5 +1,7 @@
 # Neovius — 3DXM Minimal-Surface Gallery (Surface #2)
 
+![preview](octane-preview.png)
+
 A single amber Neovius minimal surface, rendered in OctaneX via the MCP bridge.
 
 - **Equation:** `3(cos x + cos y + cos z) + 4 cos x cos y cos z = 0` (verified against Wikipedia / HandWiki / Wolfram)

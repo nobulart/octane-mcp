@@ -75,6 +75,8 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 
 ## Surface #1 — Gyroid (single manifold, correct equation)
 
+![preview](../examples/recipes/gyroid/octane-preview.png)
+
 - **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
 - **Recorded:** 2026-07-13
 - **Context:** First surface in the 3DXM gallery pass. Established the implicit-surface pipeline: mesh → single-material OBJ → queue → one-shot bridge → ~5000 SPP render → viewport capture.
@@ -96,6 +98,8 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Promote this exact OBJ + preview into `examples/recipes/gyroid/` (done: `neovius.obj`/`octane-preview.png` precedent).
 
 ## Surface #2 — Neovius (single manifold, correct equation)
+
+![preview](../examples/recipes/neovius/octane-preview.png)
 
 - **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
 - **Recorded:** 2026-07-13
@@ -137,6 +141,8 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Remaining implicit surfaces in gallery: schwarz_h (green), lidinoid (magenta), schwarz_pd (cyan), diamond (+ continuing hue rotation). Then non-implicit ones (Enneper, Costa, etc.) need parametric/Weierstrass meshes.
 
 ## Surface #3 — Schwarz H (oblique camera, correct equation)
+
+![preview](../examples/recipes/schwarz_h/octane-preview.png)
 
 - **Outcome:** success (verified by user 2026-07-13; approved for the gallery)
 - **Recorded:** 2026-07-13
@@ -1232,6 +1238,8 @@ geometry, the launcher `-2741` bug, and TCC.
 
 ## Surface (autonomous) — schwarz_p
 
+![preview](../examples/recipes/schwarz_p/octane-preview.png)
+
 - **Outcome:** success (autonomous sequential run, 2026-07-13)
 - **Equation:** cos x + cos y + cos z = 0
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_p schwarz_p 132 2.5 1`
@@ -1239,19 +1247,16 @@ geometry, the launcher `-2741` bug, and TCC.
 
 ## Surface (autonomous) — lidinoid
 
+![preview](../examples/recipes/lidinoid/octane-preview.png)
+
 - **Outcome:** success (autonomous sequential run, 2026-07-13)
 - **Equation:** n/a
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py lidinoid lidinoid 132 2.5 1`
 - **VLM check:** YES. Your render appears to capture the essential characteristics and topology of a lidinoid surface, including its single-connected manifold structure and symmetrical features. However, it may not pe
 
-## Surface (autonomous) — schwarz_p
-
-- **Outcome:** success (autonomous sequential run, 2026-07-13)
-- **Equation:** cos x + cos y + cos z = 0
-- **Mesh:** single manifold via `scripts/gen_implicit_surface.py schwarz_p schwarz_p 132 2.5 1`
-- **VLM check:** YES. The image appears to have the correct topology and symmetry for a Schwarz P surface, which typically exhibits a complex, interconnected structure with multiple arms extending from a central point
-
 ## Surface (autonomous) — schwarz_pd
+
+![preview](../examples/recipes/schwarz_pd/octane-preview.png)
 
 - **Outcome:** success (autonomous sequential run, 2026-07-13)
 - **Equation:** cos x cos y cos z - sin x sin y sin z = 0
@@ -1259,6 +1264,8 @@ geometry, the launcher `-2741` bug, and TCC.
 - **VLM check:** YES. The image appears to correctly represent the Schwarz P-dodecahedron surface with a single connected manifold and the expected symmetry. However, it's important to note that 3D rendering can somet
 
 ## Surface (autonomous) — diamond
+
+![preview](../examples/recipes/diamond/octane-preview.png)
 
 - **Outcome:** success (autonomous sequential run, 2026-07-13)
 - **Equation:** cos x cos y cos z - sin x sin y sin z = 0
