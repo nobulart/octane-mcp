@@ -1026,3 +1026,24 @@ geometry, the launcher `-2741` bug, and TCC.
 ### Follow-ups
 - Add a `octane_status` field that distinguishes "bridge alive but engine wedged" from "idle" so the agent stops blindly re-clicking.
 - For iterative realism work, prefer: regenerate OBJ → cold Octane → one-shot drain → inspect → (if another gen is needed) cold Octane again.
+
+---
+
+## Note: one-shot drain appears to render the scene twice (it does not)
+
+- **Outcome:** pitfall (false alarm)
+- **Recorded:** 2026-07-12
+- **Context:** After an `octane_queue_recipe`/`save_preview` one-shot drain of the `ancient-temple` scene, the user observed the scene apparently rendering twice and asked whether the bridge was double-processing the queue.
+
+### What `bridge.log` actually shows
+- `save_preview` starts the render, waits for `beauty=5000`, and writes the PNG **once** (`preview saved .../temple_ancient_preview.png`; `v2 drained commands count=8`).
+- After the queue drains, the script runs its **top-level delayed RT re-activation** (`top-level delayed RT re-activation: re-selecting after settle` → `activated render target Hermes Render Target` → `top-level delayed restart ok=true`). That is the bridge re-selecting/restarting the render target after the save completes — it re-warms the engine but does **not** re-emit `save_preview`, so no second image is written.
+- `status.json`'s `last_preview_path`/`last_event` lag the live run (known quirk) — do not read a stale `failed`/`save preview failed` there as a second render.
+
+### Signals / evidence
+- `bridge.log` tail: exactly one `preview saved` line; one `v2 drained commands count=8`; one trailing `top-level delayed restart ok=true`.
+- PNG on disk is a single file with one mtime, not two.
+
+### Follow-ups
+- Do NOT treat the post-save RT re-activation as a queue-duplication bug. If a *genuine* double write is suspected, count `save attempt saveImage` lines in `bridge.log` — there should be exactly one per drain.
+- If the post-save restart is undesirable (engine churn between recipes), it is a candidate for removal in `hermes_bridge_oneshot_v2.lua`; confirm with the user before editing the bridge template.

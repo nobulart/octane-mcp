@@ -1,0 +1,10 @@
+# Octane X ancient-temple — material hints mirroring scene.json create_material payloads.
+# Kind/color/roughness are applied via assign_material(group_index); this file
+# documents the per-usemtl group mapping for humans and the recipe validator.
+
+newmtl mat_stone
+Kd 0.82 0.78 0.68
+Ns 15.4
+newmtl mat_roof
+Kd 0.55 0.16 0.12
+Ns 18.2

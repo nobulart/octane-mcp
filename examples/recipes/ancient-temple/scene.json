@@ -1,0 +1,149 @@
+{
+  "slug": "ancient-temple",
+  "title": "Ancient Greek-Style Temple",
+  "category": "Architecture",
+  "purpose": "Render a simplified Doric temple (stepped platform, two colonnades of tapered columns, entablature, triangular pediment) as a reusable architecture scene, bounding against plain sky.",
+  "prompt": "Visualise an ancient temple",
+  "camera": {
+    "position": [18.0, 8.0, 18.0],
+    "target": [0.0, 4.5, 0.0],
+    "fov": 40.0
+  },
+  "materials": {
+    "mat_stone": {
+      "kind": "glossy",
+      "color": [0.82, 0.78, 0.68],
+      "roughness": 0.65
+    },
+    "mat_roof": {
+      "kind": "glossy",
+      "color": [0.55, 0.16, 0.12],
+      "roughness": 0.55
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/ancient-temple/scene.obj",
+        "format": "obj",
+        "name": "ancient_temple"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_stone",
+        "kind": "glossy",
+        "color": [0.82, 0.78, 0.68],
+        "roughness": 0.65
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_roof",
+        "kind": "glossy",
+        "color": [0.55, 0.16, 0.12],
+        "roughness": 0.55
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "ancient_temple",
+        "material_name": "mat_stone",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "ancient_temple",
+        "material_name": "mat_roof",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [18.0, 8.0, 18.0],
+        "target": [0.0, 4.5, 0.0],
+        "fov": 40.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/ancient-temple/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 96,
+        "min_samples": 32,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "preview_note": "octane-preview.png is the native Octane X render (beauty=5000, 96 spp). Re-run via the recipe to reproduce.",
+  "native_render_note": "Imported OBJ binds a material per usemtl GROUP via assign_material(group_index); binding to the whole mesh does not faithfully colour a combined multi-material subject on this Octane build. The combined-OBJ path (one mesh node, per-group usemtl) is the proven-visible pattern used by octane_visualize_bars and bookshelf-speakers.",
+  "quality_checklist": [
+    "Preview is non-blank and reads as a Greek temple (stepped base, column rows, entablature, pediment) at thumbnail size.",
+    "Both usemtl groups (stone, roof) are visually distinct — sandstone body, deeper terracotta pediment.",
+    "Scene imports the local scene.obj path listed in commands[].",
+    "Camera frames the whole temple with margin (3/4 view).",
+    "All 2 usemtl groups in scene.obj have a matching create_material + assign_material(group_index).",
+    "If native Octane output differs from intent, record the lesson in docs/recipe-book.md."
+  ],
+  "target_preview": "octane-preview.png",
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/ancient-temple/octane-preview.png",
+    "candidate_image": "examples/recipes/ancient-temple/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "object count and semantic content",
+      "composition, framing, and camera perspective",
+      "material/color readability and contrast",
+      "lighting, shadows, and background clarity"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata for queued commands",
+      "native Octane candidate preview at octane-preview.png",
+      "glm-ocr reference and candidate review notes",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "stop_conditions": [
+      "candidate content and major silhouettes match the recipe intent (temple: base + columns + entablature + pediment)",
+      "task-critical colors/materials are visually distinguishable (stone vs roof)",
+      "camera/framing and lighting are close enough for an architecture shot"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/ancient-temple/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "octane-preview.png"
+    ],
+    "status": "native_candidate_saved_but_not_final",
+    "note": "Native Octane X render captured and checked in as octane-preview.png."
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (ancient-temple, 2026-07-12)"
+}
