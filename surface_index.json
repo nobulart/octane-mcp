@@ -1,0 +1,160 @@
+{
+  "_note": "3DXM Minimal-Surface Gallery (Virtual Math Museum). 37 surfaces target. 'formula_key' = meshable via scripts/gen_implicit_surface.py (closed-form implicit). null = needs parametric/Weierstrass meshing (NOT yet implemented) -> BLOCKED in the autonomous run, never faked.",
+  "surfaces": [
+    {
+      "name": "gyroid",
+      "formula_key": "gyroid",
+      "status": "done"
+    },
+    {
+      "name": "neovius",
+      "formula_key": "neovius",
+      "status": "done"
+    },
+    {
+      "name": "schwarz_h",
+      "formula_key": "schwarz_h",
+      "status": "done"
+    },
+    {
+      "name": "schwarz_p",
+      "formula_key": "schwarz_p",
+      "status": "done"
+    },
+    {
+      "name": "lidinoid",
+      "formula_key": "lidinoid",
+      "status": "pending"
+    },
+    {
+      "name": "schwarz_pd",
+      "formula_key": "schwarz_pd",
+      "status": "pending"
+    },
+    {
+      "name": "diamond",
+      "formula_key": "schwarz_pd",
+      "status": "pending"
+    },
+    {
+      "name": "enneper",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "scherk",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "costa",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "costa_hoffman_meeks",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "chen_gackstatter",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "catenoid",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "helicoid",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "boy",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "steiner",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "kusner",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "riemann",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "henneberg",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "morin",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "bour",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "schoen_iwp",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "schoen_frd",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "schoen_ss",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "saddle_tower",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "clp",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    },
+    {
+      "name": "weierstrass",
+      "formula_key": null,
+      "status": "blocked:needs_parametric",
+      "gap": "no closed-form implicit equation; requires parametric/Weierstrass meshing (not yet implemented)"
+    }
+  ]
+}
