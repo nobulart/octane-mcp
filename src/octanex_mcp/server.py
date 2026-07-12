@@ -27,6 +27,7 @@ from .review import review_preview, suggest_camera_fix, suggest_lighting_fix
 from .schema import command_schema, validate_command, validate_queue
 from .models import DEFAULT_QUALITY, QUALITY_TIERS
 from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remove_scene_object, requeue_scene, save_scene_manifest, swap_geometry, update_scene_object, group_objects, modify_objects, animate_objects
+from .sanity import analyze_scene_graph, analyze_scene_plan
 from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
@@ -169,6 +170,49 @@ def build_mcp() -> Any:
         """
         result = _scene_harvest()
         return _json(result)
+
+    @mcp.tool()
+    def octane_scene_sanity(strict: bool = False) -> str:
+        """Sanity-check the LIVE OctaneX node graph before rendering.
+
+        Harvests the running scene graph (via octane_scene_harvest) and runs a
+        graph-level sanity gate: render-target presence, camera present + wired to
+        the render target, at least one light/environment, meshes with geometry and
+        an assigned material, orphan materials, and zero/negative node scales.
+        This is a pre-render guard that catches dangling/orphaned/broken nodes
+        BEFORE spending GPU on save_preview — complementary to the post-render
+        pixel QA in octane_review_preview.
+
+        Returns a report with ok / error_count / warning_count / issues[] (each
+        issue carries severity, code, message, and the offending node when known).
+        It never mutates the scene or blocks the render — the agent decides whether
+        to proceed. Set strict=True to escalate likely-blank signals (no lighting,
+        camera not wired) from warnings to errors.
+        """
+        harvest = _scene_harvest()
+        report = analyze_scene_graph(harvest, strict=strict)
+        return _json({"harvest_count": harvest.get("count"), **report.as_dict()})
+
+    @mcp.tool()
+    def octane_check_scene_plan(scene_plan: Dict[str, Any], strict: bool = False) -> str:
+        """Sanity-check a scene MANIFEST before building/queueing it.
+
+        Runs the offline graph gate against the planned scene (objects, materials,
+        camera, lighting) plus precise camera-framing math using the per-object
+        bounds the OBJ generator attaches. Catches errors even earlier than
+        octane_scene_sanity — before a single command is queued.
+
+        Examples of what it flags: no camera / invalid camera vectors, mesh objects
+        with no geometry path, materials that no object references, zero/negative
+        scale transforms, no light/environment, and a camera that is inside,
+        too far from, or too close to the subject (empty/clipped frames).
+
+        Returns a report with ok / error_count / warning_count / issues[]. Report-only:
+        it does not build or render. Set strict=True to treat missing lighting as an
+        error rather than a warning.
+        """
+        report = analyze_scene_plan(scene_plan, strict=strict)
+        return _json(report.as_dict())
 
     @mcp.tool()
     def octane_bridge_process_status() -> str:

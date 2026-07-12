@@ -193,11 +193,13 @@ def main():
                 allf.append(tuple(x + off for x in f))
         groups.append((gname, allv, allf))
 
-    # --- candle on upper tier ---
-    groups.append(("mat_candle", *cylinder(0.085, 0.075, 0.9, 1.67)))
+    # --- candle on upper tier (thicker so it reads as a candle, not a pin) ---
+    # top at ~2.55, base sunk ~0.03 into the upper tier top (1.67)
+    groups.append(("mat_candle", *cylinder(0.12, 0.11, 0.85, 1.70)))
 
-    # --- flame: bright teardrop rising from the wick ---
-    groups.append(("mat_flame", *spheroid(0, 2.57, 0, 0.13, sx=0.7, sy=1.7, sz=0.7)))
+    # --- flame: narrow tall teardrop rising from a clear gap above the wick ---
+    # bottom of flame at ~2.62 (gap above candle top 2.55), pointed tip upward
+    groups.append(("mat_flame", *spheroid(0, 2.78, 0, 0.11, sx=0.55, sy=2.4, sz=0.55)))
 
     # --- rainbow sprinkles: short rods scattered on the icing tops ---
     sprinkle_defs = [

@@ -878,8 +878,13 @@ geometry, the launcher `-2741` bug, and TCC.
 - macOS TCC (`-1719`) still blocks the AppleScript drain unless Accessibility is
   granted to the agent-runtime python; a manual persistent-bridge drain is the
   reliable fallback when TCC is absent.
-- Manual RT reselect in Octane is still required (setSelection{rt} is a no-op on
-  this build) or the render is blank regardless of geometry.
+- ~~Manual RT reselect in Octane is still required (setSelection{rt} is a no-op on
+  this build) or the render is blank regardless of geometry.~~ **RETRACTED:**
+  the 2026-07-10 debugging restored the autonomous RT path; the current generated
+  bridge activates the RT. Blank frames from that era were stale-code / queue /
+  scene-geometry issues. Do NOT require a manual RT click (see the prior
+  RT-selection-limitation refutation entry). If a frame is blank, run the
+  stale-code checklist first.
 
 ## Human scene labels: stable #N ids + scope-domain resolver
 
@@ -948,3 +953,76 @@ geometry, the launcher `-2741` bug, and TCC.
 - Phase 5: NL sugar over resolver+ref+animation parser.
 - Extend set_object_transform-style ops to material/light/camera mutation + full scene-edit keyframes.
 - Live Octane verification of a real rotate bake (needs Octane running).
+
+---
+
+## Birthday-cake realism recipe (multi-group OBJ + iterative refinement)
+
+- **Outcome:** success (iterative realism pass)
+- **Recorded:** 2026-07-12
+- **Context:** A stylised birthday cake — round board, two icing tiers, colored frosting drips, a candle + flame, rainbow sprinkles — built as ONE combined OBJ (16 `usemtl` groups) and refined toward realism across v1 → v2 → v2.1 → v2.2 by steering from the live Octane viewport.
+
+### Generator (`scripts/gen_birthday_cake.py`)
+- Round board = `cylinder(1.55,1.55,0.07,0.0)` (290 verts — a true cylinder, NOT the v1 8-vert box). The v1 square-slab look was a *stale import*: the committed OBJ was already rounded, but the live Octane scene had been built from an earlier cached import. Lesson: re-import builds from the disk OBJ, but a long-lived session accumulates stale meshes — prefer a cold Octane between major geometry regenerations.
+- Drips = scaled spheroids hanging below each rim (`cy = rim_y - droop*0.45`, `sy=1.5`). Confirmed visually hanging as teardrops, not blobs on top.
+- Sprinkles = short rods (`rod(...,0.022,0.2,...)`), tilted randomly. Confirmed as rods (elongated, not cubes, not spheres).
+- Candle = `cylinder(0.12,0.11,0.85,1.70)` (thick enough to read as a candle, stands on the upper tier top at y≈1.67).
+- Flame = narrow tall teardrop `spheroid(0,2.78,0,0.11,sx=0.55,sy=2.4,sz=0.55)` — y-extent 0.53 ≫ x/z 0.12, connects to the candle top (no floating ball). `create_material` has no `emission` on this build, so the flame is bright **glossy orange** (`[1.0,0.6,0.12]`, rough 0.15), not a true emitter.
+
+### Materials / anti-plastic
+- Icing reads plastic at `glossy roughness 0.5`. Fix: bump **roughness 0.62 + specular 0.2** → satin. Matte-ish diffuse also works but loses the sugar sheen.
+- `create_material` honors `diffuse/glossy/specular/metallic` only; `emission`/`transmission`/`ior`/`clearcoat` are silently ignored (logged "unsupported pin" is fine). Do NOT rely on emission for glow.
+
+### Queue pipeline (the drift bug we fixed)
+- `scripts/queue_birthday_cake_v2.py` originally hardcoded a `MATS` list that **disagreed with `scene.json`** — that is why a camera change "didn't take" (the queue fed its own values, not the recipe's). **Refactored to read `materials` + `camera` from `scene.json`** (single source of truth). The bridge consumes ONLY the `commands` list; the top-level `camera`/`materials` fields are documentation. Keep them in sync — assert `scene.json`'s top-level `camera` == the `set_camera` command payload.
+- Order: `import_geometry` (lexical-first so it drains before materials) → 16 `create_material` → 16 `assign_material(group_index 1..16)` → `set_camera` → `set_lighting` → `save_preview`. Queue drains lexically by timestamp prefix, so the import MUST be written first.
+- Validation: the strict offline `validate_command` requires envelope-level `schema_version`/`id`/`created_at` (ISO-Z). The bridge itself is lenient (reads `op`/`payload`), but emit the full envelope so `octane_validate_queue` passes too.
+
+### Iteration loop that worked
+1. Render → `screencapture -D 3 -x /tmp/octane.png` (Octane on **display 3**; Screen Recording TCC required, granted after a Hermes Desktop restart) → `vision_analyze` (native) for round-vs-square, drips, sprinkles, flame.
+2. Pixel check via `env -u PYTHONPATH /opt/homebrew/bin/python3` (Hermes venv PIL is broken): mean_abs_dev ≈ 108, nonbg ≈ 96%, vfill ≈ 100% = good fill.
+3. Patch generator/scene.json → regenerate OBJ → flush queue → re-queue → **cold Octane restart + one-shot click** → wait ≥3 min for 256-spp.
+
+### Pitfalls (load-bearing, this session)
+- **Persistent bridge silent-exit.** Stacking import→render cycles on the persistent bridge in one session wedged the engine and then **crashed the bridge window with no surfaced error** — final frame was a plain blue field (no geometry), `bridge.log` ended at `save attempt ... ok=true`, and `processing/` was left holding the `save_preview` command. Recovery = full Octane X quit+reopen, then a single fresh one-shot drain. The bridge should guard `wait_for_render_ready`/save so an engine-busy or empty-mesh state is reported, not silently fatal. **Prefer a cold Octane between major geometry regenerations**, not re-import over a long-lived scene.
+- TCC `-1719` returns after a Hermes Desktop restart (the agent-runtime python gets a fresh, ungranted token). Grant Accessibility to `/Users/craig/.hermes/hermes-agent/venv/bin/python` (or `/opt/homebrew/bin/uv` — stable, survives relinks), then full Hermes relaunch. Until then, only a manual Script-menu click drains.
+- The agent CANNOT click the bridge (TCC) — every render in this session was drained by the user's manual one-shot click. Plan accordingly: stage the queue, hand off the click.
+
+### Signals / evidence
+- Committed recipe: `examples/recipes/birthday-cake/` (scene.json + scene.obj + README + octane-preview.png).
+- v2 geometry confirmed: 16 groups, 46,448 verts, plate=290 (cylinder), face idx [1,46448] (no rebasing regression), flame y/x extent ratio 4.4, sprinkles rods.
+- 10/10 ad-hoc geometry+schema checks pass (temp verify script, deleted after).
+
+### Follow-ups
+- Harden the bridge against silent-exit (report engine-busy/empty-mesh instead of crashing).
+- Expose `emission` in `create_material` (real flame glow) once the Octane build supports it.
+- Add a `native_octane_verified` flip + `preview_note` after the v2.2 render is confirmed.
+
+---
+
+## Pitfall: persistent bridge silent-exit after stacked import→render cycles
+
+- **Outcome:** pitfall
+- **Recorded:** 2026-07-12
+- **Context:** A single Octane session that ran several re-import + render cycles (v1 → v2 → diag → v2.1 → v2.2) on the **persistent** bridge ended with the bridge window dead and a plain-blue-frame render. No error surfaced to `bridge.log` beyond the last `save attempt ... ok=true`.
+
+### Symptoms
+- Final `save_preview` produces a uniform blue/environment field with zero geometry (looks like an empty import).
+- `bridge.log` stops after `save attempt saveImage ... ok=true` — no `render ready`/`pre-save` lines for the wedged attempt, or the log ends mid-save.
+- `processing/` holds the `save_preview` command; `queue/` empties (the loop "finished" but the engine was wedged).
+- Status shows `octane_available:true` but the viewport is blank/blue.
+
+### Root cause
+- Repeated `request_render_restart` (called by every assembly handler + save) against a long-lived scene that accumulated duplicate/stale mesh nodes eventually wedges the render engine on an "previous render not finished" state, and the bridge then exits without reporting it. The crash is silent — `octane_status`/`status.json` may still say `ok`.
+
+### Fix / recovery (operational)
+- **Full Octane X quit + reopen** (File ▸ Quit, not just File ▸ New). File ▸ New clears the scene but does NOT reset a wedged engine; a cold restart does.
+- **Flush + re-queue a fresh pipeline**, then **one clean one-shot drain** in the new session.
+- Do NOT pile multiple import→render cycles onto one persistent-bridge session. Use a **cold Octane between major geometry regenerations** (each new OBJ formula = one fresh session), and re-import once per session rather than re-importing over a long-lived scene.
+
+### Fix (code, pending)
+- Guard `wait_for_render_ready` + `handle_save_preview` so an `engine-busy` or **empty-mesh** (`import_geometry` returned no verts / mesh not connected) state returns a structured error (`{"ok":false,"kind":"engine_busy"|"empty_mesh",...}`) instead of letting the script die. The current best-effort-on-timeout path hides the real failure.
+
+### Follow-ups
+- Add a `octane_status` field that distinguishes "bridge alive but engine wedged" from "idle" so the agent stops blindly re-clicking.
+- For iterative realism work, prefer: regenerate OBJ → cold Octane → one-shot drain → inspect → (if another gen is needed) cold Octane again.

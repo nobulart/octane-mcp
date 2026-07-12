@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.8
+|version: 1.9.10
 |author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -545,6 +545,27 @@ render that never finishes:
   Always drain with `octane_run_oneshot_bridge` (MCP) or the osascript one-shot
   trigger — it processes every queued command in timestamp order, then returns.
   Do not rely on the persistent bridge to auto-drain.
+- **Persistent bridge SILENT-EXIT (observed 2026-07-12).** Stacking several
+  import→render cycles on the persistent bridge in ONE session wedged the render
+  engine and then **crashed the bridge window with no surfaced error**: the final
+  frame was a plain blue/environment field (no geometry), `bridge.log` ended at
+  `save attempt saveImage ... ok=true`, and `processing/` was left holding the
+  `save_preview` command. `octane_status` may still report `octane_available:true`.
+  **Recovery = full Octane X quit+reopen** (File ▸ Quit, NOT just File ▸ New — File
+  ▸ New clears the scene but does not reset a wedged engine), then flush + re-queue
+  a fresh pipeline and do ONE clean one-shot drain. **Prefer a cold Octane between
+  major geometry regenerations** (each new OBJ formula = one fresh session); do not
+  re-import over a long-lived scene. The bridge should guard `wait_for_render_ready`
+  + `handle_save_preview` so an `engine-busy` or **empty-mesh** state returns a
+  structured error instead of dying silently (code fix still pending).
+- **Queue script MUST be single-source with `scene.json`.** A queue driver that
+  hardcodes its own `MATS`/camera list will silently DIVERGE from the recipe
+  (observed: a `set_camera` change did not take because the queue fed its own
+  stale camera). Make the queue script READ `materials` + `camera` from
+  `scene.json` and resolve the `commands` list from it, so the OBJ groups and the
+  recipe can never drift. The bridge consumes ONLY the `commands` list; the
+  top-level `camera`/`materials` fields are documentation — keep them equal to the
+  `set_camera` command payload (assert it).
 - **Clarification (verified 2026-07-09):** the *manual launch* of the persistent
   bridge works — `octane_start_persistent_bridge` returns `ok:true` and clicks
   `hermes_bridge_persistent.generated` from the Script menu once TCC is granted.
@@ -665,8 +686,22 @@ module-level* functions instead:
 | octane_recipe_book/index/load | `bridge.read_recipe_book` / `recipes.recipe_index` / `recipes.load_recipe` |
 | octane_validate_command/queue | `schema.validate_command` / `schema.validate_queue`                        |
 | octane_review_preview / suggest_*_fix | `review.review_preview` / `review.suggest_camera_fix` / `review.suggest_lighting_fix` |
+| octane_scene_sanity    | `sanity.analyze_scene_graph` over `bridge.scene_harvest` (LIVE graph, pre-render gate) |
+| octane_check_scene_plan | `sanity.analyze_scene_plan` (OFFLINE manifest, pre-build gate; includes camera-framing math) |
 | octane_save_preview     | `server._build_save_preview_envelope` (module-level!) → `bridge.write_command("save_preview", …)` |
 | octane_import_geometry / start_render / set_camera | `bridge.write_command(…)`                                   |
+
+**Pre-render sanity gate (report-only):** `octane_scene_sanity` harvests the
+live OctaneX node graph and runs `analyze_scene_graph` — catches
+no render-target / no camera / camera-not-wired-to-RT / no light-or-environment /
+mesh-missing-geometry / mesh-unassigned-material / orphan material / zero-or-negative
+node scale **before** spending GPU on `octane_save_preview`. Complementary to the
+post-render pixel QA in `octane_review_preview`. `octane_check_scene_plan`
+runs the same gate offline against a scene manifest *before* building, and additionally
+does camera-framing math from per-object `bounds` (camera inside / too-far / too-close
+→ empty or clipped frame). Both are report-only: they never mutate the scene or
+block a render; the agent decides whether to proceed. `strict=True` escalates
+likely-blank signals (no lighting, camera unwired) from warnings to errors.
 
 When adding a dashboard-callable tool, wire it in `gateway.DISPATCH` (point at the
 library function, NOT the MCP closure). Do NOT try to import the decorated function.
