@@ -1026,3 +1026,44 @@ geometry, the launcher `-2741` bug, and TCC.
 ### Follow-ups
 - Add a `octane_status` field that distinguishes "bridge alive but engine wedged" from "idle" so the agent stops blindly re-clicking.
 - For iterative realism work, prefer: regenerate OBJ → cold Octane → one-shot drain → inspect → (if another gen is needed) cold Octane again.
+
+## A2 — birthday-cake promoted to native_octane_verified (success)
+- **Outcome:** success (verification closure)
+- **Recorded:** 2026-07-12
+- **Context:** The 2026-07-12 v2 realism pass left `birthday-cake` with a converged `octane-preview.png` (590 KB) but the flag still `false`. A2 reconciled it honestly instead of flipping the flag blind.
+### Steps
+- Ran the repo's own pixel-QA gates on `examples/recipes/birthday-cake/octane-preview.png`:
+  - `filter_reference` → `ok=True` (no blank/blown/busy/flat/empty-subject reason).
+  - `evaluate_acceptance` (derive_criteria defaults: `non_empty` + `review_ok`) → `passed=True`, no disqualifiers. Stats: mean_dev 107.9, nonbg 94.96%, contrast 42.98, near_white 7.61%, 3 distinct hue families (magenta icing ~296°, red ~2°, cyan ~210°).
+  - `reference_to_acceptance` hue-family derivation reproduced the expected palette.
+- Confirmed subject with native vision: recognizable multi-tier cake, pastel-pink icing, cyan/amber/yellow sprinkles, white candle, under studio lighting. Pixel-QA + vision agree.
+- Flipped `native_octane_verified: true` in `scene.json`; set `final_bundle.status: native_verified` and a dated `note`.
+### Signals / evidence
+- `verify_recipe_library(dry_run=True)` now reports `total=24, contract_ok=23` (the promoted cake moves the verified count from 22→23; `earth-moon-space` remains the lone `contract_failed`).
+- `tests.test_verify_recipes` 10/10 pass; full `unittest discover` 357/0.
+### Follow-ups
+- Keep the v2.2 realism lessons (satin icing roughness 0.62, teardrop flame, rod sprinkles) — see the birthday-cake entry above.
+
+## A2 — helicoid-spiral preview REJECTED (do not promote)
+- **Outcome:** failure (verification gate, not a render attempt)
+- **Recorded:** 2026-07-12
+- **Context:** WIP.md listed `helicoid-spiral` among the "preview present, flag false" reconciliation items, implying it was a candidate. The repo's pixel-QA says otherwise — the committed `octane-preview.png` is blank.
+### What the gate found
+- `filter_reference` → `ok=False` (`very low contrast` [3.14], `flat full-frame fill (no distinct subject)`).
+- `evaluate_acceptance` → `passed=False` (`review_ok` triggered `likely object too small`). Stats: mean_brightness 242.3, contrast 3.14, near_black 0%, near_white 0%, edge_density 0.0, foreground_pixel_percent 3.06%.
+- Native vision confirmed: a near-uniform white field with a faint light-blue top band (sky gradient) — **no visible helicoid spiral or torus knot**.
+### Decision
+- LEFT `native_octane_verified: false`. Corrected `final_bundle.status: native_render_rejected_blank` and the root `status` to state the preview FAILED pixel-QA, so a future agent does not mistake it for a pending-but-valid candidate.
+- This is the chess-pawn lesson applied: a PNG on disk is not proof of a good render. Pixel gates (and vision only as confirmation) are the source of truth.
+### Follow-ups
+- Produce a fresh converged native render (cold Octane, flush queue, proper camera framing for thin parametric surfaces) before attempting promotion.
+- Consider that thin helicoid/knot surfaces need an oblique camera + enough tessellation to avoid a wireframe-scale subject that reads as empty.
+
+## A2 — earth-moon-space remains unverified (no preview)
+- **Outcome:** partial (honest status)
+- **Recorded:** 2026-07-12
+- **Context:** The third reconciliation item. `examples/recipes/earth-moon-space/` has NO `octane-preview.png` (both 2026-07-10 live captures returned near-empty frames). So this is a live-render gap, not a metadata fix.
+### Decision
+- LEFT `native_octane_verified: false`; root `status` now documents "NO preview.png present … needs a fresh converged native render before verification".
+### Follow-ups
+- Queue `earth-moon-space` from a cold Octane session, flush the shared queue first, give the save_preview a long enough convergence ceiling, and verify the PNG with `filter_reference` + `evaluate_acceptance` before flipping the flag.

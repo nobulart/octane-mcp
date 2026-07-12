@@ -115,7 +115,19 @@ class RecipeRegistryTests(unittest.TestCase):
                 bundle = raw["final_bundle"]
                 self.assertTrue(bundle["required"])
                 self.assertIn("octane-preview.png", bundle["native_render"])
-                self.assertIn(bundle["status"], {"pending_native_octane_iteration", "native_candidate_available", "native_candidate_saved_but_not_final"})
+                # Allowed terminal/candidate states for final_bundle.status:
+                #  - pending_native_octane_iteration : built, native render not yet attempted
+                #  - native_candidate_available     : candidate render on disk, not yet QA-verified
+                #  - native_candidate_saved_but_not_final : candidate saved, final review pending
+                #  - native_verified              : A2 closure — pixel-QA + vision confirm a converged native render
+                #  - native_render_rejected_blank : A2 closure — committed preview FAILED pixel-QA (blank/flat); do NOT promote
+                self.assertIn(bundle["status"], {
+                    "pending_native_octane_iteration",
+                    "native_candidate_available",
+                    "native_candidate_saved_but_not_final",
+                    "native_verified",
+                    "native_render_rejected_blank",
+                })
 
     def test_new_text_image_and_interpretability_recipes_have_renderable_previews(self) -> None:
         from octanex_mcp.review import review_preview

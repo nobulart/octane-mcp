@@ -249,5 +249,5 @@
     "status": "pending_native_octane_iteration"
   },
   "native_octane_verified": false,
-  "status": "built; native render pending (2026-07-09)"
+  "status": "built; NO preview.png present (2026-07-12) — both 2026-07-10 live captures returned near-empty frames; needs a fresh converged native render before verification"
 }

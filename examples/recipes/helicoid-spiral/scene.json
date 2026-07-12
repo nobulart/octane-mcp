@@ -250,8 +250,8 @@
       "preview.png",
       "octane-preview.png"
     ],
-    "status": "pending_native_octane_iteration"
+    "status": "native_render_rejected_blank"
   },
   "native_octane_verified": false,
-  "status": "built; native render pending (2026-07-09)"
+  "status": "built; octane-preview.png FAILED pixel-QA (2026-07-12) — near-uniform flat field, no visible subject; needs fresh live render"
 }
