@@ -414,6 +414,36 @@ local function delete_items_by_name(name, keep_first)
     return deleted
 end
 
+local function create_node(type_id, name, position)
+    if not type_id then return nil, "missing node type for " .. tostring(name) end
+    -- FIX (2026-07-12): target the MAIN scene graph explicitly via
+    -- graphOwner=octane.project.getSceneGraph() (or nodegraph.getRootGraph()).
+    -- Without this, octane.node.create lands nodes in the SCRIPT-local
+    -- graph: they render (RT references them) but are NOT visible/editable
+    -- in Octane's main outliner, so manual env/light edits in the UI
+    -- hit a different graph and the scene looks like "only the RT node".
+    -- The API export (octane_lua_api.txt line ~638) confirms node.create
+    -- accepts a graphOwner field.
+    -- NOTE: defined BEFORE ensure_canonical so the local is in scope
+    -- at the call site (Lua local-forward-reference would be nil).
+    local g = nil
+    pcall(function()
+        if octane.project and octane.project.getSceneGraph then g = octane.project.getSceneGraph() end
+    end)
+    if not g then pcall(function()
+        if octane.nodegraph and octane.nodegraph.getRootGraph then g = octane.nodegraph.getRootGraph() end
+    end) end
+    local ok, node_or_err = pcall(function()
+        if g then
+            return octane.node.create{ type=type_id, name=name, position=position or {500, 500}, graphOwner=g }
+        else
+            return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
+        end
+    end)
+    if ok then return node_or_err, nil end
+    return nil, tostring(node_or_err)
+end
+
 -- Ensure exactly one canonical node of (type, name): delete duplicate orphans,
 -- reuse the first if present, else create it. Then run setup(node). Returns the
 -- canonical node (or nil).
@@ -430,15 +460,6 @@ local function ensure_canonical(type_id, name, position, setup)
         if not ok then append_log("ensure_canonical setup failed " .. tostring(name) .. " err=" .. tostring(em)) end
     end
     return node
-end
-
-local function create_node(type_id, name, position)
-    if not type_id then return nil, "missing node type for " .. tostring(name) end
-    local ok, node_or_err = pcall(function()
-        return octane.node.create{ type=type_id, name=name, position=position or {500, 500} }
-    end)
-    if ok then return node_or_err, nil end
-    return nil, tostring(node_or_err)
 end
 
 local function set_pin_value(node, pin, value)
@@ -669,16 +690,17 @@ local function request_render_restart(samples, width, height, do_start, max_rend
         -- maxSamples (e.g. 5000) and ignores cmd.samples/timeout entirely.
         local film = ensure_film_settings(rt)
         if film then
+            -- Best-effort cap. NOTE (2026-07-12): this Octane X build's
+            -- Lua API does NOT expose film attribute constants (octane.A_*)
+            -- nor enumerable attributes (getAttributeCount()==0). The bridge
+            -- CANNOT set maxSamples/maxRenderTime programmatically; the
+            -- reliable fast-preview path is to set Kernel>Max samples in
+            -- Octane X's UI once (persists in the RT). This attempt is a
+            -- no-op on this build but harmless and documents intent.
             local max_spp = tonumber(samples) or 64
-            for _, pin in ipairs({octane.A_MAX_SAMPLES, "maxSamples", "maxsamples"}) do
-                if pin then pcall(function() film:setAttribute(pin, max_spp, true) end) end
-            end
+            pcall(function() film:setAttribute("maxSamples", max_spp, true) end)
             local mrt = tonumber(max_render_time)
-            if mrt and mrt > 0 then
-                for _, pin in ipairs({octane.A_MAX_RENDER_TIME, "maxRenderTime", "maxrendertime"}) do
-                    if pin then pcall(function() film:setAttribute(pin, mrt, true) end) end
-                end
-            end
+            if mrt and mrt > 0 then pcall(function() film:setAttribute("maxRenderTime", mrt, true) end) end
             append_log("film cap set maxSamples=" .. tostring(max_spp) .. " maxRenderTime=" .. tostring(mrt or "unset"))
         end
         -- Camera guard: octane.render.start{} must NOT run until a camera is
@@ -874,21 +896,30 @@ local function handle_create_light(cmd)
         append_log("post-light render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
         return true, "created environment light " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
     end
-    -- emissive-material proxy for all other light types
+    -- emissive-material proxy: build a small sphere/box mesh at cmd.position
+    -- (default above the scene) with an emissive material, so it actually
+    -- emits light into the scene (a material-only node is an orphan with no
+    -- geometry to glow from). Native NT_LIGHT_* node types are nil on this
+    -- build, so this is the only scriptable local-light path.
     local existing = find_item_by_name(name)
     if existing then return true, "light/material exists " .. tostring(name) end
-    local mat, err = create_node(octane.NT_MAT_EMISSIVE or octane.NT_MAT_DIFFUSE, name, {760, 500})
-    if not mat then return false, "create light material failed: " .. tostring(err) end
-    local function setdef(pin, val)
-        if val ~= nil then
-            local okp, w = pcall(set_pin_value, mat, pin, val)
-            if not okp then append_log("light pin " .. tostring(pin) .. " unsupported: " .. tostring(w)) end
-        end
+    local pos = cmd.position or {0, 8, 6}
+    local geo_type = octane.NT_GEO_SPHERE or octane.NT_GEO_BOX or octane.NT_GEO_PLANE
+    if not geo_type then
+        return true, "no primitive geometry node type available for light proxy"
     end
+    local mesh, merr = create_node(geo_type, name, {760, 500})
+    if not mesh then return false, "create light mesh failed: " .. tostring(merr) end
+    -- shrink the proxy so it reads as a light, not a boulder
+    pcall(function() set_pin_value(mesh, octane.P_SCALE or "scale", {1.2, 1.2, 1.2}) end)
+    pcall(function() set_pin_value(mesh, "position", pos) end)
+    local mat, err = create_node(octane.NT_MAT_EMISSIVE or octane.NT_MAT_DIFFUSE, name .. "_mat", {820, 500})
+    if not mat then return false, "create light material failed: " .. tostring(err) end
     local rgb = cmd.color or {1.0, 0.95, 0.85}
-    setdef(octane.P_EMISSION or "emission", {rgb[1] or 1, rgb[2] or 1, rgb[3] or 1})
-    setdef(octane.P_POWER or "power", intensity)
-    return true, "created emissive light proxy " .. tostring(name) .. " (" .. tostring(light_type) .. ")"
+    pcall(set_pin_value, mat, octane.P_EMISSION or "emission", {rgb[1] or 1, rgb[2] or 1, rgb[3] or 1})
+    pcall(set_pin_value, mat, octane.P_POWER or "power", intensity)
+    connect_to(mesh, octane.P_MATERIAL or "material", mat)
+    return true, "created emissive light proxy " .. tostring(name) .. " (" .. tostring(light_type) .. ") at " .. tostring(pos[1]) .. "," .. tostring(pos[2]) .. "," .. tostring(pos[3])
 end
 
 local function handle_assign_material(cmd)
@@ -933,38 +964,45 @@ end
 local function handle_set_lighting(cmd)
     local ok, msg = ensure_octane()
     if not ok then return true, msg end
+    -- TEMP INTROSPECTION: enumerate the octane module's attribute/node
+    -- constants so we learn the EXACT A_* names this build exposes
+    -- (GetPinInfo returns non-iterable cdata, so node-pin dumps fail).
+    -- Guarded; remove once dark_studio + film cap are bound correctly.
+    pcall(function()
+        local want = {"SKY","SUN","HORIZON","RENDER","SAMPLE","ENV","MAX","DAYLIGHT","POWER","INTENSITY","TEXTURE","GROUND","TURBIDITY","NORTH"}
+        local found = {}
+        local okp, t = pcall(function() return octane and pairs(octane) end)
+        if okp and t then
+            for k, v in t do
+                local ks = tostring(k)
+                for _, w in ipairs(want) do
+                    if string.find(ks:upper(), w) then found[#found+1] = ks .. "=" .. tostring(v); break end
+                end
+            end
+        end
+        table.sort(found)
+        append_log("OCTANE_CONSTANTS count=" .. tostring(#found) .. " " .. table.concat(found, " "))
+    end)
     local rt, rt_err = get_or_create_render_target()
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
     activate_render_target(rt)
     local preset = cmd.preset or "default"
     if preset == "dark_studio" then
-        -- True dark studio: Octane X on this build does NOT expose
-        -- NT_ENV_TEXTURE / NT_TEX_RGB, so we cannot build a solid-color
-        -- texture env. Instead we use the DAYLIGHT env that DOES exist and
-        -- force it dark by best-effort setting every candidate dark pin
-        -- (sky/sun/horizon color + intensities). Valid pins apply; unknown
-        -- ones are silently ignored via pcall, so this is robust across
-        -- Octane builds. The result is a near-black environment, not a sky.
-        local env_type = octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
-        if not env_type then return true, "no known environment node type constant" end
-        local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
+        -- True dark studio (VERIFIED 2026-07-12): build an NT_ENV_TEXTURE
+        -- fed by a near-black NT_TEX_RGB. Both node types exist + are
+        -- creatable on this build (probe DARK_ENV.built=true). This gives
+        -- a real dark background (no blue daylight sky) and replaces the
+        -- earlier no-op daylight-env darkening (env attrs are opaque:
+        -- getAttributeCount()==1, no settable sun/sky pins).
+        -- Native NT_LIGHT_* node types are nil on this build, so local
+        -- illumination comes from emissive-material proxies (see
+        -- handle_create_light), positioned at the subject.
+        local tex = create_node(octane.NT_TEX_RGB, "Hermes Dark Color", {200, 700})
+        if not tex then return false, "dark studio color texture failed" end
+        set_pin_value(tex, octane.P_COLOR or "color", {0.015, 0.015, 0.02})
+        local env = create_node(octane.NT_ENV_TEXTURE, "Hermes Environment", {300, 680})
         if not env then return false, "dark studio environment create failed" end
-        local dark_color = {0.015, 0.015, 0.02}
-        -- Candidate dark pins (names differ across Octane builds); set all that exist.
-        for _, pin in ipairs({
-            octane.A_SKY_COLOR, octane.A_SUN_COLOR, octane.A_HORIZON_COLOR,
-            octane.A_SUNSET_COLOR, "skyColor", "sunColor", "horizonColor",
-            "sky_color", "sun_color", "horizon_color", "sunsetColor",
-        }) do
-            if pin then pcall(function() env:setAttribute(pin, dark_color, true) end) end
-        end
-        for _, pin in ipairs({
-            octane.A_SUN_INTENSITY, octane.A_DAYLIGHT_INTENSITY,
-            octane.A_INTENSITY, "sunIntensity", "daylightIntensity",
-            "intensity", "power", "sunPower",
-        }) do
-            if pin then pcall(function() env:setAttribute(pin, 0.08, true) end) end
-        end
+        connect_to(env, octane.P_TEXTURE or "texture", tex)
         connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-lighting(dark_studio) render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -1135,6 +1173,88 @@ local function handle_scene_harvest(cmd)
     return true, "scene harvested: " .. tostring(result.count or 0) .. " nodes"
 end
 
+local function handle_probe_types(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local out = {}
+    local function test(t)
+        local exists = (octane[t] ~= nil)
+        local created, cerr = nil, "not tried"
+        if exists then
+            created, cerr = create_node(octane[t], "probe_" .. t, {500, 500})
+        end
+        out[t] = string.format("exists=%s created=%s err=%s", tostring(exists), tostring(created ~= nil), tostring(cerr))
+    end
+    test("NT_LIGHT_AREA")
+    test("NT_LIGHT_SUN")
+    test("NT_LIGHT_DAYLIGHT")
+    test("NT_ENV_DAYLIGHT")
+    test("NT_ENV_TEXTURE")
+    test("NT_TEX_RGB")
+    test("NT_ENV_THIN")
+    test("NT_GEO_SPHERE")
+    test("NT_GEO_BOX")
+    test("NT_GEO_PLANE")
+    -- Enumerate daylight env node's real attribute pin names so we can
+    -- bind sun/sky intensity for a true dark studio.
+    local env_probe = {}
+    pcall(function()
+        local env = octane.node.create{ type=octane.NT_ENV_DAYLIGHT, name="probe_env_attrs", graphOwner=octane.project.getSceneGraph() }
+        if env then
+            local n = 0
+            pcall(function() n = env:getAttributeCount() end)
+            for i = 0, (n > 0 and n - 1 or 0) do
+                local info = nil
+                pcall(function() info = env:getAttributeInfo(i) end)
+                if info and info.name then
+                    env_probe[info.name] = info.type or "?"
+                end
+            end
+            env_probe["_attrCount"] = n
+        end
+    end)
+    out["ENV_ATTRS"] = env_probe
+    -- Test dark environment via NT_ENV_TEXTURE + NT_TEX_RGB (both exist).
+    local dark = {}
+    pcall(function()
+        local tex = octane.node.create{ type=octane.NT_TEX_RGB, name="probe_dark_tex", graphOwner=octane.project.getSceneGraph() }
+        if tex then
+            set_pin_value(tex, octane.P_COLOR or "color", {0.02, 0.02, 0.03})
+            local envt = octane.node.create{ type=octane.NT_ENV_TEXTURE, name="probe_dark_env", graphOwner=octane.project.getSceneGraph() }
+            if envt then
+                connect_to(envt, octane.P_TEXTURE or "texture", tex)
+                dark["built"] = true
+                dark["tex_node"] = tostring(tex)
+                dark["env_node"] = tostring(envt)
+            else
+                dark["built"] = false
+                dark["env_err"] = "NT_ENV_TEXTURE create failed"
+            end
+        else
+            dark["built"] = false
+            dark["tex_err"] = "NT_TEX_RGB create failed"
+        end
+    end)
+    out["DARK_ENV"] = dark
+    -- Test scene reset API.
+    local reset = {}
+    pcall(function()
+        if octane.project and octane.project.newScene then
+            reset["newScene"] = "exists"
+        else
+            reset["newScene"] = "nil"
+        end
+        if octane.nodegraph and octane.nodegraph.getRootGraph then
+            reset["getRootGraph"] = "exists"
+        else
+            reset["getRootGraph"] = "nil"
+        end
+    end)
+    out["RESET"] = reset
+    append_log("PROBE_TYPES " .. json_encode(out))
+    return true, "probe logged"
+end
+
 local function handle_command(cmd)
     append_log("persistent command " .. tostring(cmd.id) .. " op=" .. tostring(cmd.op))
     if cmd.op == "ping" then return true, "pong " .. tostring(cmd.message or "") end
@@ -1148,6 +1268,7 @@ local function handle_command(cmd)
     if cmd.op == "start_render" then return handle_start_render(cmd) end
     if cmd.op == "save_preview" then return handle_save_preview(cmd) end
     if cmd.op == "scene_harvest" then return handle_scene_harvest(cmd) end
+    if cmd.op == "probe_types" then return handle_probe_types(cmd) end
     return true, "acknowledged " .. tostring(cmd.op)
 end
 
@@ -1269,35 +1390,17 @@ local function start_timer()
         append_log("persistent timer API unavailable; manual button only")
         return false
     end
-    local attempts = {
-        function() return octane.timer.create{ interval=1.0, callback=timer_tick } end,
-        function() return octane.timer.create{ time=1.0, callback=timer_tick } end,
-        function() return octane.timer.create(1.0, timer_tick) end,
-        function() return octane.timer.create(timer_tick) end,
-    }
-    for i, fn in ipairs(attempts) do
-        local ok, timer_or_err = pcall(fn)
-        if ok and timer_or_err then
-            bridge_timer = timer_or_err
-            local started = false
-            local ok_start = pcall(function() bridge_timer:start() end)
-            if ok_start then started = true end
-            if not started then ok_start = pcall(function() octane.timer.start(bridge_timer) end); if ok_start then started = true end end
-            if started then
-                append_log("persistent timer started attempt=" .. tostring(i))
-                return true
-            end
-            -- Octane X's timer.create(interval, callback) returns a timer object
-            -- that can still fire during showWindow() even when explicit
-            -- timer:start()/octane.timer.start(timer) reject the object. Treat a
-            -- successful create as active; the runtime log confirms ticks by
-            -- subsequent command processing.
-            append_log("persistent timer created attempt=" .. tostring(i) .. "; explicit start unavailable, assuming active during showWindow")
-            return true
-        else
-            append_log("timer create attempt " .. tostring(i) .. " failed: " .. tostring(timer_or_err))
-        end
+    -- Octane X build (2026-07-12): octane.timer.create takes
+    -- POSITIONAL (interval:number, callback:function). Table-form
+    -- calls (create{interval=..,callback=..}) error with
+    -- "bad argument #1 to 'create' (number expected, got table)".
+    local ok, timer_or_err = pcall(function() return octane.timer.create(1.0, timer_tick) end)
+    if ok and timer_or_err then
+        bridge_timer = timer_or_err
+        append_log("persistent timer created (interval=1.0, callback=timer_tick)")
+        return true
     end
+    append_log("persistent timer create failed: " .. tostring(timer_or_err))
     append_log("persistent timer not started; manual button only")
     return false
 end
