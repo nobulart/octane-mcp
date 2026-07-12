@@ -17,6 +17,10 @@ docs/                   command-schema, recipe-book, octane-bridge, roadmap,
                         octane-lua-api-bridge-review, canvas-implementation-roadmap,
                         OctaneX/ (offline Markdown mirror of the OT oy Standalone
                         user manual — 430 pages + images/, local research copy)
+  reference/            derived reference from the mirror (machine/human-consumable)
+    material-pins.md    material/light pin vocabulary extracted from OctaneX/
+                        mirror — bridge DSL source; runtime A_*/NT_* codes still
+                        come from the live corpus, NOT this file
 benchmarks/            progressive visualisation benchmark suite (spec/acceptance/harness)
 tests/                  parity + schema + benchmark tests
 ```
