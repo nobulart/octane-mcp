@@ -1,0 +1,28 @@
+# Octane X bookshelf-speakers — material hints mirroring scene.json create_material payloads.
+# Kind/color/roughness are applied via assign_material(group_index); this file
+# documents the per-usemtl group mapping for humans and the recipe validator.
+
+newmtl mat_cabinet_l
+Kd 0.33 0.18 0.10
+Ns 24.4
+newmtl mat_cone_l
+Kd 0.07 0.07 0.08
+Ns 16.7
+newmtl mat_trim_l
+Kd 0.04 0.04 0.05
+Ns 20.0
+newmtl mat_dome_l
+Kd 0.82 0.84 0.87
+Ns 35.7
+newmtl mat_cabinet_r
+Kd 0.33 0.18 0.10
+Ns 24.4
+newmtl mat_cone_r
+Kd 0.07 0.07 0.08
+Ns 16.7
+newmtl mat_trim_r
+Kd 0.04 0.04 0.05
+Ns 20.0
+newmtl mat_dome_r
+Kd 0.82 0.84 0.87
+Ns 35.7
