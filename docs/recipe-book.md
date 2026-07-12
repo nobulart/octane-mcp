@@ -1039,7 +1039,7 @@ geometry, the launcher `-2741` bug, and TCC.
 - Confirmed subject with native vision: recognizable multi-tier cake, pastel-pink icing, cyan/amber/yellow sprinkles, white candle, under studio lighting. Pixel-QA + vision agree.
 - Flipped `native_octane_verified: true` in `scene.json`; set `final_bundle.status: native_verified` and a dated `note`.
 ### Signals / evidence
-- `verify_recipe_library(dry_run=True)` now reports `total=24, contract_ok=23` (the promoted cake moves the verified count from 22→23; `earth-moon-space` remains the lone `contract_failed`).
+- `verify_recipe_library(dry_run=True)` reports `total=26, contract_ok=25` after the `ancient-temple` merge — `earth-moon-space` remains the sole `contract_failed` (no preview PNG); `birthday-cake` is now `native_verified`.
 - `tests.test_verify_recipes` 10/10 pass; full `unittest discover` 357/0.
 ### Follow-ups
 - Keep the v2.2 realism lessons (satin icing roughness 0.62, teardrop flame, rod sprinkles) — see the birthday-cake entry above.
@@ -1067,3 +1067,24 @@ geometry, the launcher `-2741` bug, and TCC.
 - LEFT `native_octane_verified: false`; root `status` now documents "NO preview.png present … needs a fresh converged native render before verification".
 ### Follow-ups
 - Queue `earth-moon-space` from a cold Octane session, flush the shared queue first, give the save_preview a long enough convergence ceiling, and verify the PNG with `filter_reference` + `evaluate_acceptance` before flipping the flag.
+---
+
+## Note: one-shot drain appears to render the scene twice (it does not)
+
+- **Outcome:** pitfall (false alarm)
+- **Recorded:** 2026-07-12
+- **Context:** After an `octane_queue_recipe`/`save_preview` one-shot drain of the `ancient-temple` scene, the user observed the scene apparently rendering twice and asked whether the bridge was double-processing the queue.
+
+### What `bridge.log` actually shows
+- `save_preview` starts the render, waits for `beauty=5000`, and writes the PNG **once** (`preview saved .../temple_ancient_preview.png`; `v2 drained commands count=8`).
+- After the queue drains, the script runs its **top-level delayed RT re-activation** (`top-level delayed RT re-activation: re-selecting after settle` → `activated render target Hermes Render Target` → `top-level delayed restart ok=true`). That is the bridge re-selecting/restarting the render target after the save completes — it re-warms the engine but does **not** re-emit `save_preview`, so no second image is written.
+- `status.json`'s `last_preview_path`/`last_event` lag the live run (known quirk) — do not read a stale `failed`/`save preview failed` there as a second render.
+
+### Signals / evidence
+- `bridge.log` tail: exactly one `preview saved` line; one `v2 drained commands count=8`; one trailing `top-level delayed restart ok=true`.
+- PNG on disk is a single file with one mtime, not two.
+
+### Follow-ups
+- Do NOT treat the post-save RT re-activation as a queue-duplication bug. If a *genuine* double write is suspected, count `save attempt saveImage` lines in `bridge.log` — there should be exactly one per drain.
+- If the post-save restart is undesirable (engine churn between recipes), it is a candidate for removal in `hermes_bridge_oneshot_v2.lua`; confirm with the user before editing the bridge template.
+
