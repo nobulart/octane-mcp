@@ -11,6 +11,7 @@ from .bridge import (
     flush_queue,
     list_commands,
     octane_app_status,
+    probe_types as _probe_types,
     read_recipe_book,
     read_status,
     record_recipe_entry,
@@ -130,6 +131,23 @@ def build_mcp() -> Any:
         """
         from .api_corpus import export_command
         return _json(export_command())
+
+    @mcp.tool()
+    def octane_probe_types() -> str:
+        """Probe live which Octane node types the running build supports.
+
+        Queues the bridge's probe_types command, which tests each candidate
+        NT_* constant (NT_LIGHT_AREA/SUN/DAYLIGHT, NT_ENV_TEXTURE/RGB, NT_GEO_*,
+        etc.) for existence + create-ability and enumerates the daylight
+        environment node's attribute pins. Complements octane_capabilities
+        (the offline export): this is the exact running-build answer to
+        "can the bridge build a real dark_studio / light here?". Returns the
+        probe result dict once the persistent bridge drains it.
+        """
+        return _json(_probe_types())
+
+    @mcp.tool()
+    def octane_scene_harvest() -> str:
         """Harvest the live OctaneX scene graph in real time.
 
         This queries the running OctaneX application directly (via the persistent

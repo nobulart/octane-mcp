@@ -56,6 +56,7 @@ ALLOWED_OPS = {
     "scene_summary",
     "build_concept",
     "set_object_transform",
+    "probe_types",
 }
 
 
@@ -313,6 +314,10 @@ class BuildConceptPayload(PayloadValidator):
         self.require_string(payload, "prompt", errors)
 
 
+class ProbeTypesPayload(PayloadValidator):
+    pass
+
+
 PAYLOAD_VALIDATORS: dict[str, type[PayloadValidator]] = {
     "ping": PingPayload,
     "open_or_create_project": PayloadValidator,
@@ -330,6 +335,7 @@ PAYLOAD_VALIDATORS: dict[str, type[PayloadValidator]] = {
     "scene_harvest": SceneHarvestPayload,
     "scene_summary": SceneSummaryPayload,
     "build_concept": BuildConceptPayload,
+    "probe_types": ProbeTypesPayload,
 }
 
 
@@ -399,6 +405,7 @@ def command_schema() -> dict[str, Any]:
             "scene_harvest": {"fields": {"dry_run": {"type": "boolean", "required": False}}},
             "scene_summary": {"fields": {}},
             "build_concept": {"fields": {"prompt": {"type": "string", "required": True}}},
+            "probe_types": {"fields": {}},
         },
         "path_rules": "Paths may be absolute or workspace-relative, but generated asset paths must not contain '..' traversal.",
         "examples": {

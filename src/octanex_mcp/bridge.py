@@ -634,3 +634,46 @@ def scene_harvest(workspace: Optional[Workspace] = None) -> Dict[str, Any]:
         harvest_data["count"] = 0
 
     return harvest_data
+
+
+def probe_types(workspace: Optional[Workspace] = None) -> Dict[str, Any]:
+    """Probe which Octane node types this build actually supports.
+
+    The persistent/oneshot Lua bridge runs ``handle_probe_types``: it
+    tests each candidate ``NT_*`` constant for existence + create-ability
+    and enumerates the daylight environment node's attribute pins. This
+    is the live counterpart to the offline API corpus — it answers
+    "can the bridge build a real dark_studio / light here?" for the
+    exact running build. Returns the probe result dict (or an error
+    shape if the bridge has not yet produced it).
+    """
+    if workspace is None:
+        workspace = Workspace()
+    ws = workspace
+    ws.ensure()
+
+    cmd_path = write_command("probe_types", {}, ws)
+
+    results_dir = ws.results_dir
+    probe_path = results_dir / "probe_types.json"
+
+    import time
+    import json
+
+    probe_data: Dict[str, Any] = {"ok": False, "source": str(cmd_path)}
+    for _ in range(5):
+        if probe_path.exists():
+            try:
+                raw = probe_path.read_text(encoding="utf-8")
+                if raw.strip():
+                    try:
+                        probe_data = json.loads(raw)
+                    except json.JSONDecodeError:
+                        probe_data = {"ok": False, "raw": raw[:500], "source": str(cmd_path)}
+                    break
+            except Exception as exc:
+                probe_data["error"] = str(exc)
+                break
+        time.sleep(0.5)
+
+    return probe_data
