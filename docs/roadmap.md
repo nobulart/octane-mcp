@@ -2,6 +2,56 @@
 
 This roadmap is a practical implementation guide for smaller coding models working on `octanex-mcp`. It updates the attached next-phase plan against the current repository state. Several quick wins from the earlier reviews are already implemented, so this file focuses on the next useful work rather than repeating completed tasks.
 
+## Direction update (2026-07-12) — capability-driven Octane Lua bridge
+
+See [`docs/octane-lua-api-bridge-review.md`](octane-lua-api-bridge-review.md) for the full review of OTOY's public Lua/API documentation, public Octane Lua examples, and this repo's current bridge. The conclusion is: **keep the current JSON queue + allowlisted Lua bridge, but make it capability-driven from Octane X's actual Lua API.** Do not replace the bridge with a native module yet; treat native C++ as a later optional transport behind the same command DSL.
+
+### Why this changes the roadmap
+
+The current bridge works, but much of its Octane API knowledge is empirical: fallback pin names, probed render-save signatures, duplicated Lua handler bodies, and scattered lessons in skills/docs. OTOY's docs point agents to the Lua API browser and `octane.help` as the detailed reference. The project already has `octane_lua/export_api_docs_v2.lua`, so the high-leverage next step is to turn Octane's own API surface into a local, versioned build artifact that Python and Lua can validate against.
+
+### New Priority A work packages
+
+1. **WP10 — Versioned Octane Lua API corpus.**
+   - Add `octane_lua/export_api_docs_v3.lua` that writes structured JSON, not just text.
+   - Capture `octane.help.modules()`, functions, properties, constants, direct `octane.*` constants grouped by prefix, and feature probes for the bridge calls we depend on (`project.getSceneGraph`, `node.create`, `render.start`, `render.saveImage`, `render.getRenderResultStatistics`, `file.*`, `json.encode`).
+   - Add `src/octanex_mcp/api_corpus.py` plus tests and a CLI/MCP inspection path.
+   - Commit exported corpora under `docs/reference/octane-lua-api/` after live Octane runs, keyed by Octane X build/version.
+
+2. **WP11 — Schema/dispatch/capability parity.**
+   - Add a guard test that compares Python `ALLOWED_OPS`, `PAYLOAD_VALIDATORS`, `command_schema()["operations"]`, MCP queueing tools, and Lua `handle_command` dispatch branches.
+   - Formalize any intentional Lua-only operations, or remove them. Immediate candidate to reconcile: `scene_harvest` is dispatched by Lua and queued by `bridge.py`, but was observed absent from `models.ALLOWED_OPS` during the 2026-07-12 review.
+   - Add `octane_capabilities()` so agents can see active corpus version, known-good save-preview signature, material/light support, and transport readiness before queueing commands.
+
+3. **WP12 — Single-source Lua handler generation.**
+   - Resolve the current ambiguity where `octane_lua/lib/*.lua` are described in places as source-of-truth but the runtime entrypoints still inline handler copies.
+   - Make `octanex-mcp init` generate one-shot/persistent entrypoints from one handler/runtime source, or correct the docs/comments to explicitly say the libs are reference-only.
+   - Replace manual byte-identical dual-template edits with generated chunks/source hashes while preserving self-contained `.generated.lua` scripts for Octane X's sandboxed Script menu.
+
+4. **WP13 — Material/light compatibility registry.**
+   - Build material, light, node, pin, and attribute support from the API corpus.
+   - Replace growing fallback lists with registry-backed helpers where possible.
+   - Keep graceful fallbacks for missing native light constants, but report whether a command produced a native light, environment node, or emissive proxy.
+
+5. **WP14 — Transport matrix spike.**
+   - Measure, do not assume, whether this Octane X app supports useful `--help`, `--no-gui`, or `--script` modes on macOS.
+   - Record the transport matrix for Script-menu one-shot, persistent Lua, no-GUI script, and native module.
+   - Keep the native `octanex-module` path as strategic later work only after ABI/dispatcher gaps are closed and a live proof exists.
+
+### Updated priority order
+
+- **Priority A:** WP10 API corpus, WP11 schema/dispatch parity, WP12 handler generation/source-of-truth, WP13 capability-backed materials/lights.
+- **Priority B:** close the honest native-render gaps, live geo/animation drains, Agentic Canvas wiring, multi-host render flow.
+- **Priority C:** no-GUI transport if proven, native C++ module backend, renderer-agnostic backend abstraction, visual memory.
+
+### Acceptance criteria for the new direction
+
+- A fresh Octane X build can export a structured Lua API/capability JSON artifact.
+- The Python command schema and Lua dispatch table cannot drift without a failing test.
+- Agents can call a capability/status tool before rendering and see which Octane features are native, approximated, or unavailable.
+- A handler change is made once and propagated/generated into both bridge modes.
+- Native module/no-GUI paths are not promoted until backed by measured local execution and documented failure modes.
+
 ## Status snapshot (2026-07-10 — steward run 7d30b26)
 
 Live-checked 2026-07-10 (autonomous hourly steward, HEAD `7d30b26`). Re-grounded fresh this run; the prior block (keyed to `e879a05`, 234 tests, "18/18 recipes no gap") was **stale** — HEAD is 5 commits ahead and the recipe/tool surface has grown. Every number below came from a fresh run, not the docs.
