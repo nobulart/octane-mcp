@@ -639,16 +639,17 @@ local function request_render_restart(samples, width, height, do_start, max_rend
         -- maxSamples (e.g. 5000) and ignores cmd.samples/timeout entirely.
         local film = ensure_film_settings(rt)
         if film then
+            -- Best-effort cap. NOTE (2026-07-12): this Octane X build's
+            -- Lua API does NOT expose film attribute constants (octane.A_*)
+            -- nor enumerable attributes (getAttributeCount()==0). The bridge
+            -- CANNOT set maxSamples/maxRenderTime programmatically; the
+            -- reliable fast-preview path is to set Kernel>Max samples in
+            -- Octane X's UI once (persists in the RT). This attempt is a
+            -- no-op on this build but harmless and documents intent.
             local max_spp = tonumber(samples) or 64
-            for _, pin in ipairs({octane.A_MAX_SAMPLES, "maxSamples", "maxsamples"}) do
-                if pin then pcall(function() film:setAttribute(pin, max_spp, true) end) end
-            end
+            pcall(function() film:setAttribute("maxSamples", max_spp, true) end)
             local mrt = tonumber(max_render_time)
-            if mrt and mrt > 0 then
-                for _, pin in ipairs({octane.A_MAX_RENDER_TIME, "maxRenderTime", "maxrendertime"}) do
-                    if pin then pcall(function() film:setAttribute(pin, mrt, true) end) end
-                end
-            end
+            if mrt and mrt > 0 then pcall(function() film:setAttribute("maxRenderTime", mrt, true) end) end
             append_log("film cap set maxSamples=" .. tostring(max_spp) .. " maxRenderTime=" .. tostring(mrt or "unset"))
         end
         -- Camera guard: octane.render.start{} must NOT run until a camera is
@@ -903,6 +904,25 @@ end
 local function handle_set_lighting(cmd)
     local ok, msg = ensure_octane()
     if not ok then return true, msg end
+    -- TEMP INTROSPECTION: enumerate the octane module's attribute/node
+    -- constants so we learn the EXACT A_* names this build exposes
+    -- (GetPinInfo returns non-iterable cdata, so node-pin dumps fail).
+    -- Guarded; remove once dark_studio + film cap are bound correctly.
+    pcall(function()
+        local want = {"SKY","SUN","HORIZON","RENDER","SAMPLE","ENV","MAX","DAYLIGHT","POWER","INTENSITY","TEXTURE","GROUND","TURBIDITY","NORTH"}
+        local found = {}
+        local okp, t = pcall(function() return octane and pairs(octane) end)
+        if okp and t then
+            for k, v in t do
+                local ks = tostring(k)
+                for _, w in ipairs(want) do
+                    if string.find(ks:upper(), w) then found[#found+1] = ks .. "=" .. tostring(v); break end
+                end
+            end
+        end
+        table.sort(found)
+        append_log("OCTANE_CONSTANTS count=" .. tostring(#found) .. " " .. table.concat(found, " "))
+    end)
     local rt, rt_err = get_or_create_render_target()
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
     activate_render_target(rt)
@@ -919,22 +939,19 @@ local function handle_set_lighting(cmd)
         if not env_type then return true, "no known environment node type constant" end
         local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
         if not env then return false, "dark studio environment create failed" end
+        -- Best-effort dark. NOTE (2026-07-12): this Octane X build's
+        -- Lua API does NOT expose env attribute constants (octane.A_* are
+        -- nil) nor enumerable attributes (getAttributeCount() errors /
+        -- returns 0). The bridge CANNOT darken the daylight sky
+        -- programmatically. The reliable dark-studio path is to set the
+        -- environment's sky/sun/intensity in Octane X's UI (or use an
+        -- HDR/texture env) once. These attempts are no-ops on this
+        -- build but harmless and document intent.
         local dark_color = {0.015, 0.015, 0.02}
-        -- Candidate dark pins (names differ across Octane builds); set all that exist.
-        for _, pin in ipairs({
-            octane.A_SKY_COLOR, octane.A_SUN_COLOR, octane.A_HORIZON_COLOR,
-            octane.A_SUNSET_COLOR, "skyColor", "sunColor", "horizonColor",
-            "sky_color", "sun_color", "horizon_color", "sunsetColor",
-        }) do
-            if pin then pcall(function() env:setAttribute(pin, dark_color, true) end) end
+        for _, pin in ipairs({"skyColor", "sunColor", "horizonColor", "sunsetColor", "sunIntensity", "daylightIntensity", "intensity"}) do
+            pcall(function() env:setAttribute(pin, dark_color, true) end)
         end
-        for _, pin in ipairs({
-            octane.A_SUN_INTENSITY, octane.A_DAYLIGHT_INTENSITY,
-            octane.A_INTENSITY, "sunIntensity", "daylightIntensity",
-            "intensity", "power", "sunPower",
-        }) do
-            if pin then pcall(function() env:setAttribute(pin, 0.08, true) end) end
-        end
+        pcall(function() env:setAttribute("intensity", 0.08, true) end)
         connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-lighting(dark_studio) render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
