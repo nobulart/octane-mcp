@@ -52,23 +52,18 @@ The current bridge works, but much of its Octane API knowledge is empirical: fal
 - A handler change is made once and propagated/generated into both bridge modes.
 - Native module/no-GUI paths are not promoted until backed by measured local execution and documented failure modes.
 
-## Status snapshot (2026-07-10 — steward run 7d30b26)
+## Status snapshot (2026-07-12 — human-requested review, HEAD `296e7f9`)
 
-Live-checked 2026-07-10 (autonomous hourly steward, HEAD `7d30b26`). Re-grounded fresh this run; the prior block (keyed to `e879a05`, 234 tests, "18/18 recipes no gap") was **stale** — HEAD is 5 commits ahead and the recipe/tool surface has grown. Every number below came from a fresh run, not the docs.
+Live-checked 2026-07-12 from `main` at `296e7f9` (`feat(recipes): add bowl-of-fruit still-life recipe`). Re-grounded fresh this run; the 2026-07-10 snapshot is now stale because the recipe surface and test suite have advanced.
 
-- **Repo:** `main` = `7d30b26` (HEAD; tree **clean** at steward start). Recent commits: expose `swap_geometry` as `octane_swap_geometry` MCP tool + gateway entry (`7d30b26`, WIP H2); bridge canonical-node handling fix (`888329c`); WP6 green chess pawn + board studio recipes + vision-model default flip (`b29cd45`); `swap_geometry` primitive (`2e0f00e`); WP8 relative-frame-path + math-surface verification gap fix (`3bbdc62`).
-- **Tests:** **237 ran / 0 failures / 4 skipped** (offline `python -m unittest discover -s tests`, project venv isolated from the Hermes-runtime venv). Green. 4 skipped (live render ×1; `geo` extra absent ×2; lua executable absent — `test_lua_bridge_parity`). Up from 234/5 — the 1 extra failure was a **stale test over-asserting** "all recipes verified" (see below); fixed this run, so the count is now 0 failures and 1 fewer skip (a previously-skipped case now runs). `compileall src` clean; `octanex-mcp doctor --json` runs clean (with `OCTANEX_MCP_WORKSPACE` override to avoid the live container-FS hang on this headless host).
-- **Octane X bridge:** not exercised this run (cron/headless host; no live drain). Live recipe re-render / animation drain + the `earth-moon-space` native render remain open items for the user. **Note:** the default OctaneMCP workspace (`~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP`) is large/stale enough that `validate_queue()`/`read_status()` block on this host — `octane_status`/`octane_bridge_process_status` gateway calls hang. Use `OCTANEX_MCP_WORKSPACE=<small dir>` for offline diagnostics.
-- **Benchmarks:** 18/18 native-Octane verified across Tiers 1–6 (per `docs/benchmark-suite.md` recorded table; not re-rendered this run — environmental, not a regression).
-- **Recipe library — ground truth via `_recipe_dirs` + `scene.json`:** **22 recipe dirs; 21 `native_octane_verified=true`; 1 declared-pending** (`earth-moon-space` — `scene.json` literally says `native_octane_verified: false`, `status: "built; native render pending"`, and the dir has no `octane-preview.png`). The old "18/18 no gap" line was wrong: `math-surface` was closed but the library grew (chess recipes, `earth-moon-space`, etc.) and the one real remaining gap is `earth-moon-space`. It is **honestly declared**, not masked.
-- **Stale-test fix (this run):** `test_validate_recipe_library_reports_every_checked_in_recipe_ok` asserted every recipe had a preview PNG and commented "all 18/18 verified". With 22 recipes and `earth-moon-space` honestly pending, that assertion failed (1 red). Patched to assert the real honesty contract: **any recipe declaring `native_octane_verified=true` must carry a preview; declared-pending recipes are exempt** (gap stays visible in `recipe_index`). Pure `tests/` change; no library import touched → §6 server-boot layering unaffected. Suite now 237/0/4.
-- **WP6 promoted tools (DONE):** `octane_build_product_studio`, `octane_build_planet_scene`, `octane_visualize_network` registered on the MCP server and mirrored in `gateway.py` (Canvas HTTP parity).
-- **WP7 geo:** `geo.py` + `octane_visualize_geojson` MCP tool registered (graceful `GeoDependencyError` → `uv sync --extra geo`). Shapely-backed path offline-skipped (extra absent).
-- **WP8 animation DSL (DONE — model + MCP tool + gateway parity + LIVE DRAIN):** `src/octanex_mcp/animation.py` + `build_animation_commands()` (relative `renders/frame_XXXX.png`) + `octane_build_animation` MCP tool + gateway dispatch. Live-drained previously (orbit frames written, camera motion confirmed). Remaining WP8: optional ffmpeg encode; full 24-frame clip slow (~2.5 min/frame).
-- **Streaming data-grammar primitive (shipped):** `src/octanex_mcp/scene.py::swap_geometry` replaces an object's OBJ asset in place while preserving its stable `Hermes::scene::object` node name — the *replaceable-asset-files* half of the north-star streaming protocol. Exposed as `octane_swap_geometry` MCP tool + gateway `DISPATCH` entry (H2 closed, `7d30b26`).
-- **WP9 corpus:** + `octane_find_grammar`, iteration loop, Wikidata gate all shipped.
+- **Repo:** `main` = `296e7f9`, tracking `origin/main`, tree clean before documentation edits. Recent work added the bowl-of-fruit and birthday-cake still-life recipes, pre-render scene sanity gates, bridge capability/probe tooling, lexical intent graph, and dark-studio/native graph fixes.
+- **Tests:** `PYTHONPATH= uv run python -m unittest discover -s tests` ran **357 tests / 0 failures / 3 skipped**. `PYTHONPATH= uv run python -m unittest tests.test_benchmarks -v` ran **14 tests / 0 failures / 1 skipped** (live render gated by `OCTANEX_LIVE=1`). `PYTHONPATH= uv run python -m compileall -q src` passed.
+- **Doctor / bridge:** `PYTHONPATH= uv run octanex-mcp doctor --json` returned `ok: true`. Octane X is running (`pid 78834`); persistent bridge status is `processed`, `render_stage: ready`, `processed_count: 1`, `failed_count: 0`, last event `set_camera camera connected`, status age ~39 seconds at review time. Generated one-shot and persistent scripts exist.
+- **Recipe library ground truth:** `_recipe_dirs(examples/recipes)` reports **24 recipe dirs**. **21** declare `native_octane_verified=true`; **23** carry `octane-preview.png`; **1** lacks a preview (`earth-moon-space`). The three honest flag gaps are `birthday-cake` (preview present, flag still false after v2 realism pass), `helicoid-spiral` (preview present, flag false), and `earth-moon-space` (flag false, no preview). Do not collapse these into a single "missing PNG" count: two are metadata/QA reconciliation items, one is a live render gap.
+- **Benchmarks vs recipes:** benchmark coverage remains separate from recipe-library closure. The offline benchmark suite is green; no live benchmark rerender was claimed in this review.
+- **Current capability direction:** WP10/WP11 have begun to land in practice: `octane_api_corpus_export`, `octane_capabilities`, `octane_probe_types`, live scene harvest, and pre-render scene sanity checks are now exposed through MCP. WP12 single-source Lua handler generation and WP13 registry-backed material/light compatibility remain the highest-leverage bridge-hardening work.
 
-**Maturity read:** core mechanics + WP6/WP7/WP8/WP9 tools are solid and the suite is green at 237 tests. The remaining open work is *closure + surface area*: (1) **one honest recipe gap** — `earth-moon-space` needs a live native render to flip `native_octane_verified=true`; (2) **live end-to-end drains** (re-render promoted/chess recipes; render a real orbit clip); (3) WP7 geo **live-`geo` exercise**, (4) Agentic Canvas wiring beyond Phase A, (5) multi-host Studio, (6) visual memory. Environmental caveat this run: the Hermes agent-runtime venv has a broken `pydantic_core` and is missing `mcp` — `uv run` must target the project venv (`uv run --project /Users/craig/octanex-mcp`, `PYTHONPATH`/`VIRTUAL_ENV` unset) or tests error with "mcp package is not installed".
+**Maturity read:** the project is no longer a prototype queue; it is a working visual workbench with a broad MCP tool surface, green offline suite, running Octane bridge, real recipe assets, pixel/sanity gates, and documented live-render discipline. The next phase is closure and reliability: reconcile the 3 recipe verification flags, complete capability-driven bridge hardening (WP12/WP13), exercise WP7 geo and WP8 animation live paths with fresh outputs, and wire the Canvas/status surface so a smaller agent can safely operate the system without rediscovering bridge state manually.
 
 **Shipped (previously listed under Priority A — do not redo):**
 
@@ -1106,6 +1101,41 @@ honesty/closure items left and both need a live Octane session, not code. (2)
 Canvas Phase B wiring** (separate Swift/JS workstream). The autonomous steward
 cannot do the live drains, so its safe code work is now mostly about deepening
 B/C/E surface and hardening; the user should own the live-render verification.
+
+### Brainstorm update (2026-07-12 — status review at `296e7f9`)
+
+The project has moved from "verify basic queue/render mechanics" to
+"capability-driven bridge + closure discipline." Treat the old A/H brainstorm as
+historical context: the recipe library is now 24 dirs, WP9 retrieval exists, and
+the active gaps are precise rather than broad.
+
+- **A2 — Recipe verification reconciliation (LOW effort / HIGH integrity).**
+  Close the three honest flag gaps: `earth-moon-space` needs a fresh native render
+  and preview; `birthday-cake` and `helicoid-spiral` have previews but still need
+  pixel/vision/result-metadata review before flipping `native_octane_verified=true`.
+  *First step:* run the recipe verifier per slug with `copy_back=True`, inspect the
+  PNGs, and append `docs/recipe-book.md` notes for any bridge/material lesson.
+- **I — Capability-driven bridge hardening (MEDIUM effort / VERY HIGH fit).**
+  Complete the WP10–WP13 arc: structured API corpus export, `octane_capabilities`
+  as the preflight source of truth, single-source Lua handler generation, and a
+  material/light compatibility registry that reports native vs proxy behavior.
+  *First step:* finish WP12 generation so handler edits are made once, then prove
+  one material/light command path against the registry.
+- **J — Pre-render scene sanity adoption (LOW effort / HIGH reliability).**
+  The new scene-plan/live-graph sanity gates should become mandatory in recipe and
+  live-drain workflows before spending GPU time. *First step:* add a verifier path
+  that runs `octane_check_scene_plan`/`octane_scene_sanity` before `save_preview`
+  and records the report next to the render.
+- **K — Canvas/status operator surface (MEDIUM effort / HIGH communication fit).**
+  Wire the already-exposed bridge status, capabilities, queue state, and recipe
+  index into Agentic Canvas so the operator sees whether Octane is ready, stale,
+  queued, rendering, or failed. *First step:* status pill + capability panel backed
+  by `/mcp/call` for `octane_capabilities` and `octane_bridge_process_status`.
+
+**Recommended next move (2026-07-12):** do **A2 first** to keep the recipe library
+honest, then **I** because capability-backed dispatch prevents whole classes of
+future bridge regressions. Run **J** alongside any live render work; use **K** as
+the next user-facing integration slice once the status/capability API is stable.
 
 ---
 
