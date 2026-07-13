@@ -146,7 +146,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 2. **Single manifold, not multiple cells.** The gallery examples are almost all a SINGLE manifold (one fundamental domain / unit cell). Meshing `[-2π,2π]³` (multiple periods) yields a dense multi-cell lattice that does NOT match the reference. Use `periods=1` (`[-π,π]³`) and keep only the largest connected component — marching-cubes over a periodic field at level 0 produces disconnected boundary fragments.
 3. **Use the LOCAL qwen2.5vl vision model for visual analysis** (`http://localhost:11434/api/generate`, model `qwen2.5vl:7b`), NOT the cloud vision path — cloud hallucinates on mathematical surfaces. Resize images to ~640px first (use `/opt/homebrew/bin/python3` + Pillow; the Hermes venv PIL is broken). Two-image compare calls work (pass both base64 in `images:[]`).
 4. **Capture the Octane viewport, not the full display.** `screencapture -D 3` grabbed a cluttered desktop (other app windows overlap Octane on that display). The reliable path: `screencapture -R <x>,<y>,<w>,<h>` on the Octane window's global bounds (get via `osascript -e 'tell app "System Events" to tell process "Octane X" to get {position,size} of window 1'`), then crop the central viewport (skip ~380px L, ~420px R, ~60px T, ~120px B) to drop UI panels. Display numbering under the hood differs from the logical "Octane is on display 3" description.
-5. **One-shot trigger reliability.** `uv run octanex-mcp run-oneshot` sometimes returns without draining the queue; the direct `osascript scripts/octane_run_oneshot.applescript` ("clicked hermes_bridge_oneshot.generated") is the dependable trigger. Queue must be flushed first (`rm -f queue/*`).
+5. **One-shot trigger reliability.** Use `octane_run_oneshot_bridge` (or the direct `osascript scripts/octane_run_oneshot.applescript` fallback) after queueing a complete pipeline. Flush before queueing with `octane_flush_queue()`; it moves stale shared-queue commands to a dated backup instead of deleting them.
 6. **Bridge edits require a real Octane relaunch** to clear the in-memory Lua cache. After editing `octane_lua/hermes_bridge_oneshot_v2.lua`, run `octanex-mcp init`, then fully quit + reopen Octane X (PID changes). Verify the reloaded script executed via a fresh `v2 bridge starting` / `ping → pong` log line.
 7. **Dead probe code must be removed, not left in.** A 171-line gradient-probe block was added during the (reverted) gradient investigation and silently kept the bridge "changed" → Octane ran stale Lua. If you revert an investigation, `git checkout` the template and re-apply only the functional fix, then regenerate.
 8. **MATERIAL COLOR IS PER-SURFACE — never hardcode.** `queue_surface.py` originally hardcoded the gyroid blue `[0.12,0.45,0.92]` for EVERY surface, so Neovius rendered blue despite the amber intent. Fixed by adding a `PALETTE` dict keyed by surface name (matches the gallery colour palette below) and passing `color=PALETTE.get(name, ...)` into `create_material`. Always drive material colour from the surface name, never a literal.
@@ -543,7 +543,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Added MCP tools and CLI commands for status, one-shot, and persistent bridge control.
 - Verified the already-open persistent bridge can process a queued ping and write result metadata.
 
-> **2026-07-09 correction:** the "structured failure because the generated script name was not found in the exposed Scripts menu" was a *masked* error. The real cause was macOS TCC/Accessibility not being granted to the **Hermes agent-runtime python** (the `osascript` caller, `/Users/craig/.hermes/hermes-agent/venv/bin/python`) — NOT `Hermes.app`, which is not in the octanex-mcp server's process ancestry. `osascript` failed with `-1719` and the menu could not even be inspected. The generated AppleScript's `try` block swallowed the `-1719` and emitted a fake "script not found" (`-2700`). This is now fixed: `run_bridge_script` surfaces the real `-1719` and flags `tcc_blocked: true` with the exact grant step. The "not found" framing is obsolete — once Accessibility is granted (to the agent-runtime python, not `Hermes.app`) and Octane's `default_script_path` points at `octane_lua/`, the one-shot appears as `hermes_bridge_oneshot.generated` in the Script menu and launches with one click (which drains the whole queue). *(2026-07-10 further correction: the original "grant `Hermes.app`" wording here was itself retracted — `Hermes.app` is the wrong TCC target.)*
+> **2026-07-09 correction:** the "structured failure because the generated script name was not found in the exposed Script menu" was a *masked* error. The real cause was macOS TCC/Accessibility not being granted to the **Hermes agent-runtime python** (the `osascript` caller, `/Users/craig/.hermes/hermes-agent/venv/bin/python`) — NOT `Hermes.app`, which is not in the octanex-mcp server's process ancestry. `osascript` failed with `-1719` and the menu could not even be inspected. The generated AppleScript's `try` block swallowed the `-1719` and emitted a fake "script not found" (`-2700`). This is now fixed: `run_bridge_script` surfaces the real `-1719` and flags `tcc_blocked: true` with the exact grant step. The "not found" framing is obsolete — once Accessibility is granted (to the agent-runtime python, not `Hermes.app`) and Octane's `default_script_path` points at `octane_lua/`, the one-shot appears as `hermes_bridge_oneshot.generated` in the Script menu and launches with one click (which drains the whole queue). *(2026-07-10 further correction: the original "grant `Hermes.app`" wording here was itself retracted — `Hermes.app` is the wrong TCC target.)*
 
 ### Signals / evidence
 - `octanex-mcp bridge-status --json` reported Octane X running, both generated scripts present, and persistent bridge status `idle`.
@@ -681,7 +681,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Steps
 - Generate the surface OBJ in Python (`scripts/gen_math_surface.py`): z = sin(r)/max(r,0.3) * (0.45 + 0.55*cos(4*atan2(y,x))) * 2.8, r=hypot(x,y), x,y∈[-6,6], 200×200 grid, single `usemtl` group → ~40k verts / 79k tris. Copy into the container workspace `OctaneMCP/assets/` (sandboxed Octane only reads container FS).
 - Queue the full pipeline in ONE live Octane session (do NOT restart Octane between import and save): import_geometry(name `math_surface`) → create_material(glossy, color [0.85,0.55,0.25], roughness 0.3) → assign_material → set_camera(fov 40, pos [11,9,11], target [0,0.5,0]) → set_lighting(soft_studio) → save_preview(quality="high"|"ultra").
-- Drain with the one-shot bridge (a single click drains the *entire* command queue — no per-command clicks; the old "one command per click" model was a symptom of the masked TCC `-1719` denial, now fixed).
+- Drain with the one-shot bridge (a single click drains the *entire* command queue — no per-command clicks; the old click-per-command model was a symptom of the masked TCC `-1719` denial, now fixed).
 - Produced `math_surface_high.png` (325,995 B, 21:52) and `math_surface_ultra.png` (326,230 B, 22:02).
 
 ### Signals / evidence
@@ -702,12 +702,14 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
   ~10 s render. Re-click the oneshot if `save_preview` is stranded (queue non-empty
   after the first click) — but there is no longer a wedge from start{} blocking.
 - **Warm-engine rule:** Octane left via `quit`/`open -a` cold-relaunches the render engine and `start{rt}` then wedges even on an idle scene. Reset between renders with **File ▸ New** (AppleScript) on the *running* Octane, not a cold relaunch. To load a *patched* bridge you must restart Octane — do it before queueing, then run the whole pipeline in that one warm session.
-- One-shot bridge drains ~1 command/click; persistent auto-poll timer is BROKEN.
+- **Current drain rule (supersedes the original run note):** one one-shot click
+  drains the complete queue. Poll `queue/` to zero after the click; the persistent
+  auto-poll timer remains unreliable.
 - GPU `maxRenderTime` pin is IGNORED on this Octane build (probe logged no honored pin, same as ignored `maxSamples`). The effective cap is the Lua `wait_for_render_ready` wall-clock `timeout_seconds`, NOT the GPU film pin.
 - `handle_save_preview` now SAVES BEST-EFFORT ON TIMEOUT (previously aborted with `return false`, producing no PNG on a capped slow scene). Do not regress.
 - `set_render_resolution` logs non-fatal `setPinValue failed pin=filmResolution/width/height…` but reports ok=true — ignore.
 - Container FS is slow + 79k-tri surface @ 512 samples took ~90 s before the PNG timestamp moved — don't conclude failure early.
-- `octane_record_recipe` MCP tool was absent in-session → record inline in `NOTES-*.md` / `docs/recipe-book.md`.
+- `octane_record_recipe` now appends evidence-based lessons directly to this file.
 
 ### Follow-ups
 - Keep `octane-viz` / `octanex-mcp` skills pointing at the current bridge templates as the behavior source of truth; `octane_lua/lib/*.lua` are reference mirrors until WP12 single-source generation lands. Regenerate `.generated.lua` after template edits, restart Octane to reload.
@@ -768,9 +770,10 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - `t2_scatter` — orange points in 3D space. PASS.
 
 ### Tier 3–6 tasks run live (12/12 PASS on pixel acceptance)
-Triggered via the **persistent bridge timer** (the 1.0 s drain loop auto-processed the queued
-commands) after the render-restart collision fix (see Pitfalls). 148 commands queued, 282
-processed, 0 failed; 12 `bench_t3_*.png` … `bench_t6_*.png` produced.
+The recorded run used the persistent bridge timer after the render-restart collision fix.
+**Current workflow:** do not rely on that timer; flush stale commands, queue a complete
+pipeline, and use one one-shot drain. The run recorded 148 commands queued, 282 processed,
+0 failed, and produced 12 `bench_t3_*.png` … `bench_t6_*.png` files.
 
 - **Tier 3 — materials**
   - `t3_glass_like` — transmission/ior/opacity sphere. PASS (non_empty + review_ok).
@@ -800,23 +803,19 @@ processed, 0 failed; 12 `bench_t3_*.png` … `bench_t6_*.png` produced.
 - Suite is now **fully live-verified through Tier 6** (18/18 tasks render + pass pixel acceptance).
 
 ### Pitfalls surfaced by the suite (load-bearing)
-- **Render-restart collision was the #1 blocker for anything beyond Tier 2.** Every
-  `import_geometry` / `assign_material` / `set_lighting` calls `request_render_restart`, which
-  starts an *unbounded* main-viewport render; the subsequent `save_preview`'s `start{}` then hit
-  *"Can't start a new render before finishing the previous render"* and aborted **before**
-  `saveImage` — so no PNG was written. Fix: wrapped the `start()/restart()/continue()` sequence in
-  `request_render_restart` (both templates) in a 5-attempt retry loop with a 0.5 s yield after
-  `stop()`+`pause()`, so Octane actually halts the prior pass before we (re)start. After this, the
-  persistent timer drained all 148 Tier 3–6 commands and every `save_preview` wrote its PNG.
+- **Render-restart collision was the original blocker beyond Tier 2.** The current
+  fix is deferred render start: assembly handlers use `do_start=false`; only
+  `save_preview` starts rendering after camera, geometry, materials, and lighting
+  are wired. Do not reintroduce per-command render starts.
 - **`soft_studio` lighting is strongly cool-blue.** Every lit surface read blue-ish (mean non-bg RGB ≈ (90,150,200)) regardless of material colour. Exact-RGB `color_present` was the wrong gate for lit PBR. Replaced with `color_family` (hue-distance tolerant, ±45°) — value/saturation shifts from Octane colour management are legitimate; hue-in-family is the real signal.
 - **`metallic=1.0` with no environment map does NOT read as its base colour** — it reflects the neutral studio and comes out silvery. Use `metallic≈0.5–0.6` (or supply a tinted HDR) when a coloured metal is intended.
 - **Emissive glow is chromatic, not white.** `bright_fraction` (near-white ≥247/255) over-fails on a coloured emissive rim. Use a modest `min_near_white` (≈0.5) for emissive tasks, or a luminance-based criterion.
 - **Queue must contain the COMPLETE command set** (import + every material + every assignment + camera + lighting + save). Partially purged queues silently render blank/neutral because the supporting ops were dropped.
-- **One-shot vs persistent:** the persistent bridge's 1.0 s timer auto-drains `queue/` without any
-  AppleScript click, which is the reliable live path on this host (AppleScript menu automation in
-  `octane_run_*_bridge` still fails to locate the script — matches on `.lua`; Octane's menu shows it
-  without the extension). One-shot requires a manual `OctaneX ▸ Scripts` click but drains the whole
-  queue in a single pass. Either mode now works with the retry-loop fix.
+- **One-shot vs persistent:** use `octane_run_oneshot_bridge` or an Octane X
+  **Script**-menu click for reliable batch draining. It drains the whole queue in
+  one pass. The persistent bridge's timer is not a reliable auto-drain path; do
+  not use the historical timer behavior or manual `Scripts`-menu wording as a
+  current instruction.
 
 ### Follow-ups
 - Promotion path: any task that passes pixel acceptance twice gets a `docs/recipe-book.md` "native-verified" recipe entry and (optionally) a checked-in `examples/recipes/bench-*` directory.

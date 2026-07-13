@@ -34,9 +34,9 @@ Tested Octane X (2026.4.00) integration via macOS AppleScript and Apple Skills (
 - 4 bridge scripts present and active
 - One-shot bridge: hermes_bridge_oneshot_v2.lua (37KB)
 - Persistent bridge: hermes_bridge_persistent_v1.lua (44KB)
-- **`.generated` scripts work via OctanX Scripts menu**
-  - `hermes_bridge_oneshot.generated.lua` (36KB) — triggered via Scripts ✅
-  - `hermes_bridge_persistent.generated.lua` (43KB) — triggered via Scripts ✅
+- **`.generated` scripts work via Octane X Script menu**
+  - `hermes_bridge_oneshot.generated.lua` (36KB) — triggered via Script ✅
+  - `hermes_bridge_persistent.generated.lua` (43KB) — triggered via Script ✅
 - Bridge log shows active processing
 - 29 commands seen, 28 processed, 3 queue drains
 - Latest: bridge draining with beauty=5000, preview saved

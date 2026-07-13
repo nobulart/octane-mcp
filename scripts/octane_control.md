@@ -3,7 +3,7 @@
 A set of small, composable, **verifiable** AppleScript primitives for fully
 automated agentic control of Octane X on macOS. Octane X has **no CLI Lua
 entry point** (`docs/octane-x-no-cli.md`): the only programmatic surface is
-UI-scripting its Scripts menu via `System Events`. These scripts drive that
+UI-scripting its **Script** menu via `System Events`. These scripts drive that
 surface.
 
 > **TCC:** macOS Accessibility must be granted to the process that runs
@@ -28,7 +28,7 @@ surface.
 | Script | Purpose |
 |---|---|
 | `octane_status.applescript` | Print JSON health + live `bridge_status.json`. No side effects. |
-| `octane_click_script.applescript <NAME>` | Click ANY Scripts-menu item by (sub)string. Generalizes #3/#4. |
+| `octane_click_script.applescript <NAME>` | Click any **Script**-menu item by (sub)string. Generalizes #3/#4. |
 | `octane_flush_queue.applescript` | Move (never delete) stale `queue/*.json` to a dated backup. |
 | `octane_drain.applescript [timeout_s] [preview_path]` | Click one-shot + poll until queue empty + PNG fresh. |
 | `relaunch_octane_oneshot.applescript [timeout_s] [preview_path]` | **Cold cycle:** quit → relaunch → click one-shot → poll. |

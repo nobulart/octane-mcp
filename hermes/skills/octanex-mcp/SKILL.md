@@ -1,8 +1,8 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.11
-|author: OctaneX MCP contributors
+version: 1.9.12
+author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
 metadata:
@@ -178,7 +178,7 @@ Do **not** attempt `open -a "Octane X" --args <script.lua>` or any `octane://` U
 - The Lua engine exists only inside `octanesdk.framework` (`LuaScriptingComponent::runScript`), but the app's `main()` never wires `argv` → `runScript`.
 - The `--no-gui -s script.lua` invocation seen in OTOY docs is for **OctaneRender Standalone** (Linux/Windows) — there is **no Mac CLI standalone**.
 
-Consequence: the Scripts-menu / `osascript` path used here is the *only* supported way to run Lua in Octane X on macOS. A real GUI session is mandatory; there is no headless/CI path. If you find yourself wanting a CLI, the realistic options are OctaneRender Standalone on Linux/Windows, Render Network dispatch, or staying on the Scripts-menu path.
+Consequently: the Script-menu / `osascript` path used here is the *only* supported way to run Lua in Octane X on macOS. A real GUI session is mandatory; there is no headless/CI path. If you find yourself wanting a CLI, the realistic options are OctaneRender Standalone on Linux/Windows, Render Network dispatch, or staying on the Script-menu path.
 
 ## Standard Agent Loop
 
@@ -226,14 +226,14 @@ Consequence: the Scripts-menu / `osascript` path used here is the *only* support
 
    Prefer `hermes_bridge_oneshot.generated` for multi-command scene batches because it exits and lets Octane repaint. Use the persistent bridge only when you need an open window that keeps polling.
 
-   **Never use `run script file` on the `.lua` bridge.** AppleScript will try to compile the Lua source as AppleScript and die with `-2741` ("Expected end of line, but found ="). The reliable trigger clicks the script from Octane's **Scripts menu** (which runs it as Lua):
+   **Never use `run script file` on the `.lua` bridge.** AppleScript will try to compile the Lua source as AppleScript and die with `-2741` ("Expected end of line, but found ="). The reliable trigger clicks the script from Octane's **Script** menu (which runs it as Lua):
 
    ```bash
    uv run python -c "from octanex_mcp.bridge_control import run_bridge_script; print(run_bridge_script('oneshot')['stdout'])"
    # -> clicked hermes_bridge_oneshot.generated via Script
    ```
 
-   (Equivalent raw AppleScript: a `tell application "System Events" … click menu item …` block targeting the Scripts menu — see `bridge_control.render_run_bridge_applescript`.) AppleScript control of Octane X requires automation permission (System Settings -> Privacy -> Automation -> Octane X); verify with `osascript -e 'tell application "Octane X" to get name'`.
+   (Equivalent raw AppleScript: a `tell application "System Events" … click menu item …` block targeting the Script menu — see `bridge_control.render_run_bridge_applescript`.) AppleScript control of Octane X requires automation permission (System Settings -> Privacy -> Automation -> Octane X); verify with `osascript -e 'tell application "Octane X" to get name'`.
 
    Completion: queued commands move to `processed/` or `failed/`, and `results/*.json` records each outcome. Check `queue/` is empty, not just `processed_count` climbing.
 
@@ -264,7 +264,7 @@ Consequence: the Scripts-menu / `osascript` path used here is the *only* support
    | `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`), or the shell/terminal that launches Hermes, then **fully quit + relaunch Hermes**. Do NOT grant `Hermes.app` — it is not in the octanex-mcp server's process ancestry and will NOT clear `-1719`. The 2026-07-10 "grant `Hermes.app`" guidance is RETRACTED (wrong). |
    | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
    | `-2741` expected end of line | `wrong_trigger` | Historically caused by `run script file` on Lua. **Also** caused (2026-07-10) by a real AppleScript **syntax bug** in the generated launcher: `if (exists process "Octane X")` written at the *top level* (outside `tell application "System Events"`) — that is a compile error on this Octane build. **FIXED in `src/octanex_mcp/bridge_control.py`** (`render_launch_and_run_applescript` now wraps the probe in `tell application "System Events"` and adds an activate+settle before probing the menu bar, absorbing transient `-1728`). If you still see `-2741`, the running server has stale code — restart Hermes so it reloads the fixed module. |
-   | `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
+   | `Could not find <script> in Script menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
 
    The bridge launch now also **waits for Octane X's menu bar to become UI-ready**
    after `open -a` (up to `LAUNCH_READINESS_WAIT_SECONDS`, default 10s) *inside the
@@ -275,7 +275,7 @@ Consequence: the Scripts-menu / `osascript` path used here is the *only* support
    stops at a time budget instead of running unbounded:
 
    ```text
-   ```text
+   octane_save_preview(quality="fast")                                 # 6s render cap, 10s wall cap; creator default
    octane_save_preview(quality="preview")                              # 10s cap (fast sweep)
    octane_save_preview(width=1280, height=1280, quality="standard")   # 30s cap
    octane_save_preview(quality="high")                                 # 60s
@@ -317,10 +317,9 @@ Pitfall (observed): the auxiliary backend **loops its answer** on open-ended que
 
 ## Render Protocol (mandatory before any live render)
 
-A non-clean Octane session is the root cause of blank / near-black / stale
+A non-clean Octane session is a common cause of blank / near-black / stale
 renders. Before every live render (and between scenes), follow this exact
-sequence (refined 2026-07-09 per operator guidance — the key addition is
-**starting the lua command queue before each drain**):
+sequence:
 
 1. **Check Octane X is running.** If not, `open -a "Octane X"`. Do not proceed
    without the GUI session.
@@ -328,19 +327,16 @@ sequence (refined 2026-07-09 per operator guidance — the key addition is
    X (clears any in-memory scene from a prior run). AppleScript:
    `tell application "System Events" to tell process "Octane X" to click menu
    item "New" of menu 1 of menu bar item "File" of menu bar 1`.
-3. **Start the renderer (lua command queue).** Ensure Octane's lua/command-queue
-   listener is active (the persistent bridge window / render node is live) so
-   queued commands will actually execute when drained.
-4. **Flush any stale queue** with one one-shot bridge click (Script menu), even
-   if you think the queue is empty. A leftover command from a prior run will
-   otherwise execute against your fresh scene and corrupt it.
-5. **Build the scene and queue the scene commands** (import → material → camera
-   → light → render-start → save-preview).
-6. **Start the renderer (lua command queue)** again — re-affirm the listener is
-   active before processing this scene's commands.
-7. **Process the queue** with another one-shot bridge click (Script menu). One
-   click drains the ENTIRE queue, then renders.
-8. **Return to step 2** for the next scene (reset → flush → build → drain). Do
+3. **Flush any stale queue** with `octane_flush_queue()` *before* queueing. It
+   moves stale shared-queue commands into a dated backup; never delete a shared
+   queue with `rm`.
+4. **Build and queue the complete scene pipeline** (import → material → camera
+   → light → save-preview).
+5. **Process the queue** with one `octane_run_oneshot_bridge` / Script-menu click.
+   One click drains the ENTIRE queue, including `save_preview`.
+6. **Poll** `…/OctaneMCP/queue/` to confirm it reaches zero, then wait for the
+   PNG. Do not re-click while `save_preview` is rendering.
+7. **Return to step 2** for the next scene (reset → flush → build → drain). Do
    NOT pile scenes into one uncleared session.
 
 > **CRITICAL — after the bridge populates the node tree, the Hermes Render
@@ -350,10 +346,10 @@ sequence (refined 2026-07-09 per operator guidance — the key addition is
 > and `request_render_restart` (`start_render`) for you, but this must happen
 > *against a fully-populated node tree*. If a frame comes back near-black
 > (`mean_dev≈0`) with no scene error, the cause is almost always one of:
-> (a) a stale queue / leftover scene (steps 2–4), or (b) the render target was
-> not selected / renderer not started when the tree was still empty. Re-run with
-> an explicit `start_render` op LAST (after import+camera+lights), and confirm
-> `octane_status` shows `octane_node_available=true` before draining.
+> (a) a stale queue / leftover scene (steps 2–3), or (b) incomplete scene
+> assembly. Re-run the complete import→material→camera→light→`save_preview`
+> pipeline; `save_preview` performs the final render start after the scene is
+> wired. Confirm `octane_status` shows `octane_node_available=true` before draining.
 
 > **Octane is fast:** basic scenes are acceptably converged for preview
 > evaluation after only **1–2 s**; complex scenes after **5–10 s**. Do not set
@@ -365,7 +361,7 @@ sequence (refined 2026-07-09 per operator guidance — the key addition is
 > **Pitfall — stale queue → near-black frame.** If a render comes back
 > near-black (`mean_dev≈0`, triggers `mostly near-black`) with no obvious scene
 > error, suspect a stale queue or leftover scene, NOT a material bug. Run steps
-> 2–4 (reset + start queue + flush) and re-queue. The 2026-07-09 `avatar-guide`
+> 2–3 (reset + flush) and re-queue. The 2026-07-09 `avatar-guide`
 > failure was exactly this: a stale scene + un-drained queue, not a recipe
 > defect.
 
@@ -594,7 +590,7 @@ poll `…/OctaneMCP/queue/` to confirm it hit 0 (watch the file count, not just
 (transient MCP blip), fall back to the raw osascript menu-click above — same
 effect, no MCP server — and do NOT keep re-calling the MCP tool until the server
 self-recovers (~45–75 s).
-- If the Scripts-menu click (via `run_bridge_script("oneshot")`) returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is in a non-receptive state (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, the only recovery is restarting Octane X (purges the loaded scene — re-queue the full pipeline) or reusing an already-produced render if one exists. (Distinct from `-2741`, the compile error you get if you mistakenly use `run script file` on the Lua bridge.)
+- If the Script-menu click (via `run_bridge_script("oneshot")`) returns AppleScript error **-1700** ("Can't make some data into the expected type"), Octane X is in a non-receptive state (mid-render modal / busy). Retry after `tell application "Octane X" to activate`; if it persists, the only recovery is restarting Octane X (purges the loaded scene — re-queue the full pipeline) or reusing an already-produced render if one exists. (Distinct from `-2741`, the compile error you get if you mistakenly use `run script file` on the Lua bridge.)
 
 - **`set_render_resolution` logs non-fatal `setPinValue failed pin=filmResolution/
   width/height/... (No pin ... in NT_FILM_SETTINGS)`** but reports `ok=true`.
@@ -612,9 +608,9 @@ session, then drain.
   command drains, a 79k-tri surface @ 512 samples took ~90 s before the PNG
   timestamp moved. Allow 60–120 s before checking the PNG; don't conclude
   failure early.
-- **`octane_record_recipe` MCP tool was absent** in a recent session
-  ("Unknown tool"). Record recipes inline in `NOTES-*.md` / `docs/recipe-book.md`
-  rather than blocking on that tool.
+- **`octane_record_recipe` appends a compact lesson to `docs/recipe-book.md`.** Use
+  it after a verified success, failure, or reusable pitfall; do not write
+  untracked `NOTES-*.md` files as a substitute.
 
 > End-to-end reproduction for a multi-color combined mesh (green sphere on red
 > cube), including raw queue JSON with `group_index` and the verification
@@ -625,7 +621,7 @@ session, then drain.
 > verified by full-frame pixel scan) is reproduced in
 > `references/photoreal-math-surface.md`; its parametrised OBJ generator is
 > `scripts/gen_math_surface.py`.
-> The render convergence quality-tier system (`standard`/`high`/`ultra`/`final`),
+> The render convergence quality-tier system (`fast`/`preview`/`standard`/`high`/`ultra`/`final`),
 > the confirmed `maxRenderTime`-ignored finding, and the live high-tier test
 > result are captured in `references/render-convergence-tiers.md`.
 > The WP4 `create_light` env/emissive mapping fix and the `octane.render.start`
@@ -882,8 +878,8 @@ fight over the queue: each clears + re-queues its own recipe, so the queue count
 climbs instead of draining and every per-recipe timer expires with
 `queue_left=N`. Symptom: `queue_left` grows past the 8 a single recipe should
 have. Fix: `pkill -f benchmarks/sweep.py` until `ps` shows zero, fully clear the
-container (`rm -f OctaneMCP/queue/*.json processed/*.json failed/*.json
-renders/*.png`), then launch EXACTLY ONE sweep process. The honest sweep driver
+container via its safe workspace reset/backup helpers (do **not** use `rm -f` on
+the shared queue), then launch EXACTLY ONE sweep process. The honest sweep driver
 (`benchmarks/sweep.py`) is fraud-proof: it clears the container + does a File▸New
 scene reset between recipes, deletes any pre-existing `recipe_<slug>_*.png` so a
 pass can only credit a freshly-written file (mtime > run start), and flips
@@ -1045,18 +1041,11 @@ every visual success (or instructive failure), do BOTH of these:
      (`sips -s format png -Z 768 octane-preview.png --out preview.png`).
    - `README.md` — the actual one-live-session queue pipeline + tier table + gotchas.
 
-### Keep the TWO skill copies in sync
-`octanex-mcp` and `octane-viz` exist in **two places**:
-- `/Users/craig/octanex-mcp/hermes/skills/<name>/` — committed repo copy (git source of truth).
-- `~/.hermes/skills/<cat>/<name>/` — **bundled copy that Hermes actually loads**.
-
-Patch BOTH. A fix landed only in the repo copy is invisible to the running agent;
-a fix landed only in the bundled copy is invisible to git and lost on the next
-checkout. Drift between the two let a stale "persistent bridge auto-drains" claim
-survive a whole session. After editing either, `diff` them to confirm parity. The
-bundled skill ships `references/` (photoreal-math-surface, render-convergence-tiers,
-multi-group-colored-mesh) and `scripts/` (gen_math_surface, verify_render_colors) —
-copy those into the repo skill dir too so doc links resolve.
+### Skill source and deployment
+`hermes/skills/<name>/` is the committed source of truth. Keep its `SKILL.md` and
+linked references internally consistent, bump `version:` when they change, and
+deploy/reload the installed Hermes skill through the host's normal skill-install
+workflow. Do not make an unreviewed second source of truth in a profile directory.
 
 ## Related
 

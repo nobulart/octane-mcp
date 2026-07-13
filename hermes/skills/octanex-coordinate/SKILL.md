@@ -1,7 +1,7 @@
 ---
 name: octanex-coordinate
 description: Use when two Hermes instances (MacBook Pro / Mac Studio) are working the octanex-mcp repo and need to stay in sync — autonomous push-notify + pull-rebase coordination loop, conflict prevention, and fast merge resolution.
-version: 1.0.0
+version: 1.0.1
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -71,5 +71,12 @@ dirty / rebase conflicted) — **do NOT force-rebase the peer**. Either:
   the pull dedup sees fast-path-delivered lines as "already there".
 - `coord_is_dirty` treats untracked files as dirty → watcher `blocked`. Keep the
   working tree clean (commit coord scripts) so auto-rebase can run.
+- Resolve instance identity through `scutil --get LocalHostName` (`common.sh`
+  exports `COORD_SELF_ID`/`COORD_PEER_ID`); do not derive it from `hostname -s`,
+  which uses a different spelling on these hosts.
+- Parse `…Z` message timestamps as UTC (`datetime.strptime(...).replace(tzinfo=timezone.utc)`),
+  never with local-time `time.mktime`, or recent intents can appear stale.
+- On macOS, install the watcher with the bundled `launchd` plist rather than
+  assuming `crontab` has Full Disk Access.
 - Hook uses `$0` (not `BASH_SOURCE`) — git runs hooks via `sh` where `BASH_SOURCE`
   is unset.

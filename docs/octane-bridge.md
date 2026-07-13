@@ -24,7 +24,7 @@ hermes_bridge_oneshot.generated.lua
 hermes_bridge_persistent.generated.lua
 ```
 
-If the repo is configured with `OCTANEX_MCP_REPO`, use `$OCTANEX_MCP_REPO/octane_lua`. Restart Octane X if the Scripts menu does not refresh after changing the preference.
+If the repo is configured with `OCTANEX_MCP_REPO`, use `$OCTANEX_MCP_REPO/octane_lua`. Restart Octane X if the **Script** menu does not refresh after changing the preference.
 
 ## Shared semantic surface
 
@@ -114,7 +114,7 @@ PYTHONPATH= uv run octanex-mcp doctor
 
 ## Running the bridge
 
-Use Octane X's configured Scripts menu to run one of the generated bridge files:
+Use Octane X's configured **Script** menu to run one of the generated bridge files:
 
 | Mode | Script | Usage |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ Equivalent MCP tools:
 - `octane_run_oneshot_bridge(dry_run=false, timeout_seconds=15)`
 - `octane_start_persistent_bridge(dry_run=false, timeout_seconds=15)`
 
-These helpers open Octane X if needed and use AppleScript/System Events to click a matching generated bridge script in Octane X's Scripts menu. They return the generated AppleScript, stdout/stderr, current bridge status, and next-step guidance on failure.
+These helpers open Octane X if needed and use AppleScript/System Events to click a matching generated bridge script in Octane X's **Script** menu. They return the generated AppleScript, stdout/stderr, current bridge status, and next-step guidance on failure.
 
 Known limitations:
 

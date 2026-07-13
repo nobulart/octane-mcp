@@ -217,8 +217,8 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | --- | --- |
 | `octane_status()` | App existence, queue, processed/failed files, bridge status. |
 | `octane_bridge_process_status()` | Octane process state, generated bridge paths, script readiness, and bridge heartbeat age. |
-| `octane_run_oneshot_bridge(dry_run, timeout_seconds)` | Try to run `hermes_bridge_oneshot.generated.lua` from Octane X's Scripts menu via AppleScript. |
-| `octane_start_persistent_bridge(dry_run, timeout_seconds)` | Try to run `hermes_bridge_persistent.generated.lua` from Octane X's Scripts menu via AppleScript. |
+| `octane_run_oneshot_bridge(dry_run, timeout_seconds)` | Run `hermes_bridge_oneshot.generated.lua` from Octane X's **Script** menu via AppleScript; one click drains the complete queue. |
+| `octane_start_persistent_bridge(dry_run, timeout_seconds)` | Run `hermes_bridge_persistent.generated.lua` from Octane X's **Script** menu via AppleScript. |
 | `octane_validate_command(command)` | Validate one JSON command envelope. |
 | `octane_schema()` | Return supported command operations, limits, path rules, and examples. |
 | `octane_validate_queue()` | Validate queued command files in the workspace. |
@@ -242,7 +242,7 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 | `octane_set_lighting(preset)` | Queue lighting preset. |
 | `octane_create_light(name, light_type, intensity, position, direction, size, angle, hdr_path)` | Queue native light creation (`area_light`, `sun_light`, `point_light`, `spot_light`, `directional_light`, `environment`, `emissive`). |
 | `octane_start_render(samples, width, height)` | Queue render restart and resolution update. |
-| `octane_save_preview(path, width, height, samples, min_samples, timeout_seconds, quality, max_render_time)` | Queue render-ready PNG preview save. `quality` ∈ `standard`(30s)/`high`(60s)/`ultra`(120s)/`final`(unbounded, 600s wall cap) sets a convergence ceiling; raw `samples`/`min_samples`/`timeout_seconds`/`max_render_time` override the tier. On timeout the current frame is saved best-effort. |
+| `octane_save_preview(path, width, height, samples, min_samples, timeout_seconds, quality, max_render_time)` | Queue render-ready PNG preview save. `quality` ∈ `fast`(6s render/10s wall; 500 s/px creator default)/`preview`(10s)/`standard`(30s)/`high`(60s)/`ultra`(120s)/`final`(unbounded, 600s wall cap) sets a convergence ceiling; raw `samples`/`min_samples`/`timeout_seconds`/`max_render_time` override the tier. On timeout the current frame is saved best-effort. |
 | `octane_review_preview(path)` | Review saved PNG previews with metrics, diagnosis, likely causes, and recommended actions. |
 | `octane_suggest_camera_fix(preview_review, asset_bounds)` | Suggest a camera patch from preview QA and asset bounds. |
 | `octane_suggest_lighting_fix(preview_review)` | Suggest a lighting/render patch from preview QA. |

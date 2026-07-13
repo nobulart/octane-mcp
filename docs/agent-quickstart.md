@@ -39,7 +39,8 @@ This must be the folder containing `hermes_bridge_oneshot.generated.lua` and `he
    - `commands.validation.ok` should be true before asking Octane to process queued commands.
    - `commands.processed` and `commands.failed` show recent outcomes.
    - `commands.results` shows recent per-command result JSON files written by Lua.
-5. If commands are queued but not processed, ask the user to run the generated one-shot bridge from Octane X's Scripts menu or from the path shown by `octanex-mcp doctor`, usually:
+5. Before a live scene, call `octane_flush_queue()` to move any stale shared-queue commands to a dated backup, then warm-reset the in-memory scene with `octane_reset_octane_scene()`.
+6. If commands are queued but not processed, run the generated one-shot bridge from Octane X's **Script** menu (singular), or use `octane_run_oneshot_bridge()` when Accessibility is granted. The generated file is usually:
 
 ```text
 /path/to/octane-mcp/octane_lua/hermes_bridge_oneshot.generated.lua
@@ -101,21 +102,20 @@ octane_show_avatar(name="hermes_avatar_face")
 ## Preview workflow
 
 1. Queue a scene command, such as `octane_visualize_bars(...)`.
-2. Run the one-shot Lua bridge in Octane X.
-3. Queue preview save:
+2. Queue preview save in the same pipeline:
 
 ```text
 octane_save_preview(width=1280, height=1280)
 ```
 
-4. Run the one-shot Lua bridge again.
-5. Review the saved preview:
+3. Run `octane_run_oneshot_bridge()` once. One click drains the complete pipeline; poll `queue/` to confirm it reaches zero and wait for the PNG rather than re-clicking while it renders.
+4. Review the saved preview:
 
 ```text
 octane_review_preview()
 ```
 
-6. Verify `ok=true` before claiming success. If the review reports `likely_blank`, `likely_clipped`, or low contrast, fix the scene/framing and save another preview.
+5. Verify `ok=true` before claiming success. If the review reports `likely_blank`, `likely_clipped`, or low contrast, fix the scene/framing and save another preview.
 
 Default preview path:
 

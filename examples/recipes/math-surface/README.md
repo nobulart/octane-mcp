@@ -37,15 +37,16 @@ Re-run: `uv run python scripts/gen_math_surface.py` (writes to `OctaneMCP_stagin
 
 1. Generate the OBJ (`scripts/gen_math_surface.py`) and copy it into the container
    workspace `OctaneMCP/assets/` (sandboxed Octane only reads container FS).
-2. Queue the full pipeline in order:
+2. Call `octane_flush_queue()` to archive stale shared-queue commands, then queue
+   the full pipeline in order:
    - `import_geometry(path="…/scene.obj", name="math_surface")`
    - `create_material(name="math_surface_mat", kind="glossy", color=[0.85,0.55,0.25], roughness=0.3)`
    - `assign_material(object_name="math_surface", material_name="math_surface_mat")`
    - `set_camera(position=[11,9,11], target=[0,0.5,0], fov=40)`
    - `set_lighting(preset="soft_studio")`
    - `save_preview(width=1280, height=1280, quality="high")`  ← convergence tier
-3. Drain with the one-shot bridge. **Repeat the click until `queue/` is empty**
-   (the persistent auto-poll timer is broken — ~1 command per click).
+3. Drain the complete pipeline with the one-shot bridge **once**. Poll `queue/`
+   until it is empty; do not re-click while `save_preview` is rendering.
 4. Inspect whether peaks are clipped; reduce expression amplitude if needed.
 
 ## Render convergence quality tiers
@@ -55,8 +56,10 @@ ceiling (defined in `src/octanex_mcp/models.py` as `QUALITY_TIERS`):
 
 | tier     | max_render_time | timeout_seconds | min_samples | samples  | use                          |
 |----------|-----------------|-----------------|-------------|----------|------------------------------|
+| fast     | 6               | 10              | 64          | 500      | creator default / clean QA   |
+| preview  | 10              | 10              | 16          | 256      | quickest composition check   |
 | standard | 30              | 30              | 24          | 512      | quick check                  |
-| high     | 60              | 60              | 48          | 1024     | good quality (default ask)   |
+| high     | 60              | 60              | 48          | 1024     | presentation draft           |
 | ultra    | 120             | 120             | 96          | 2048     | presentation                 |
 | final    | 0 (unlimited)   | 600             | 1024        | 1000000  | master, bounded by wall cap  |
 
@@ -75,13 +78,13 @@ tier when passed explicitly. On the wall-clock cap the current frame is saved
   A restart purges the in-memory scene → later commands run against an empty scene →
   uniform gray frame `(243,243,243)`, ~16 KB. Restart Octane X only to reload a
   *patched bridge*, and do it *before* queueing any scene command.
-- **One-shot bridge drains ~1 command per click** (persistent timer is broken).
-  Poll `queue/` and repeat until empty.
+- **One-shot bridge drains the full queue in one click.** Poll `queue/` to confirm
+  it reaches zero, but do not click again while `save_preview` is in progress.
 - **MTL `Kd` is ignored on `import_geometry`** — create + assign an explicit material.
 - **Container FS is slow & render is long** — a 79k-tri surface @ 512 samples took
   ~90 s before the PNG appeared. Don't conclude failure early.
-- `octane_record_recipe` MCP tool may be absent in-session → record inline in
-  `NOTES-*.md` / `docs/recipe-book.md`.
+- `octane_record_recipe` appends a compact lesson to `docs/recipe-book.md` after a
+  verified run; keep the entry evidence-based.
 
 ## Verify (don't trust a pretty thumbnail)
 
@@ -97,9 +100,8 @@ tier when passed explicitly. On the wall-clock cap the current frame is saved
 
 ## Re-render in Octane
 
-1. Import `scene.obj` with `octane_import_geometry(path="examples/recipes/math-surface/scene.obj", name="math_surface")`.
-2. Apply the camera + material from `scene.json`.
-3. Drain the queue with the one-shot bridge (`octane_lua/hermes_bridge_oneshot.generated.lua`), repeating until `queue/` is empty.
-4. Save with a convergence tier: `octane_save_preview(width=1280, height=1280, quality="ultra")`.
-5. Replace `octane-preview.png` if the new render teaches a useful lesson.
-6. Record any native-render success or failure in `docs/recipe-book.md`.
+1. Flush stale commands with `octane_flush_queue()`, then import `scene.obj` with `octane_import_geometry(path="examples/recipes/math-surface/scene.obj", name="math_surface")`.
+2. Apply the camera + material from `scene.json` and queue `octane_save_preview(width=1280, height=1280, quality="ultra")`.
+3. Drain the queue once with the one-shot bridge (`octane_lua/hermes_bridge_oneshot.generated.lua`) and poll until `queue/` is empty.
+4. Replace `octane-preview.png` if the new render teaches a useful lesson.
+5. Record any native-render success or failure in `docs/recipe-book.md`.

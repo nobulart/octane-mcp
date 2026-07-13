@@ -2,7 +2,7 @@
 
 **Date established:** 2026-07-12
 **Scope:** Octane X (the macOS GUI app) on this machine — `/Applications/Octane X.app`.
-**Bottom line:** You cannot launch Octane X with a Lua script via the command line. There is no `octane --no-gui -s script.lua` equivalent on macOS. The only programmatic Lua surface is Octane X's in-app **Scripts menu** (driven here via `osascript` UI-scripting). This is a *documented product boundary*, not a workaround for a bug.
+**Bottom line:** You cannot launch Octane X with a Lua script via the command line. There is no `octane --no-gui -s script.lua` equivalent on macOS. The only programmatic Lua surface is Octane X's in-app **Script** menu (driven here via `osascript` UI-scripting). This is a *documented product boundary*, not a workaround for a bug.
 
 ## Why (binary evidence, inspected 2026-07-12)
 
@@ -31,7 +31,7 @@ octane --no-gui -s script.lua
 
 ## Consequences for this project
 
-This is *why* `src/octanex_mcp/bridge_control.py` launches via AppleScript + the Scripts menu (`open -a "Octane X"` then UI-click the bridge), and why the following constraints exist:
+This is *why* `src/octanex_mcp/bridge_control.py` launches via AppleScript + the Script menu (`open -a "Octane X"` then UI-click the bridge), and why the following constraints exist:
 
 - **macOS Accessibility (TCC)** must be granted to the agent-runtime python (the `osascript` caller), not `Hermes.app`.
 - Launch is via the **Script** menu (singular), NOT `run script file` (which `-2741`s because AppleScript tries to compile Lua).
@@ -44,5 +44,5 @@ Realistic options (none run Octane X itself headless on macOS):
 
 1. **OctaneRender Standalone** on Linux/Windows (or a headless render node / Render Network job) — the `-s script.lua` path.
 2. **Render Network / network rendering** — dispatch jobs to a daemon node; the node is still managed from the GUI on Mac.
-3. **Stay on the Scripts-menu path** (current design) — it is the supported automation surface for Octane X.
+3. **Stay on the Script-menu path** (current design) — it is the supported automation surface for Octane X.
 4. *Not available:* `open -a "Octane X" --args <script>` (app ignores argv), `octane://` URL scheme (none registered), double-click-to-run `.lua` (no doc-type handler).

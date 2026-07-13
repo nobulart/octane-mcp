@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.3.2
+version: 1.3.3
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -26,7 +26,7 @@ The skill is triggered when the prompt prefix matches "Visualise" (accepting "Vi
 
 ## Octane X has NO command-line Lua entry point
 
-Never try to launch the render via `open -a "Octane X" --args <script.lua>`, an `octane://` URL, or `.lua` double-click — Octane X is a pure GUI Cocoa/Metal app with no argv/URL/doc-type handler, and the Lua engine inside `octanesdk.framework` is only exposed through the in-app **Scripts menu**. The `--no-gui -s script.lua` form is **OctaneRender Standalone** (Linux/Windows only), not available on macOS. This project drives Lua via `osascript` UI-scripting of the Scripts menu — the only supported path. A live GUI session is mandatory; there is no headless/CI render on this Mac. Evidence: `docs/octane-x-no-cli.md` (inspected 2026-07-12).
+Never try to launch the render via `open -a "Octane X" --args <script.lua>`, an `octane://` URL, or `.lua` double-click — Octane X is a pure GUI Cocoa/Metal app with no argv/URL/doc-type handler, and the Lua engine inside `octanesdk.framework` is only exposed through the in-app **Script** menu. The `--no-gui -s script.lua` form is **OctaneRender Standalone** (Linux/Windows only), not available on macOS. This project drives Lua via `osascript` UI-scripting of the Script menu — the only supported path. A live GUI session is mandatory; there is no headless/CI render on this Mac. Evidence: `docs/octane-x-no-cli.md`.
 
 ### Examples of Triggering Prompts
 
@@ -69,8 +69,7 @@ If `doctor` fails or Octane X is not running, surface the blocker to the user. D
 - **Material**: If the prompt includes a material or colour hint (glossy, gold, green, cyan, magenta, copper, etc.), apply it to the geometry. Otherwise construct a default glossy cube (size=3, centred) with a glossy-blue material.
 - **Camera**: Use bounds-aware automatic framing (the visual tools compute camera from asset bounds) unless a deliberate top/front/side composition is wanted.
 - **Lighting**: Apply soft-studio lighting preset.
-- **Render**: Queue a render with reasonable defaults (samples=64, width=1280, height=1280).
-- **Save PNG**: Queue `octane_save_preview` to capture the preview as a PNG under `~/Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/`.
+- **Render and save**: Queue `octane_save_preview(quality="fast")` with the complete scene pipeline. The `fast` tier uses the current 500-s/px creator default (1280×1280 unless overridden).
 
 Map prompts to tools:
 
@@ -84,26 +83,24 @@ Map prompts to tools:
 
 ### 1.5. Render protocol (do this every time — prevents near-black/stale renders)
 
-Follow the mandatory 8-step sequence from the `octanex-mcp` skill **Render
-Protocol** section: (1) confirm Octane X running; (2) `File → New` reset;
-(3) start the renderer (lua command queue); (4) one one-shot bridge click to
-flush any stale queue; (5) queue the scene; (6) start the renderer (lua command
-queue) again; (7) one-shot bridge click to drain; (8) repeat from (2) for the
-next scene. **Octane is fast** — basic scenes converge for preview QA in
-**1–2 s**, complex in **5–10 s**; do not over-cap render time. A stale queue or
-leftover scene (not a material bug) is the usual cause of a near-black frame.
+Before each scene, (1) confirm Octane X is running, (2) warm-reset it with
+`octane_reset_octane_scene()`, and (3) call `octane_flush_queue()` to archive stale
+shared-queue commands. Then queue the complete import/material/camera/light/save
+pipeline, invoke the one-shot bridge **once**, and poll `queue/` to zero. Do not
+re-click while `save_preview` is rendering. **Octane is fast** — the `fast` tier
+targets 500 s/px for clean preview QA; use longer tiers only when pixel QA demands it.
 
 ### 2. Drain the queue in Octane X
 
 The bridge uses the **one-shot bridge** mode (`hermes_bridge_oneshot.generated`). Run it from
-Octane X's Script menu, or trigger it via the control layer (which handles TCC + classification):
+Octane X's **Script** menu, or trigger it via the control layer (which handles TCC + classification):
 
 ```bash
 uv run python -c "from octanex_mcp.bridge_control import run_bridge_script; print(run_bridge_script('oneshot')['stdout'])"
 # -> clicked hermes_bridge_oneshot.generated via Script
 ```
 
-**Never use `run script file` on the `.lua` bridge** — AppleScript tries to compile the Lua as AppleScript and dies with `-2741` ("Expected end of line, but found ="). Use the Scripts-menu click (above) which runs it as Lua.
+**Never use `run script file` on the `.lua` bridge** — AppleScript tries to compile the Lua as AppleScript and dies with `-2741` ("Expected end of line, but found ="). Use the Script-menu click (above) which runs it as Lua.
 
 **Canonical drain rule — ONE click, then poll, never re-click on a timer.** A single oneshot click runs the Lua drain loop and processes the ENTIRE queue (assembly + `save_preview`) in one pass. After queueing the full pipeline, fire ONE `octane_run_oneshot_bridge` (or `run_bridge_script('oneshot')`), then poll `…/OctaneMCP/queue/` to confirm it hit 0. Do NOT loop one click per command, and do NOT re-click while the queue is empty — a second click while `save_preview` is rendering is ignored and would kill that render. Only re-click on a *genuine failed click*, capped.
 
@@ -120,8 +117,8 @@ octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
 | `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry once; if it persists, restart Octane. |
 | `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`), or the shell/terminal that launches Hermes. |
 | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
-| `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Scripts-menu click path instead. |
-| `Could not find <script> in Scripts menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
+| `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Script-menu click path instead. |
+| `Could not find <script> in Script menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
 
 The launch now waits for Octane X's menu bar to become UI-ready after `open -a` (inside the same AppleScript), eliminating the cold-launch race that produced false "script not found".
 
@@ -162,4 +159,4 @@ Before returning the PNG, inspect it with `vision_analyze`:
 | `Visualise with a green torus` | Construct torus, apply green material, render, inspect, return real PNG preview |
 | `Visualise it simply` | Construct default cube with glossy blue, render, inspect, return real PNG preview |
 | `Visualise the helix with a copper material` | Construct helix, apply copper material, render, inspect, return real PNG preview |
-| `Visualise a photorealistic mathematical 3D surface` | Generate a parametric surface OBJ in Python (`octanex-mcp` → `scripts/gen_math_surface.py`), `import_geometry` + explicit glossy material + `assign_material` + camera/lighting + `save_preview`; drain repeatedly until `queue/` empty, then verify. See `octanex-mcp` → `references/photoreal-math-surface.md`. |
+| `Visualise a photorealistic mathematical 3D surface` | Generate a parametric surface OBJ in Python (`octanex-mcp` → `scripts/gen_math_surface.py`), `import_geometry` + explicit glossy material + `assign_material` + camera/lighting + `save_preview`; flush stale commands before queueing, drain once, then poll `queue/` empty and verify. See `octanex-mcp` → `references/photoreal-math-surface.md`. |

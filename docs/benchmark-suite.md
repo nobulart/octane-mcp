@@ -58,7 +58,7 @@ spec.build()  ──►  combined OBJ (+materials, +per-group assignments)
    │            assign_material(group_index) ×N → set_camera →
    │            set_lighting → save_preview(path)             (pitfall #9/#10)
    │
-   ├─ drain  ──►  one-shot Lua bridge clicks until queue empty (pitfall #18)
+   ├─ drain  ──►  one-shot Lua bridge click, then poll queue empty (pitfall #18)
    │
    └─ verify ──►  decode PNG → acceptance.evaluate() → PASS/FAIL
 ```
@@ -166,14 +166,11 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 **All 18 tasks render natively and pass pixel acceptance (18/18).**
 
 **Lessons (also in `docs/recipe-book.md`):**
-* **Render-restart collision was the #1 blocker beyond Tier 2.** Each
-  `import_geometry`/`assign_material`/`set_lighting` calls `request_render_restart`,
-  starting an unbounded render; the next `save_preview`'s `start{}` then hit
-  *"Can't start a new render before finishing the previous render"* and aborted
-  before `saveImage`. Fixed by wrapping `start/restart/continue` in a 5-attempt
-  retry loop with a 0.5 s yield after `stop()`+`pause()` (both templates). After
-  this the persistent bridge timer drained all 148 Tier 3–6 commands (282 processed,
-  0 failed) and every `save_preview` wrote its PNG.
+* **Deferred render start is the current protection against render-restart
+  collisions.** Scene-assembly handlers wire the render target with
+  `do_start=false`; only `save_preview` starts the render after camera, geometry,
+  materials, and lighting are present. Keep a full pipeline in one queue and use
+  one one-shot drain.
 * `soft_studio` lighting is strongly cool-blue; exact-RGB `color_present` is the
   wrong gate for lit PBR — use `color_family` (hue-distance tolerant).
 * `metallic=1.0` without an environment map does not read as its base colour.
@@ -182,10 +179,10 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 * Queue must contain the COMPLETE command set (import + every material +
   assignment + camera + lighting + save); partially purged queues silently
   render neutral/blank.
-* AppleScript menu automation in `octane_run_*_bridge` cannot locate the script
-  (name/`.lua` mismatch); live drains need a manual click on
-  `OctaneX ▸ Scripts ▸ hermes_bridge_persistent.generated` (or rely on the
-  persistent bridge's 1.0 s auto-drain timer).
+* AppleScript launch uses Octane X's **Script** menu (singular). It requires
+  Accessibility for the Hermes agent-runtime Python, not `Hermes.app`; a single
+  `octane_run_oneshot_bridge` click drains the full queue. The persistent bridge
+  timer is not a reliable auto-drain path.
 
 ---
 
