@@ -16,6 +16,7 @@
 \usepackage{caption}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
+\usepackage{placeins}
 
 \graphicspath{{../../}}
 
@@ -180,91 +181,69 @@ Open application work & 3DXM parametric/Weierstrass meshing, geospatial live pat
 
 \section{Recipe corpus as evidence}
 
-The recipe corpus is the practical proof of the design. It demonstrates that the bridge can support more than a test cube: product geometry, scientific scenes, data diagrams, architecture flows, planetary scenes, and agent-feedback diagrams can all be represented as explicit geometry and re-rendered.
+The recipe corpus is the practical proof of the design. It demonstrates that the bridge can support more than a test cube: product geometry, studio props, architectural forms, mathematical surfaces, and scientific volume visualisations can all be represented as explicit geometry and re-rendered.
 
-\subsection{Recent product and object recipes}
+\subsection{Product and studio-object recipes}
 
 \begin{figure}[htbp]
 \centering
-\begin{subfigure}{0.32\linewidth}
+\begin{subfigure}{0.24\linewidth}
   \includegraphics[width=\linewidth]{examples/recipes/desk-fan/octane-preview.png}
   \caption{Desk fan with cage, blades, cord, plug, and brass prongs.}
 \end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
+\begin{subfigure}{0.24\linewidth}
   \includegraphics[width=\linewidth]{examples/recipes/headphones-studio/octane-preview.png}
   \caption{Over-ear headphones with opposing cylindrical cups and spiral cord.}
 \end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
+\begin{subfigure}{0.24\linewidth}
+  \includegraphics[width=\linewidth]{examples/recipes/wristwatch/octane-preview.png}
+  \caption{Analog wristwatch with blue dial, case, crown, and linked bracelet.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.24\linewidth}
   \includegraphics[width=\linewidth]{examples/recipes/photoreal-vase-studio/octane-preview.png}
-  \caption{Multi-vase studio target with glass, ceramic, terracotta, marble, and metal cues.}
+  \caption{Studio vase set with distinct glass, ceramic, terracotta, and metal cues.}
 \end{subfigure}
-\caption{Product-style recipes show the value of explicit geometry: user feedback can target concrete elements such as cup orientation, cable topology, cap faces, cage wires, material groups, or camera focus.}
+\caption{Product-style recipes show the value of explicit geometry: user feedback can target concrete elements such as cup orientation, cable topology, cap faces, cage wires, bracelet links, material groups, or camera focus.}
 \label{fig:product-recipes}
 \end{figure}
 
 These recipes illustrate why \project{} differs from prompt-only image generation. In the desk-fan and headphones examples, iteration was about specific 3D structure: closed cylinders, rotated earcups, tubular cords, guard wires, plug prongs, and grounding shadows. Those details are easier to correct when the scene is generated as geometry rather than inferred in a latent image.
 
-\subsection{Scientific and planetary recipes}
+\subsection{Architectural and still-life recipes}
 
 \begin{figure}[htbp]
 \centering
-\begin{subfigure}{0.32\linewidth}
+\begin{subfigure}{0.45\linewidth}
+  \includegraphics[width=\linewidth]{examples/recipes/ancient-temple/octane-preview.png}
+  \caption{Ancient temple form with roof, steps, plinth, and repeated columns.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.45\linewidth}
+  \includegraphics[width=\linewidth]{examples/recipes/bowl-of-fruit/octane-preview.png}
+  \caption{Bowl of fruit with grouped fruit geometry, shadows, and tabletop staging.}
+\end{subfigure}
+\caption{Architectural and still-life recipes demonstrate reusable scene staging: repeated structures, grouped materials, camera framing, lighting, and object placement are visible in the render and recoverable from recipe assets.}
+\label{fig:staging-recipes}
+\end{figure}
+
+\subsection{Scientific and mathematical recipes}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.45\linewidth}
   \includegraphics[width=\linewidth]{examples/recipes/earth-hemisphere/octane-preview.png}
-  \caption{Cutaway Earth point cloud with glowing core, mantle/crust layers, and atmosphere.}
+  \caption{Cutaway Earth point cloud with glowing core, mantle/crust layers, plumes, and atmosphere.}
 \end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/photoreal-earth-space/octane-preview.png}
-  \caption{Orbital Earth scene with clouds, atmosphere rim, and space lighting.}
-\end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/saturn-moons-space/octane-preview.png}
-  \caption{Saturn scene with oblate planet, rings, moons, and cinematic lighting.}
+\begin{subfigure}{0.45\linewidth}
+  \includegraphics[width=\linewidth]{examples/recipes/neovius/octane-preview.png}
+  \caption{Neovius minimal surface: a verified single-manifold 3DXM-style geometry recipe.}
 \end{subfigure}
-\caption{Planetary and geoscience recipes demonstrate the project's research-visualisation direction: structured geometry plus material semantics, not only visual style.}
-\label{fig:planet-recipes}
+\caption{Scientific and mathematical recipes show the research-visualisation direction: structured geometry plus material semantics, not only visual style. The Earth volume stresses dense point-cloud rendering; the Neovius surface stresses equation research, meshing, and visual verification.}
+\label{fig:science-math-recipes}
 \end{figure}
 
-The Earth cutaway is a particularly important stress case. It uses a dense point-cloud representation with grouped layers, opacity, emission, atmosphere shells, and off-axis camera choices. The recipe-book notes show how failures are turned into concrete next actions: change the camera angle when the cutaway reads as a flat disc, sweep stranded \texttt{processing/} commands back into the job, and verify material-group counts before promotion.
+The Earth cutaway is a particularly important stress case. It uses a dense point-cloud representation with grouped layers, opacity, emission, atmosphere shells, and off-axis camera choices. The recipe-book notes show how failures are turned into concrete next actions: change the camera angle when the cutaway reads as a flat disc, sweep stranded \texttt{processing/} commands back into the job, and verify material-group counts before promotion. The Neovius recipe illustrates the same discipline for mathematical surfaces: verify the equation, mesh one connected manifold, then inspect the rendered result against the intended surface family.
 
-\subsection{Data, graph, and architecture recipes}
-
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/data-bars/octane-preview.png}
-  \caption{3D KPI bar chart.}
-\end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/architecture-flow/octane-preview.png}
-  \caption{MCP architecture flow as spatial geometry.}
-\end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/network-graph/octane-preview.png}
-  \caption{Knowledge graph topology.}
-\end{subfigure}
-\caption{The corpus includes explanatory diagrams as 3D scenes. This is central to the goal of using Octane X as a communication surface, not merely a photoreal renderer.}
-\label{fig:diagram-recipes}
-\end{figure}
-
-\subsection{Math and physics recipes}
-
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/vector-field/octane-preview.png}
-  \caption{Rotating vector field.}
-\end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/wave-interference-field/octane-preview.png}
-  \caption{Two-source wave interference field.}
-\end{subfigure}\hfill
-\begin{subfigure}{0.32\linewidth}
-  \includegraphics[width=\linewidth]{examples/recipes/math-surface/octane-preview.png}
-  \caption{Radial mathematical surface.}
-\end{subfigure}
-\caption{Mathematical scenes benefit from deterministic mesh generation and bounds-aware cameras. The 3DXM work extends this direction toward a larger library of named mathematical surfaces.}
-\label{fig:math-recipes}
-\end{figure}
+\FloatBarrier
 
 \section{Comparison with other image and model generation toolsets}
 
@@ -419,16 +398,12 @@ The next phase should focus on bridge hardening, richer scene grammar, backend a
 \begin{itemize}[leftmargin=*]
   \item \texttt{examples/recipes/earth-hemisphere/}
   \item \texttt{examples/recipes/desk-fan/}
+  \item \texttt{examples/recipes/ancient-temple/}
+  \item \texttt{examples/recipes/bowl-of-fruit/}
   \item \texttt{examples/recipes/headphones-studio/}
   \item \texttt{examples/recipes/photoreal-vase-studio/}
-  \item \texttt{examples/recipes/data-bars/}
-  \item \texttt{examples/recipes/architecture-flow/}
-  \item \texttt{examples/recipes/network-graph/}
-  \item \texttt{examples/recipes/vector-field/}
-  \item \texttt{examples/recipes/wave-interference-field/}
-  \item \texttt{examples/recipes/math-surface/}
-  \item \texttt{examples/recipes/photoreal-earth-space/}
-  \item \texttt{examples/recipes/saturn-moons-space/}
+  \item \texttt{examples/recipes/wristwatch/}
+  \item \texttt{examples/recipes/neovius/}
 \end{itemize}
 
 \section{Primary project documents consulted}
