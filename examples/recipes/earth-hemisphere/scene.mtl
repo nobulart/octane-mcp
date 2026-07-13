@@ -1,0 +1,21 @@
+# reference materials (Octane assigns via scene.json commands)
+newmtl mat_inner_core
+Kd 1.000 0.880 0.400
+newmtl mat_outer_core
+Kd 1.000 0.420 0.160
+newmtl mat_lower_mantle
+Kd 0.520 0.130 0.070
+newmtl mat_upper_mantle
+Kd 0.720 0.260 0.100
+newmtl mat_crust_cont
+Kd 0.550 0.480 0.380
+newmtl mat_crust_ocean
+Kd 0.160 0.170 0.220
+newmtl mat_troposphere
+Kd 0.620 0.800 1.000
+newmtl mat_stratosphere
+Kd 0.420 0.620 1.000
+newmtl mat_mesosphere
+Kd 0.640 0.420 1.000
+newmtl mat_thermosphere
+Kd 1.000 0.420 0.700

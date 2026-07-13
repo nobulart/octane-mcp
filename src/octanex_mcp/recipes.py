@@ -35,6 +35,26 @@ def _resolve_repo_path(value: Any, *, repo_root: Path = REPO_ROOT) -> Any:
     return str((repo_root / raw).resolve())
 
 
+def _resolve_recipe_asset_path(value: Any, *, repo_root: Path = REPO_ROOT, workspace: Workspace | None = None) -> Any:
+    """Resolve recipe asset paths for Octane.
+
+    Offline recipe loading resolves paths inside the checkout. Live queueing
+    must prefer sandbox-visible staged copies when available: Octane X may not
+    be able to read the repo checkout path, which creates an apparently wired
+    mesh node with no visible geometry.
+    """
+
+    if not isinstance(value, str) or not value.strip():
+        return value
+    raw = Path(value).expanduser()
+    if raw.is_absolute() or ".." in raw.parts or workspace is None:
+        return _resolve_repo_path(value, repo_root=repo_root)
+    sandbox = (workspace.root / raw).resolve()
+    if sandbox.exists():
+        return str(sandbox)
+    return _resolve_repo_path(value, repo_root=repo_root)
+
+
 def _preview_path(recipe_dir: Path, data: Mapping[str, Any]) -> Path | None:
     for name in ("octane-preview.png", "preview.png", "photoreal-preview.png"):
         candidate = recipe_dir / name
@@ -113,7 +133,7 @@ def _find_recipe_dir(slug: str, recipes_root: Path = RECIPES_ROOT) -> Path:
     raise ValueError(f"unknown recipe slug {slug!r}; known recipes: {known}")
 
 
-def _resolved_commands(data: Mapping[str, Any], *, repo_root: Path = REPO_ROOT) -> list[dict[str, Any]]:
+def _resolved_commands(data: Mapping[str, Any], *, repo_root: Path = REPO_ROOT, workspace: Workspace | None = None) -> list[dict[str, Any]]:
     raw_commands = data.get("commands")
     if not isinstance(raw_commands, list):
         return []
@@ -124,7 +144,7 @@ def _resolved_commands(data: Mapping[str, Any], *, repo_root: Path = REPO_ROOT) 
         command = copy.deepcopy(dict(raw))
         payload = command.get("payload")
         if isinstance(payload, dict) and "path" in payload:
-            payload["path"] = _resolve_repo_path(payload["path"], repo_root=repo_root)
+            payload["path"] = _resolve_recipe_asset_path(payload["path"], repo_root=repo_root, workspace=workspace)
         commands.append(command)
     return commands
 
@@ -199,16 +219,19 @@ def queue_recipe(slug: str, overrides: Mapping[str, Any] | None = None, *, works
     """
 
     flush_res = flush_queue(workspace)
-    recipe = load_recipe(slug, recipes_root)
-    commands = _apply_overrides(recipe["commands"], overrides)
-    commands = _rewrite_preview_outputs(commands, slug=recipe["slug"], workspace=workspace)
+    recipe_dir = _find_recipe_dir(slug, recipes_root)
+    data = _read_scene_json(recipe_dir / "scene.json")
+    meta = _metadata(recipe_dir, data)
+    commands = _resolved_commands(data, repo_root=recipes_root.parents[1], workspace=workspace)
+    commands = _apply_overrides(commands, overrides)
+    commands = _rewrite_preview_outputs(commands, slug=meta["slug"], workspace=workspace)
     queued = []
     for idx, command in enumerate(commands):
         _validate_recipe_command(command, idx)
         queued.append(write_command(str(command["op"]), dict(command.get("payload") or {}), workspace))
     return {
-        "slug": recipe["slug"],
-        "title": recipe["title"],
+        "slug": meta["slug"],
+        "title": meta["title"],
         "flushed": flush_res["flushed"],
         "queued_count": len(queued),
         "queued_commands": queued,

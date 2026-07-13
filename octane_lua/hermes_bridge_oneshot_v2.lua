@@ -430,9 +430,18 @@ function create_node(type_id, name, position)
     return nil, tostring(node_or_err)
 end
 
-local function set_pin_value(node, pin, value)
+local function set_pin_value(node, pin, ...)
     if not node or not pin then return false end
-    local ok, err = pcall(function() node:setPinValue(pin, value) end)
+    local values = {...}
+    local ok, err = pcall(function()
+        if #values == 0 then
+            node:setPinValue(pin)
+        elseif #values == 1 then
+            node:setPinValue(pin, values[1])
+        else
+            node:setPinValue(pin, table.unpack(values))
+        end
+    end)
     if not ok then append_log("setPinValue failed pin=" .. tostring(pin) .. " err=" .. tostring(err)) end
     return ok
 end
@@ -819,6 +828,40 @@ local function handle_import_geometry(cmd)
     -- orphaned meshes left unwired).
     local mesh = ensure_canonical(octane.NT_GEO_MESH, name, {500, 500}, function(m)
         pcall(function() m:setAttribute(octane.A_FILENAME, cmd.path, true) end)
+        -- TRANSFORM FIX (2026-07-13): imported OBJs are authored at
+        -- world origin (e.g. vase recipes use X across [-3.6,3.6]); if the
+        -- mesh node's transform is left at its create-default the geometry
+        -- lands at the node position (here {500,500}) and falls OUTSIDE the
+        -- camera frustum -> a blank white preview. Force an identity
+        -- transform so the geometry renders at its authored coordinates.
+        local function set_identity_transform(node)
+            if not node then return false end
+            -- packed-number pins (most robust across builds)
+            local okp = false
+            for _, p in ipairs({octane.P_TRANSFORM or "transform",
+                                 octane.P_POSITION or "pos",
+                                 octane.P_TRANSLATION or "translation"}) do
+                if p then okp = set_pin_value(node, p, 0, 0, 0) or okp end
+            end
+            for _, p in ipairs({octane.P_ROTATION or "rotation",
+                                 octane.P_EULER or "euler"}) do
+                if p then okp = set_pin_value(node, p, 0, 0, 0) or okp end
+            end
+            for _, p in ipairs({octane.P_SCALE or "scale",
+                                 octane.P_SIZING or "sizing"}) do
+                if p then okp = set_pin_value(node, p, 1, 1, 1) or okp end
+            end
+            -- composite transform table (some builds expose a single {pos,rot,scale} pin)
+            local function comp(p)
+                if not p then return false end
+                return set_pin_value(node, p,
+                    {x=0,y=0,z=0}, {x=0,y=0,z=0}, {x=1,y=1,z=1})
+            end
+            okp = comp(octane.P_TRANSFORM or "transform") or okp
+            return okp
+        end
+        local ok_t = set_identity_transform(m)
+        if not ok_t then append_log("import transform reset inconclusive for " .. tostring(name)) end
     end)
     if not mesh then return false, "create mesh failed: " .. tostring(name) end
     maybe_connect_geometry_to_rt(mesh)
@@ -1024,8 +1067,16 @@ local function handle_set_camera(cmd)
     -- Canonical camera: delete orphan Hermes Camera nodes, keep one, reconnect.
     local cam = ensure_canonical(octane.NT_CAM_THINLENS or octane.NT_CAM_PANORAMIC, "Hermes Camera", {300, 520}, function(c)
         if cmd.fov then set_pin_value(c, octane.P_FOV or "fov", cmd.fov) end
-        if cmd.position then set_pin_value(c, octane.P_POSITION or "pos", cmd.position) end
-        if cmd.target then set_pin_value(c, octane.P_TARGET or "target", cmd.target) end
+        -- POS/TARGET FIX (2026-07-13): keep vector pins as one Lua table.
+        -- This Octane build treats the optional third setPinValue argument as
+        -- a boolean/evaluate flag, so unpacked xyz numbers fail with
+        -- "boolean expected". Tables are the correct vector payload form here.
+        local function set_vec(pin, v)
+            if not pin or not v then return end
+            set_pin_value(c, pin, {v[1] or 0, v[2] or 0, v[3] or 0})
+        end
+        if cmd.position then set_vec(octane.P_POSITION or "pos", cmd.position) end
+        if cmd.target then set_vec(octane.P_TARGET or "target", cmd.target) end
         -- FOCUS FIX (2026-07-12): NT_CAM_THINLENS renders soft unless focus
         -- distance + aperture are set. Default aperture has a finite DOF so the
         -- spheres come out blurry. Force a near-pinhole aperture and set focus

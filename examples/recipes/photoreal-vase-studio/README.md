@@ -1,70 +1,45 @@
 # Photoreal Multi-Vase Studio
 
-A product-studio recipe for a collection of vases with intentionally varied silhouettes, colours, texture treatments, and material intent.
+A product-studio recipe for five vases with intentionally varied silhouettes, colours, texture treatments, and material intent -- smoky glass, cobalt ceramic, ribbed terracotta, pearlescent white porcelain, and dark brushed metal.
 
-![Photoreal multi-vase studio target](photoreal-preview.png)
+![Native Octane render of the five-vase studio](octane-preview.png)
 
-## Starter prompt
+> **Note on the reference image.** `target-preview.png` (formerly `photoreal-preview.png`) is an **AI-generated target/reference** showing the intended look. It is **not** a native Octane render and must never be shown as the recipe's legitimate preview. The hero image above (`octane-preview.png`) is the real native render produced from this recipe's geometry.
 
-Create a high-end catalog render of several vases on a matte stone pedestal. Make each vase materially distinct: translucent smoky glass, glossy cobalt ceramic, matte ribbed terracotta, pearlescent white porcelain, and dark brushed metal. Use warm neutral cyclorama lighting, large softbox reflections, realistic shadows, and no text.
+## Geometry convention
 
-## What is included
+The scene OBJ is authored **Y-up** (Octane's native world), so vases stand upright and the camera in `scene.json` uses true `[x, y, z]` coordinates. The previous release used a Z-up OBJ with a mismatched camera convention, which produced a broken native render.
 
-- `scene.obj` — generated lathe-style vase geometry, pedestal, cyclorama proxy, shadow pad, and softbox panels.
-- `scene.mtl` — material hints for OBJ import.
-- `scene.json` — camera, lighting, material intent, command sequence, pitfalls, and quality checklist.
-- `photoreal-preview.png` — target/reference visual for quality, not native Octane proof.
+## Material groups
 
-## MCP workflow
+| group_index | material | kind | color |
+| --- | --- | --- | --- |
+| 1 | `mat_stone_pedestal` | diffuse | `[0.52, 0.5, 0.46]` |
+| 2 | `mat_warm_cyclorama` | diffuse | `[0.7, 0.64, 0.56]` |
+| 3 | `mat_shadow` | diffuse | `[0.05, 0.05, 0.06]` |
+| 4 | `mat_softbox` | diffuse | `[1.0, 0.97, 0.9]` |
+| 5 | `mat_softbox` | diffuse | `[1.0, 0.97, 0.9]` |
+| 6 | `mat_softbox` | diffuse | `[1.0, 0.97, 0.9]` |
+| 7 | `mat_smoky_glass` | specular | `[0.22, 0.32, 0.36]` |
+| 8 | `mat_cobalt_ceramic` | glossy | `[0.02, 0.12, 0.72]` |
+| 9 | `mat_terracotta_ribbed` | diffuse | `[0.74, 0.3, 0.14]` |
+| 10 | `mat_white_porcelain` | glossy | `[0.9, 0.86, 0.78]` |
+| 11 | `mat_dark_brushed_metal` | metallic | `[0.08, 0.08, 0.09]` |
 
-1. Load the recipe with `octane_load_recipe("photoreal-vase-studio")`.
-2. Queue it with `octane_queue_recipe("photoreal-vase-studio")`.
-3. Drain the queue through the one-shot or persistent Octane bridge.
-4. Save the native preview to `octane-preview.png`.
-5. Review the saved preview before claiming native render success.
+## Run
 
-## Iterative visual refinement protocol
-
-This recipe is intentionally a target-matching task, not a one-shot OBJ export. The first `scene.obj` is only a candidate approximation of the reference. The intended loop is:
-
-1. Render the candidate in Octane X and save `octane-preview.png`.
-2. Run local cheap visual analysis with `glm-ocr` through Ollama:
-
-   ```bash
-   ollama run glm-ocr "Describe the objects, materials, lighting, perspective, and mismatch risks in this image." photoreal-preview.png
-   ollama run glm-ocr "Describe the objects, materials, lighting, perspective, and mismatch risks in this image." octane-preview.png
-   ```
-
-3. Compare those notes and patch one bounded dimension at a time: geometry proportions, vase spacing, camera/FOV, softbox placement, or material intent.
-4. Re-render and repeat until object count, material readability, lighting, and camera perspective are close enough or the remaining gap requires bridge schema work.
-
-The same protocol is captured in `scene.json` under `visual_iteration_protocol`.
-
-## Final bundle requirement
-
-The final iterated native Octane render and all assets needed to reproduce it should be bundled with this recipe before `native_octane_verified` is set to `true`:
-
-```text
-photoreal-vase-studio/
-├── octane-preview.png          final native render
-├── iterations/final-review.json
-├── iterations/iteration-*.json
-├── iterations/iteration-*.png
-└── assets/                     optional textures/HDRIs/normal maps/reference assets
+```bash
+hermes mcp call octanex octane_queue_recipe --slug photoreal-vase-studio
 ```
 
-Until those files exist, `photoreal-preview.png` remains a target/reference only.
+## Regenerate
 
-## Variations
+```bash
+PYTHONPATH= uv run python scripts/gen_photoreal_vase_studio.py
+```
 
-- Swap the material palette for monochrome museum ceramics.
-- Increase vase count and use the same lathe profile pattern for collections.
-- Replace ribbed geometry with real normal maps once texture/normal-map payloads are supported.
-- Promote material intent into native Octane glass/metal/ceramic commands when the bridge schema expands.
+## Notes
 
-## Known pitfalls
-
-- OBJ/MTL cannot fully express glass transmission, IOR, clearcoat, anisotropic brushed metal, or procedural ceramic glaze.
-- The ribbed terracotta and brushed metal cues are geometry/material approximations.
-- The generated target preview is a visual quality bar, not a native render.
-- Always verify native output via bridge result metadata plus an inspected `octane-preview.png`.
+- The terracotta vase's ribbing is real geometry (sinusoidal radius modulation in the lathe), not a texture hint.
+- OBJ/MTL colours are only hints; Octane colour correctness depends on the explicit `create_material` + `assign_material` commands in `scene.json`.
+- Verify the native output via bridge result metadata plus an inspected `octane-preview.png`.

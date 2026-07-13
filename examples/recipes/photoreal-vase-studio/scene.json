@@ -2,52 +2,94 @@
   "slug": "photoreal-vase-studio",
   "title": "Photoreal Multi-Vase Studio",
   "category": "Photoreal/PBR rendering",
-  "purpose": "A studio product visualization recipe for several vases with deliberately different color, texture, and material: smoky glass, cobalt ceramic, ribbed terracotta, white porcelain, and dark brushed metal.",
+  "purpose": "A studio product visualization recipe for five vases with deliberately different colour, texture, and material: smoky glass, cobalt ceramic, ribbed terracotta, white porcelain, and dark brushed metal.",
   "prompt": "Create a high-end catalog render of five distinct vases on a matte pedestal with softbox reflections and a warm neutral cyclorama backdrop.",
-  "preview_note": "photoreal-preview.png is an AI-generated target/reference image plus deterministic OBJ scene geometry; native Octane success requires octane-preview.png and result metadata.",
-  "target_preview": "photoreal-preview.png",
-  "native_octane_verified": true,
+  "preview_note": "target-preview.png is an AI-generated TARGET/REFERENCE image, NOT a native Octane render. The legitimate native render is octane-preview.png, regenerated from this recipe's geometry. This recipe previously shipped a false native_octane_verified flag and presented the AI image as the hero; that is corrected here.",
+  "target_preview": "target-preview.png",
+  "native_octane_verified": false,
   "camera": {
     "position": [
-      3.2,
-      -5.0,
-      2.15
+      0.0,
+      2.35,
+      -10.5
     ],
     "target": [
-      0.05,
-      -0.05,
-      0.9
+      0.0,
+      1.05,
+      0.25
     ],
-    "fov": 34
+    "fov": 45
   },
   "lighting": {
     "preset": "soft_studio",
     "intent": "large side softboxes, warm overhead strip, broad soft shadows, visible glossy/specular highlights"
   },
   "materials": {
+    "mat_stone_pedestal": {
+      "name": "mat_stone_pedestal",
+      "kind": "diffuse",
+      "color": [
+        0.52,
+        0.5,
+        0.46
+      ],
+      "roughness": 0.82
+    },
+    "mat_warm_cyclorama": {
+      "name": "mat_warm_cyclorama",
+      "kind": "diffuse",
+      "color": [
+        0.7,
+        0.64,
+        0.56
+      ],
+      "roughness": 0.92
+    },
+    "mat_shadow": {
+      "name": "mat_shadow",
+      "kind": "diffuse",
+      "color": [
+        0.05,
+        0.05,
+        0.06
+      ],
+      "roughness": 1.0
+    },
+    "mat_softbox": {
+      "name": "mat_softbox",
+      "kind": "diffuse",
+      "color": [
+        1.0,
+        0.97,
+        0.9
+      ],
+      "roughness": 1.0
+    },
     "mat_smoky_glass": {
-      "kind": "specular/glass",
+      "name": "mat_smoky_glass",
+      "kind": "specular",
       "color": [
         0.22,
         0.32,
         0.36
       ],
-      "transmission": 0.62,
       "roughness": 0.02,
+      "transmission": 0.62,
       "ior": 1.46
     },
     "mat_cobalt_ceramic": {
-      "kind": "glossy ceramic",
+      "name": "mat_cobalt_ceramic",
+      "kind": "glossy",
       "color": [
         0.02,
         0.12,
         0.72
       ],
-      "roughness": 0.08,
-      "clearcoat": 1.0
+      "roughness": 0.08
     },
     "mat_terracotta_ribbed": {
-      "kind": "matte ribbed clay",
+      "name": "mat_terracotta_ribbed",
+      "kind": "diffuse",
       "color": [
         0.74,
         0.3,
@@ -56,43 +98,44 @@
       "roughness": 0.72
     },
     "mat_white_porcelain": {
-      "kind": "pearlescent porcelain",
+      "name": "mat_white_porcelain",
+      "kind": "glossy",
       "color": [
         0.9,
         0.86,
         0.78
       ],
-      "roughness": 0.16,
-      "specular": 0.85
+      "roughness": 0.16
     },
     "mat_dark_brushed_metal": {
-      "kind": "brushed metal",
+      "name": "mat_dark_brushed_metal",
+      "kind": "metallic",
       "color": [
         0.08,
         0.08,
         0.09
       ],
-      "metallic": 1.0,
-      "roughness": 0.28
+      "roughness": 0.28,
+      "metallic": 1.0
     }
   },
   "quality_checklist": [
-    "Scene contains at least five distinct vases with visibly different silhouettes.",
-    "Materials read differently: transparent glass, glossy ceramic, matte ribbed clay, smooth porcelain, and dark metal.",
+    "Scene contains five distinct vases with visibly different silhouettes.",
+    "Materials read differently: transparent smoky glass, glossy cobalt ceramic, matte ribbed terracotta, smooth white porcelain, and dark brushed metal.",
     "Softbox reflections appear on glossy/glass/metal surfaces without clipping the whole image.",
     "Pedestal and cyclorama produce a credible studio-product photography composition.",
     "Native Octane output is saved as octane-preview.png before claiming native render success."
   ],
   "known_pitfalls": [
-    "OBJ/MTL material hints cannot express full Octane glass, anisotropic metal, or clearcoat; use scene.json material intent when promoting to native material commands.",
-    "Ribbed/brush texture is approximated with geometry and MTL values until texture/normal-map payloads exist.",
-    "photoreal-preview.png is a target reference, not proof that Octane rendered this exact scene.",
-    "Transparent glass may import as opaque unless the bridge material schema gains transmission/IOR support."
+    "OBJ/MTL material hints cannot express full Octane glass transmission, IOR, clearcoat, or anisotropic brushed metal; scene.json material intent + assign_material drives the native look.",
+    "The previous release shipped photoreal-preview.png / target-preview.png (an AI image) as the hero and a false native_octane_verified flag; do not repeat that.",
+    "If the smoky-glass vase imports opaque, the bridge material schema lacks transmission/IOR support for that build -- note it, do not claim glass."
   ],
   "assets": [
     "scene.obj",
     "scene.mtl",
-    "photoreal-preview.png"
+    "target-preview.png",
+    "octane-preview.png"
   ],
   "commands": [
     {
@@ -109,10 +152,11 @@
         "name": "mat_stone_pedestal",
         "kind": "diffuse",
         "color": [
-          0.8,
-          0.8,
-          0.8
-        ]
+          0.52,
+          0.5,
+          0.46
+        ],
+        "roughness": 0.82
       }
     },
     {
@@ -121,10 +165,11 @@
         "name": "mat_warm_cyclorama",
         "kind": "diffuse",
         "color": [
-          0.8,
-          0.8,
-          0.8
-        ]
+          0.7,
+          0.64,
+          0.56
+        ],
+        "roughness": 0.92
       }
     },
     {
@@ -133,10 +178,11 @@
         "name": "mat_shadow",
         "kind": "diffuse",
         "color": [
-          0.8,
-          0.8,
-          0.8
-        ]
+          0.05,
+          0.05,
+          0.06
+        ],
+        "roughness": 1.0
       }
     },
     {
@@ -145,10 +191,11 @@
         "name": "mat_softbox",
         "kind": "diffuse",
         "color": [
-          0.8,
-          0.8,
-          0.8
-        ]
+          1.0,
+          0.97,
+          0.9
+        ],
+        "roughness": 1.0
       }
     },
     {
@@ -255,7 +302,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "photoreal-vase-studio",
-        "material_name": "mat_smoky_glass",
+        "material_name": "mat_softbox",
         "group_index": 5
       }
     },
@@ -263,7 +310,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "photoreal-vase-studio",
-        "material_name": "mat_cobalt_ceramic",
+        "material_name": "mat_softbox",
         "group_index": 6
       }
     },
@@ -271,7 +318,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "photoreal-vase-studio",
-        "material_name": "mat_terracotta_ribbed",
+        "material_name": "mat_smoky_glass",
         "group_index": 7
       }
     },
@@ -279,7 +326,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "photoreal-vase-studio",
-        "material_name": "mat_white_porcelain",
+        "material_name": "mat_cobalt_ceramic",
         "group_index": 8
       }
     },
@@ -287,24 +334,40 @@
       "op": "assign_material",
       "payload": {
         "object_name": "photoreal-vase-studio",
-        "material_name": "mat_dark_brushed_metal",
+        "material_name": "mat_terracotta_ribbed",
         "group_index": 9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "photoreal-vase-studio",
+        "material_name": "mat_white_porcelain",
+        "group_index": 10
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "photoreal-vase-studio",
+        "material_name": "mat_dark_brushed_metal",
+        "group_index": 11
       }
     },
     {
       "op": "set_camera",
       "payload": {
         "position": [
-          3.2,
-          -5.0,
-          2.15
+          0.0,
+          2.35,
+          -10.5
         ],
         "target": [
-          0.05,
-          -0.05,
-          0.9
+          0.0,
+          1.05,
+          0.25
         ],
-        "fov": 34
+        "fov": 45
       }
     },
     {
@@ -314,36 +377,28 @@
       }
     },
     {
-      "op": "start_render",
-      "payload": {
-        "samples": 768,
-        "width": 1536,
-        "height": 864
-      }
-    },
-    {
       "op": "save_preview",
       "payload": {
         "path": "examples/recipes/photoreal-vase-studio/octane-preview.png",
         "width": 1536,
         "height": 864,
-        "samples": 768,
-        "min_samples": 32,
-        "timeout_seconds": 18
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 30,
+        "max_render_time": 20
       }
     }
   ],
   "visual_iteration_protocol": {
     "model": "ollama:glm-ocr",
-    "reference_image": "examples/recipes/photoreal-vase-studio/photoreal-preview.png",
+    "reference_image": "examples/recipes/photoreal-vase-studio/target-preview.png",
     "candidate_image": "examples/recipes/photoreal-vase-studio/octane-preview.png",
     "max_iterations": 4,
     "review_focus": [
-      "object count and semantic content",
+      "object count and semantic content (exactly five vases)",
       "composition, framing, and camera perspective",
       "material/color readability and contrast",
-      "lighting, shadows, and background clarity",
-      "task-specific labels, legends, or focal details"
+      "lighting, shadows, and background clarity"
     ],
     "patch_dimensions": [
       "geometry",
@@ -355,51 +410,15 @@
     "required_evidence": [
       "bridge result metadata for queued commands",
       "native Octane candidate preview at octane-preview.png",
-      "glm-ocr reference and candidate review notes",
       "one bounded patch plan per iteration",
       "final native Octane render bundled as octane-preview.png",
       "iteration review/patch records under iterations/"
     ],
     "stop_conditions": [
-      "candidate content and major silhouettes match the reference or stated recipe intent",
-      "task-critical colors/materials/labels are visually distinguishable",
-      "camera/framing and lighting are close enough for the task",
+      "candidate shows five distinct vases with readable, distinct materials",
+      "camera/framing and lighting are close enough for a catalog shot",
       "remaining gaps require bridge schema or native material capability work"
-    ],
-    "baseline_sweep": {
-      "enabled": true,
-      "purpose": "Rapidly disambiguate scene orientation/camera framing before fine visual matching.",
-      "camera_or_scene_variants": [
-        {
-          "name": "front",
-          "azimuth_degrees": 0,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "left_three_quarter",
-          "azimuth_degrees": -35,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "right_three_quarter",
-          "azimuth_degrees": 35,
-          "elevation_degrees": 12
-        },
-        {
-          "name": "top_oblique",
-          "azimuth_degrees": 0,
-          "elevation_degrees": 45
-        }
-      ],
-      "visual_grammar_axes": [
-        "orientation",
-        "camera_distance",
-        "focal_length",
-        "lighting_direction",
-        "material/readability contrast"
-      ],
-      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
-    }
+    ]
   },
   "final_bundle": {
     "required": true,
@@ -411,14 +430,13 @@
       "scene.obj",
       "scene.mtl",
       "scene.json",
-      "photoreal-preview.png",
+      "target-preview.png",
       "octane-preview.png",
       "iterations/*.json",
-      "iterations/*.png",
-      "assets/*"
+      "iterations/*.png"
     ],
     "status": "native_candidate_saved_but_not_final",
-    "note": "octane-preview.png is bundled as iteration evidence, but not final acceptable output; next iteration must fix visibility before marking native_octane_verified true."
+    "note": "octane-preview.png must be a real native Octane render of this recipe's geometry, not the AI target image."
   },
-  "status": "native_octane_verified (verify_recipes, 2026-07-09)"
+  "status": "native_candidate_saved_but_not_final"
 }

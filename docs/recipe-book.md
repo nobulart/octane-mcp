@@ -1238,6 +1238,16 @@ geometry, the launcher `-2741` bug, and TCC.
 - LEFT `native_octane_verified: false`; root `status` now documents "NO preview.png present … needs a fresh converged native render before verification".
 ### Follow-ups
 - Queue `earth-moon-space` from a cold Octane session, flush the shared queue first, give the save_preview a long enough convergence ceiling, and verify the PNG with `filter_reference` + `evaluate_acceptance` before flipping the flag.
+
+## A2 — pointcloud pipeline merged; earth-hemisphere is pending preview
+- **Outcome:** partial (pipeline + recipe landed, native preview still pending)
+- **Recorded:** 2026-07-13
+- **Context:** Mac Studio produced the point-cloud reader/tooling and an `earth-hemisphere` geoscience recipe. MacBook Pro merged those files with the vase-studio native-render cleanup before pushing, and downsampled the committed OBJ to a Git-safe demo density (`--density 0.001`; ~99.6k point primitives, ~34.5 MB OBJ) rather than the original ~1.22 GB production-density artifact.
+### Signals / evidence
+- Full offline suite after merge: `PYTHONPATH= uv run python -m unittest discover -v` → 404 tests OK, 11 skipped.
+- `verify_recipe_library(dry_run=True)` now reports `total=30`, `contract_ok=28`, `contract_failed=2`; the intentional failures are `earth-hemisphere` (new point-cloud recipe, no native preview yet) and `earth-moon-space` (existing no-preview gap).
+### Follow-ups
+- Produce a native Octane preview for `earth-hemisphere` before flipping any verification flag. For higher-density production imagery, regenerate locally with a larger `--density` and do not commit multi-GB OBJ outputs.
 ---
 
 ## Note: one-shot drain appears to render the scene twice (it does not)

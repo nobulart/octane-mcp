@@ -1,62 +1,63 @@
+# Material hints; Octane binding is driven by scene.json create_material + assign_material.
+newmtl mat_stone_pedestal
+Kd 0.5200 0.5000 0.4600
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
+
+newmtl mat_warm_cyclorama
+Kd 0.7000 0.6400 0.5600
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
+
+newmtl mat_shadow
+Kd 0.0500 0.0500 0.0600
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
+
+newmtl mat_softbox
+Kd 1.0000 0.9700 0.9000
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
+
 newmtl mat_smoky_glass
 Kd 0.2200 0.3200 0.3600
-Ks 0.9000 0.9500 1.0000
-Ns 850
-d 0.38
-illum 4
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
 
 newmtl mat_cobalt_ceramic
 Kd 0.0200 0.1200 0.7200
-Ks 0.6200 0.6800 0.9500
+Ks 0.3500 0.3500 0.3500
 Ns 720
 d 1.0
 illum 2
 
 newmtl mat_terracotta_ribbed
 Kd 0.7400 0.3000 0.1400
-Ks 0.1800 0.1200 0.0800
-Ns 80
+Ks 0.0500 0.0500 0.0500
+Ns 70
 d 1.0
 illum 2
 
 newmtl mat_white_porcelain
 Kd 0.9000 0.8600 0.7800
-Ks 0.9800 0.9200 0.8200
-Ns 680
+Ks 0.3500 0.3500 0.3500
+Ns 720
 d 1.0
 illum 2
 
 newmtl mat_dark_brushed_metal
 Kd 0.0800 0.0800 0.0900
-Ks 0.7600 0.7200 0.6600
-Ns 420
-d 1.0
-illum 2
-
-newmtl mat_stone_pedestal
-Kd 0.5200 0.5000 0.4600
-Ks 0.2200 0.2200 0.2000
-Ns 120
-d 1.0
-illum 2
-
-newmtl mat_warm_cyclorama
-Kd 0.7000 0.6400 0.5600
-Ks 0.1200 0.1000 0.0800
-Ns 70
-d 1.0
-illum 2
-
-newmtl mat_softbox
-Kd 1.0000 0.9400 0.8200
-Ks 1.0000 0.9600 0.9000
-Ns 600
-d 1.0
-illum 2
-
-newmtl mat_shadow
-Kd 0.1800 0.1700 0.1600
 Ks 0.0500 0.0500 0.0500
-Ns 40
+Ns 70
 d 1.0
 illum 2
