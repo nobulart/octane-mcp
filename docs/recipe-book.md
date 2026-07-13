@@ -1344,6 +1344,47 @@ geometry, the launcher `-2741` bug, and TCC.
 
 
 
+## Solid Earth — mesh-equivalent concentric shell cutaway (no particles)
+
+- **Outcome:** success (viewport-captured native render; OBJ structural-verify PASS)
+- **Recorded:** 2026-07-13 23:32 UTC
+- **Context:** User asked for the Volumetric Earth recipe as a **mesh-equivalent**
+  concentric-shell cutaway — same science (WGS84 oblateness, PREM radial shells,
+  fluid outer core, atmosphere) but without the volumetric/particle interior.
+  Built `scripts/gen_solid_earth_shells.py` + `examples/recipes/solid-earth-shells/`.
+  The crust applies **1:1 GeoTIFF elevation/bathymetry displacement**
+  (`~/ECDO/GIS/elevation.tif`) as real radial relief, with a continent/ocean/ice
+  tint; LLSVP provinces + plume conduits are modelled as mesh ribbons on the cut
+  face (no particles).
+### Steps / fixes
+- **Pole cap fix:** the final latitude row collapses to one pole point. A quad
+  cap there contains two coincident pole vertices → 1008 degenerate faces. Fixed
+  by emitting a triangle fan cap at the pole. Verifier (`verify_obj.py`) updated
+  to parse vertex coords as floats (was strings → type error on degenerate check).
+- **Cut-face readability:** translucent shell rims + opaque cut-face annuli
+  z-fought at z=0. Split into `*_face` groups offset slightly (z=0.035) and made
+  near-opaque/non-transmissive so the layered cross-section reads in front of the
+  shells. This doubled material groups (24) but is required for a legible cut.
+- **Bridge `save_preview` path ignored:** the second render pass hit the known
+  `render engine failure` restart loop; the converged frame was recovered by
+  **capturing the live Octane viewport** (`screencapture -R <window rect>` +
+  brightest-block crop) rather than `save_preview`.
+### Signals / evidence
+- `gen_solid_earth_shells.py --meridians 112 --parallels 42`: 143,152 verts,
+  70,960 faces, 24 groups (shell + face groups), 5.6 MB OBJ. `verify_obj.py`:
+  **0 out-of-range face indices, 0 degenerate triangles — PASS**.
+- Viewport capture `examples/recipes/solid-earth-shells/octane-preview.png`
+  (777 KB). Pixel check mean deviation ≈ 83, full-frame non-blank; local
+  `qwen2.5vl:7b` confirms a concentric-layered hemispherical cutaway.
+- `native_octane_verified=false` (viewport capture, not a canonical
+  `save_preview` PNG); `final_bundle.status="native_verified"` documents the
+  captured native render.
+### Follow-ups
+- Re-run a clean `save_preview` pass after a warm Octane relaunch to promote a
+  canonical `octane-preview.png` and flip `native_octane_verified=true`.
+
+
+
 - **Outcome:** pitfall (false alarm)
 - **Recorded:** 2026-07-12
 - **Context:** After an `octane_queue_recipe`/`save_preview` one-shot drain of the `ancient-temple` scene, the user observed the scene apparently rendering twice and asked whether the bridge was double-processing the queue.

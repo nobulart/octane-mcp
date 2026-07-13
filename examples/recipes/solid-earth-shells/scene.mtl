@@ -1,0 +1,49 @@
+# Reference MTL; Octane material binding is explicit in scene.json
+newmtl mat_inner_core
+Kd 1.000 0.860 0.320
+newmtl mat_inner_core_face
+Kd 1.000 0.860 0.320
+newmtl mat_outer_core
+Kd 1.000 0.360 0.080
+newmtl mat_outer_core_face
+Kd 1.000 0.360 0.080
+newmtl mat_lower_mantle
+Kd 0.580 0.180 0.080
+newmtl mat_lower_mantle_face
+Kd 0.580 0.180 0.080
+newmtl mat_upper_mantle
+Kd 0.820 0.350 0.120
+newmtl mat_upper_mantle_face
+Kd 0.820 0.350 0.120
+newmtl mat_oceanic_crust
+Kd 0.100 0.130 0.180
+newmtl mat_continental_crust
+Kd 0.570 0.490 0.360
+newmtl mat_polar_ice
+Kd 0.860 0.920 0.980
+newmtl mat_continental_crust_face
+Kd 0.570 0.490 0.360
+newmtl mat_oceanic_crust_face
+Kd 0.100 0.130 0.180
+newmtl mat_polar_ice_face
+Kd 0.860 0.920 0.980
+newmtl mat_llsvp
+Kd 0.780 0.200 0.520
+newmtl mat_plume
+Kd 1.000 0.780 0.380
+newmtl mat_troposphere
+Kd 0.600 0.820 1.000
+newmtl mat_troposphere_face
+Kd 0.600 0.820 1.000
+newmtl mat_stratosphere
+Kd 0.400 0.620 1.000
+newmtl mat_stratosphere_face
+Kd 0.400 0.620 1.000
+newmtl mat_mesosphere
+Kd 0.630 0.420 1.000
+newmtl mat_mesosphere_face
+Kd 0.630 0.420 1.000
+newmtl mat_thermosphere
+Kd 1.000 0.420 0.700
+newmtl mat_thermosphere_face
+Kd 1.000 0.420 0.700

@@ -1,0 +1,1007 @@
+{
+  "slug": "solid-earth-shells",
+  "title": "Solid Earth concentric shell cutaway \u2014 mesh equivalent, no volumetric particles",
+  "category": "Geoscience / planet visualization",
+  "purpose": "Hemispherical mesh-only, to-scale model of present Earth interior and fluid envelopes: WGS84 oblateness, PREM radial shells, fluid outer core, atmosphere, LLSVP/plume context, and 1:1 GeoTIFF elevation/bathymetry displacement on the crust surface.",
+  "source_recipe": "earth-hemisphere / Volumetric Earth point-cloud recipe, converted to mesh shells",
+  "scale": {
+    "scene_unit": "1000 km",
+    "elevation_displacement": "1:1 metres from GeoTIFF converted to km"
+  },
+  "dem": {
+    "path": "/Users/craig/ECDO/GIS/elevation.tif",
+    "available": true
+  },
+  "camera": {
+    "position": [
+      -8.982154,
+      -19.817986,
+      13.783353
+    ],
+    "target": [
+      -0.06247065,
+      -0.09485492,
+      -1.137385
+    ],
+    "fov": 28.0,
+    "focus_distance": 27.631866
+  },
+  "materials": {
+    "mat_inner_core": {
+      "color": [
+        1.0,
+        0.86,
+        0.32
+      ],
+      "kind": "glossy",
+      "roughness": 0.3,
+      "emission": 0.35,
+      "opacity": 0.94,
+      "transmission": 0.03,
+      "name": "mat_inner_core"
+    },
+    "mat_inner_core_face": {
+      "color": [
+        1.0,
+        0.86,
+        0.32
+      ],
+      "kind": "glossy",
+      "roughness": 0.3,
+      "emission": 0.35,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "name": "mat_inner_core_face"
+    },
+    "mat_outer_core": {
+      "color": [
+        1.0,
+        0.36,
+        0.08
+      ],
+      "kind": "glossy",
+      "roughness": 0.24,
+      "emission": 0.22,
+      "opacity": 0.48,
+      "transmission": 0.42,
+      "name": "mat_outer_core"
+    },
+    "mat_outer_core_face": {
+      "color": [
+        1.0,
+        0.36,
+        0.08
+      ],
+      "kind": "glossy",
+      "roughness": 0.24,
+      "emission": 0.22,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "name": "mat_outer_core_face"
+    },
+    "mat_lower_mantle": {
+      "color": [
+        0.58,
+        0.18,
+        0.08
+      ],
+      "kind": "glossy",
+      "roughness": 0.55,
+      "opacity": 0.52,
+      "transmission": 0.35,
+      "name": "mat_lower_mantle"
+    },
+    "mat_lower_mantle_face": {
+      "color": [
+        0.58,
+        0.18,
+        0.08
+      ],
+      "kind": "glossy",
+      "roughness": 0.55,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "emission": 0.0,
+      "name": "mat_lower_mantle_face"
+    },
+    "mat_upper_mantle": {
+      "color": [
+        0.82,
+        0.35,
+        0.12
+      ],
+      "kind": "glossy",
+      "roughness": 0.48,
+      "opacity": 0.54,
+      "transmission": 0.3,
+      "name": "mat_upper_mantle"
+    },
+    "mat_upper_mantle_face": {
+      "color": [
+        0.82,
+        0.35,
+        0.12
+      ],
+      "kind": "glossy",
+      "roughness": 0.48,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "emission": 0.0,
+      "name": "mat_upper_mantle_face"
+    },
+    "mat_oceanic_crust": {
+      "color": [
+        0.1,
+        0.13,
+        0.18
+      ],
+      "kind": "glossy",
+      "roughness": 0.62,
+      "opacity": 0.86,
+      "transmission": 0.04,
+      "name": "mat_oceanic_crust"
+    },
+    "mat_continental_crust": {
+      "color": [
+        0.57,
+        0.49,
+        0.36
+      ],
+      "kind": "glossy",
+      "roughness": 0.82,
+      "opacity": 0.9,
+      "transmission": 0.02,
+      "name": "mat_continental_crust"
+    },
+    "mat_polar_ice": {
+      "color": [
+        0.86,
+        0.92,
+        0.98
+      ],
+      "kind": "glossy",
+      "roughness": 0.38,
+      "opacity": 0.94,
+      "transmission": 0.03,
+      "name": "mat_polar_ice"
+    },
+    "mat_continental_crust_face": {
+      "color": [
+        0.57,
+        0.49,
+        0.36
+      ],
+      "kind": "glossy",
+      "roughness": 0.82,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "emission": 0.0,
+      "name": "mat_continental_crust_face"
+    },
+    "mat_oceanic_crust_face": {
+      "color": [
+        0.1,
+        0.13,
+        0.18
+      ],
+      "kind": "glossy",
+      "roughness": 0.62,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "emission": 0.0,
+      "name": "mat_oceanic_crust_face"
+    },
+    "mat_polar_ice_face": {
+      "color": [
+        0.86,
+        0.92,
+        0.98
+      ],
+      "kind": "glossy",
+      "roughness": 0.38,
+      "opacity": 0.96,
+      "transmission": 0.0,
+      "emission": 0.0,
+      "name": "mat_polar_ice_face"
+    },
+    "mat_llsvp": {
+      "color": [
+        0.78,
+        0.2,
+        0.52
+      ],
+      "kind": "glossy",
+      "roughness": 0.45,
+      "emission": 0.12,
+      "opacity": 0.58,
+      "transmission": 0.25,
+      "name": "mat_llsvp"
+    },
+    "mat_plume": {
+      "color": [
+        1.0,
+        0.78,
+        0.38
+      ],
+      "kind": "glossy",
+      "roughness": 0.3,
+      "emission": 0.4,
+      "opacity": 0.9,
+      "transmission": 0.05,
+      "name": "mat_plume"
+    },
+    "mat_troposphere": {
+      "color": [
+        0.6,
+        0.82,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.92,
+      "ior": 1.0003,
+      "opacity": 0.28,
+      "name": "mat_troposphere"
+    },
+    "mat_troposphere_face": {
+      "color": [
+        0.6,
+        0.82,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.0,
+      "ior": 1.0003,
+      "opacity": 0.96,
+      "emission": 0.0,
+      "name": "mat_troposphere_face"
+    },
+    "mat_stratosphere": {
+      "color": [
+        0.4,
+        0.62,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.93,
+      "ior": 1.0003,
+      "opacity": 0.2,
+      "name": "mat_stratosphere"
+    },
+    "mat_stratosphere_face": {
+      "color": [
+        0.4,
+        0.62,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.0,
+      "ior": 1.0003,
+      "opacity": 0.96,
+      "emission": 0.0,
+      "name": "mat_stratosphere_face"
+    },
+    "mat_mesosphere": {
+      "color": [
+        0.63,
+        0.42,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.93,
+      "ior": 1.0003,
+      "opacity": 0.14,
+      "name": "mat_mesosphere"
+    },
+    "mat_mesosphere_face": {
+      "color": [
+        0.63,
+        0.42,
+        1.0
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.0,
+      "ior": 1.0003,
+      "opacity": 0.96,
+      "emission": 0.0,
+      "name": "mat_mesosphere_face"
+    },
+    "mat_thermosphere": {
+      "color": [
+        1.0,
+        0.42,
+        0.7
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.95,
+      "ior": 1.0003,
+      "opacity": 0.08,
+      "name": "mat_thermosphere"
+    },
+    "mat_thermosphere_face": {
+      "color": [
+        1.0,
+        0.42,
+        0.7
+      ],
+      "kind": "specular",
+      "roughness": 0.05,
+      "transmission": 0.0,
+      "ior": 1.0003,
+      "opacity": 0.96,
+      "emission": 0.0,
+      "name": "mat_thermosphere_face"
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "OctaneMCP_staging/solid-earth-shells/scene.obj",
+        "format": "obj",
+        "name": "solid_earth_shells"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.86,
+          0.32
+        ],
+        "kind": "glossy",
+        "roughness": 0.3,
+        "emission": 0.35,
+        "opacity": 0.94,
+        "transmission": 0.03,
+        "name": "mat_inner_core"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.86,
+          0.32
+        ],
+        "kind": "glossy",
+        "roughness": 0.3,
+        "emission": 0.35,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "name": "mat_inner_core_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.36,
+          0.08
+        ],
+        "kind": "glossy",
+        "roughness": 0.24,
+        "emission": 0.22,
+        "opacity": 0.48,
+        "transmission": 0.42,
+        "name": "mat_outer_core"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.36,
+          0.08
+        ],
+        "kind": "glossy",
+        "roughness": 0.24,
+        "emission": 0.22,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "name": "mat_outer_core_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.58,
+          0.18,
+          0.08
+        ],
+        "kind": "glossy",
+        "roughness": 0.55,
+        "opacity": 0.52,
+        "transmission": 0.35,
+        "name": "mat_lower_mantle"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.58,
+          0.18,
+          0.08
+        ],
+        "kind": "glossy",
+        "roughness": 0.55,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "emission": 0.0,
+        "name": "mat_lower_mantle_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.82,
+          0.35,
+          0.12
+        ],
+        "kind": "glossy",
+        "roughness": 0.48,
+        "opacity": 0.54,
+        "transmission": 0.3,
+        "name": "mat_upper_mantle"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.82,
+          0.35,
+          0.12
+        ],
+        "kind": "glossy",
+        "roughness": 0.48,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "emission": 0.0,
+        "name": "mat_upper_mantle_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.1,
+          0.13,
+          0.18
+        ],
+        "kind": "glossy",
+        "roughness": 0.62,
+        "opacity": 0.86,
+        "transmission": 0.04,
+        "name": "mat_oceanic_crust"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.57,
+          0.49,
+          0.36
+        ],
+        "kind": "glossy",
+        "roughness": 0.82,
+        "opacity": 0.9,
+        "transmission": 0.02,
+        "name": "mat_continental_crust"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.86,
+          0.92,
+          0.98
+        ],
+        "kind": "glossy",
+        "roughness": 0.38,
+        "opacity": 0.94,
+        "transmission": 0.03,
+        "name": "mat_polar_ice"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.57,
+          0.49,
+          0.36
+        ],
+        "kind": "glossy",
+        "roughness": 0.82,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "emission": 0.0,
+        "name": "mat_continental_crust_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.1,
+          0.13,
+          0.18
+        ],
+        "kind": "glossy",
+        "roughness": 0.62,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "emission": 0.0,
+        "name": "mat_oceanic_crust_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.86,
+          0.92,
+          0.98
+        ],
+        "kind": "glossy",
+        "roughness": 0.38,
+        "opacity": 0.96,
+        "transmission": 0.0,
+        "emission": 0.0,
+        "name": "mat_polar_ice_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.78,
+          0.2,
+          0.52
+        ],
+        "kind": "glossy",
+        "roughness": 0.45,
+        "emission": 0.12,
+        "opacity": 0.58,
+        "transmission": 0.25,
+        "name": "mat_llsvp"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.78,
+          0.38
+        ],
+        "kind": "glossy",
+        "roughness": 0.3,
+        "emission": 0.4,
+        "opacity": 0.9,
+        "transmission": 0.05,
+        "name": "mat_plume"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.6,
+          0.82,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.92,
+        "ior": 1.0003,
+        "opacity": 0.28,
+        "name": "mat_troposphere"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.6,
+          0.82,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.0,
+        "ior": 1.0003,
+        "opacity": 0.96,
+        "emission": 0.0,
+        "name": "mat_troposphere_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.4,
+          0.62,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.93,
+        "ior": 1.0003,
+        "opacity": 0.2,
+        "name": "mat_stratosphere"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.4,
+          0.62,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.0,
+        "ior": 1.0003,
+        "opacity": 0.96,
+        "emission": 0.0,
+        "name": "mat_stratosphere_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.63,
+          0.42,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.93,
+        "ior": 1.0003,
+        "opacity": 0.14,
+        "name": "mat_mesosphere"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          0.63,
+          0.42,
+          1.0
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.0,
+        "ior": 1.0003,
+        "opacity": 0.96,
+        "emission": 0.0,
+        "name": "mat_mesosphere_face"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.42,
+          0.7
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.95,
+        "ior": 1.0003,
+        "opacity": 0.08,
+        "name": "mat_thermosphere"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "color": [
+          1.0,
+          0.42,
+          0.7
+        ],
+        "kind": "specular",
+        "roughness": 0.05,
+        "transmission": 0.0,
+        "ior": 1.0003,
+        "opacity": 0.96,
+        "emission": 0.0,
+        "name": "mat_thermosphere_face"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_inner_core",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_inner_core_face",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_outer_core",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_outer_core_face",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_lower_mantle",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_lower_mantle_face",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_upper_mantle",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_upper_mantle_face",
+        "group_index": 8
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_oceanic_crust",
+        "group_index": 9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_continental_crust",
+        "group_index": 10
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_polar_ice",
+        "group_index": 11
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_continental_crust_face",
+        "group_index": 12
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_oceanic_crust_face",
+        "group_index": 13
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_polar_ice_face",
+        "group_index": 14
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_llsvp",
+        "group_index": 15
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_plume",
+        "group_index": 16
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_troposphere",
+        "group_index": 17
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_troposphere_face",
+        "group_index": 18
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_stratosphere",
+        "group_index": 19
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_stratosphere_face",
+        "group_index": 20
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_mesosphere",
+        "group_index": 21
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_mesosphere_face",
+        "group_index": 22
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_thermosphere",
+        "group_index": 23
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "solid_earth_shells",
+        "material_name": "mat_thermosphere_face",
+        "group_index": 24
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          -8.982154,
+          -19.817986,
+          13.783353
+        ],
+        "target": [
+          -0.06247065,
+          -0.09485492,
+          -1.137385
+        ],
+        "fov": 28.0,
+        "focus_distance": 27.631866
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "OctaneMCP_staging/solid-earth-shells/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "samples": 800,
+        "min_samples": 200,
+        "timeout_seconds": 420
+      }
+    }
+  ],
+  "native_octane_verified": false,
+  "status": "native_render_captured_viewport",
+  "quality_checklist": [
+    "Inner core glows (not a hollow void) \u2014 opaque emissive",
+    "PREM shells visible in layered order (inner core -> outer core -> mantle -> crust)",
+    "Crust surface shows 1:1 GeoTIFF elevation/bathymetry relief and continent/ocean tint",
+    "Cut face reads as concentric annuli (shells + face groups)",
+    "Atmosphere sheaths visible as soft outer shells",
+    "WGS84 oblateness applied (polar axis compressed)"
+  ],
+  "known_pitfalls": [
+    "Translucent interior shells can read as see-through void; keep inner core near-opaque + emissive.",
+    "Octane ignores texture/vertex-colour on import, so the DEM is geometry displacement, not a colour map.",
+    "save_preview path is ignored by the bridge; it always writes the default octane-preview.png.",
+    "Render-engine-failure after File > New sometimes needs an Octane relaunch + re-drain; capture the live viewport if save_preview fails.",
+    "Atmosphere shells are nearly transparent; raise opacity if the outer envelope is invisible at pull-back framing."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "candidate_image": "examples/recipes/solid-earth-shells/octane-preview.png",
+    "required_evidence": [
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "max_iterations": 6,
+    "review_focus": "Earth readability: hemispherical bulge + layered cut face, crust relief visible, atmosphere edge visible",
+    "patch_dimensions": [
+      "camera framing",
+      "atmosphere opacity",
+      "cut-face opacity",
+      "crust contrast"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        "default off-axis Hermes Camera",
+        "closer cut-face focus",
+        "pulled-back with higher atmosphere opacity",
+        "elevated 3/4 view"
+      ]
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/solid-earth-shells/octane-preview.png",
+    "status": "native_verified",
+    "note": "Native Octane viewport captured 2026-07-13; OBJ structural-verify PASS (143152 verts / 70960 faces / 0 out-of-range / 0 degenerate)."
+  }
+}

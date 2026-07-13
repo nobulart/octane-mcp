@@ -41,6 +41,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 | [Bowl of Fruit (Studio)](../examples/recipes/bowl-of-fruit/README.md) | Product / prop studio | `bowl-of-fruit` | A stylised ceramic bowl of glossy fruit, demonstrating a reusable multi-group still-life OBJ with explicit material binding. |
 | [Desk Fan with Cord and Plug](../examples/recipes/desk-fan/README.md) | Product / prop studio | `desk-fan` | A stylised desk fan with blue blades, tubular front/back guard cage, stand/base, tubular cord, plug body, and brass prongs. |
 | [Cutaway Earth — point-cloud hemisphere](../examples/recipes/earth-hemisphere/README.md) | Geoscience / planet visualization | `earth-hemisphere` | Dense to-scale interior-shell point cloud (PREM-like) + atmospheric sheaths as translucent jello with a glowing solid inner core; WGS84 oblateness, differentiated continental/oceanic crust, smooth-sphere particles, LLSVP provinces + plume tendrils, off-axis "Hermes Camera" framing. |
+| [Solid Earth — concentric shell cutaway](../examples/recipes/solid-earth-shells/README.md) | Geoscience / planet visualization | `solid-earth-shells` | Mesh-equivalent of the volumetric Earth recipe — no particles. To-scale WGS84 oblate shells (PREM), fluid outer core, atmosphere, mesh-only LLSVP/plume context, and 1:1 GeoTIFF elevation/bathymetry displacement on the crust surface; hemispherical cut face reads as concentric annuli. |
 
 ## Recommended agent loop
 
