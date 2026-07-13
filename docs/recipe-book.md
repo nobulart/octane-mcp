@@ -37,7 +37,7 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Visual inspection confirmed opposing cylindrical cups, broad flat headband, longer path-following spiral cord, closed ends, polished surface, and grounding shadow.
 
 ### Follow-ups
-- If independent cap metal is required, split the caps into a separate mesh/material route or extend the renderer's reliable material-group binding; the current combined OBJ path uses one dependable material pin.
+- If independent cap metal is required, split the cap faces into a third OBJ `usemtl` group and bind it with `group_index=3`; the desk-fan recipe demonstrates this grouped-material path.
 - Increase illumination and material separation for a more photographic commercial-studio finish; geometry and path construction are now the reusable baseline.
 
 ## Desk fan with tubular cord and cage guard

@@ -14,11 +14,18 @@
     "intent": "dark polished product surface, softbox highlights, contact shadow, restrained metallic reflections"
   },
   "materials": {
-    "scene_mat": {
-      "kind": "glossy metallic product/surface material",
+    "headphone_mat": {
+      "kind": "glossy metallic headphone shell",
       "color": [0.018, 0.024, 0.035],
       "metallic": 0.55,
       "roughness": 0.075,
+      "ior": 1.5
+    },
+    "surface_mat": {
+      "kind": "glossy metallic polished surface",
+      "color": [0.004, 0.006, 0.010],
+      "metallic": 0.35,
+      "roughness": 0.035,
       "ior": 1.5
     }
   },
@@ -38,10 +45,10 @@
     "Native Octane output is inspected before claiming success."
   ],
   "known_pitfalls": [
-    "Separate imported meshes are not all connected to the active render target; keep the headphone assembly and polished surface in one OBJ.",
-    "OBJ/MTL colours are not sufficient; create and explicitly assign the scene material.",
+    "The OBJ has separate headphone and polished-surface usemtl groups; bind them with explicit group_index assignments like the desk-fan recipe.",
+    "OBJ/MTL colours are not sufficient; create and explicitly assign the group materials.",
     "A repeated loop chain is not equivalent to a cord following a path; preserve the swept spiral construction.",
-    "The current reliable combined-mesh material route does not independently bind cap metal from the shared scene material."
+    "The cap faces remain in the headphone group; split them into a third usemtl group if independently coloured metal caps are required."
   ],
   "visual_iteration_protocol": {
     "model": "ollama:glm-ocr",
@@ -71,8 +78,10 @@
   },
   "commands": [
     {"op": "import_geometry", "payload": {"path": "examples/recipes/headphones-studio/scene.obj", "format": "obj", "name": "headphones_scene"}},
-    {"op": "create_material", "payload": {"name": "scene_mat", "kind": "glossy", "color": [0.018, 0.024, 0.035], "metallic": 0.55, "roughness": 0.075, "ior": 1.5}},
-    {"op": "assign_material", "payload": {"object_name": "headphones_scene", "material_name": "scene_mat"}},
+    {"op": "create_material", "payload": {"name": "headphone_mat", "kind": "glossy", "color": [0.018, 0.024, 0.035], "metallic": 0.55, "roughness": 0.075, "ior": 1.5}},
+    {"op": "create_material", "payload": {"name": "surface_mat", "kind": "glossy", "color": [0.004, 0.006, 0.010], "metallic": 0.35, "roughness": 0.035, "ior": 1.5}},
+    {"op": "assign_material", "payload": {"object_name": "headphones_scene", "material_name": "headphone_mat", "group_index": 1}},
+    {"op": "assign_material", "payload": {"object_name": "headphones_scene", "material_name": "surface_mat", "group_index": 2}},
     {"op": "set_camera", "payload": {"position": [0.0, -8.2, 7.0], "target": [0.0, -1.1, 0.25], "fov": 58}},
     {"op": "set_lighting", "payload": {"preset": "soft_studio"}},
     {"op": "save_preview", "payload": {"path": "examples/recipes/headphones-studio/octane-preview.png", "width": 1280, "height": 1280, "quality": "high", "samples": 384, "min_samples": 96, "timeout_seconds": 90}}
