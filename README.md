@@ -27,6 +27,18 @@ The recipe library starts with copyable visual targets, not just prose. The head
 
 ### More recipe previews
 
+The library now spans photoreal product props, space scenes, data/math visuals, and agent-loop demos. A sample of recent, native-verified recipes:
+
+| Wristwatch | Desk fan | Headphones studio |
+| --- | --- | --- |
+| [![Analog wristwatch](examples/recipes/wristwatch/octane-preview.png)](examples/recipes/wristwatch/) | [![Desk fan with cord and plug](examples/recipes/desk-fan/octane-preview.png)](examples/recipes/desk-fan/) | [![Over-ear studio headphones](examples/recipes/headphones-studio/octane-preview.png)](examples/recipes/headphones-studio/) |
+| Two-tone steel/gold case, blue dial, gold numerals, sphere hour markers, linked bracelet. | Native Octane desk-fan prop with tubular cage, cord, plug, and prongs. | Opposing cylindrical cups, spiral path-following cord, multi-material binding. |
+
+| Ancient temple | Bowl of fruit | Photoreal vase studio |
+| --- | --- | --- |
+| [![Ancient temple](examples/recipes/ancient-temple/octane-preview.png)](examples/recipes/ancient-temple/) | [![Bowl of fruit](examples/recipes/bowl-of-fruit/octane-preview.png)](examples/recipes/bowl-of-fruit/) | [![Photoreal vase studio](examples/recipes/photoreal-vase-studio/photoreal-preview.png)](examples/recipes/photoreal-vase-studio/) |
+| Columned structure with proper lighting and bounds-aware framing. | Generated fruit cluster on a reflective surface. | Multi-vase photoreal studio with soft lighting. |
+
 | Photoreal Earth | Saturn and moons | Data bars |
 | --- | --- | --- |
 | [![Photoreal Earth in space](examples/recipes/photoreal-earth-space/photoreal-preview.png)](examples/recipes/photoreal-earth-space/) | [![Saturn and moons in space](examples/recipes/saturn-moons-space/photoreal-preview.png)](examples/recipes/saturn-moons-space/) | [![3D KPI bar chart](examples/recipes/data-bars/preview.png)](examples/recipes/data-bars/) |
@@ -37,10 +49,12 @@ The recipe library starts with copyable visual targets, not just prose. The head
 | [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) | [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
 | Damped radial surface for mathematical explanation. | Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
 
-| Wave interference | Vision feedback loop | Desk fan |
+| Wave interference | Vision feedback loop | Green pawn |
 | --- | --- | --- |
-| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) | [![Desk fan with cord and plug](examples/recipes/desk-fan/octane-preview.png)](examples/recipes/desk-fan/) |
-| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. | Native Octane desk-fan prop with tubular cage, cord, plug, and prongs. |
+| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) | [![Green chess pawn](examples/recipes/green-pawn/octane-preview.png)](examples/recipes/green-pawn/) |
+| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. | Native Octane chess-pawn prop with material per group. |
+
+See [`docs/recipe-library.md`](docs/recipe-library.md) for the full catalogue (30+ recipes) with reusable OBJ/MTL scenes and MCP command metadata.
 
 ## What this is for
 
@@ -70,7 +84,7 @@ Verified or implemented:
 - Scene operations: import mesh, create material, assign material, set camera, set lighting, start/restart render, save preview.
 - Visual tools: bar chart, math surface, Hermes avatar face.
 - Generated visual assets include bounds metadata and use bounds-aware camera placement for more reliable framing.
-- Visual iteration protocol for target-matching recipes: native Octane preview evidence, local `qwen2.5vl:7b` (or `glm-ocr`) review, bounded patch plans, and bundled final render/assets.
+- Visual iteration protocol for target-matching recipes: native Octane preview evidence, local `qwen3-vl:2b` (or `glm-ocr`) review, bounded patch plans, and bundled final render/assets.
 - Self-improving recipe book tools: agents can read and append successes, failures, partials, and pitfalls.
 
 Known constraints:
