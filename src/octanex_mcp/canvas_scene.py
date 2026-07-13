@@ -329,3 +329,90 @@ def _terrain_scene(*, intent: str) -> Dict[str, Any]:
         "annotations": [{"id": "label_placeholder", "text": "placeholder terrain grid", "target": "cell_0_0"}],
         "provenance": {"source": "agent"},
     }
+
+
+# --------------------------------------------------------------------------- #
+# Scene patching (Phase 5 first cut — live object edits, server-side truth)
+# --------------------------------------------------------------------------- #
+# A *patch* mutates the current canvas.scene.v1 in place. Object-level patches
+# target one object's fields (position/scale/material ref); material patches
+# target a material's color/opacity/etc. The result is always re-validated so
+# the browser is never handed a broken scene.
+_PATCHABLE_OBJECT_FIELDS = {"position", "scale", "rotation", "label"}
+_PATCHABLE_MATERIAL_FIELDS = {
+    "color",
+    "opacity",
+    "roughness",
+    "metalness",
+    "emissive",
+    "emissiveIntensity",
+    "wireframe",
+}
+
+
+def patch_object(scene: Mapping[str, Any], object_id: str, changes: Mapping[str, Any]) -> Dict[str, Any]:
+    """Apply ``changes`` to one object in ``scene`` (mutates a copy). Returns the new scene.
+
+    ``changes`` may include object fields (position/scale/rotation/label) and a
+    ``material`` sub-dict whose keys are patched onto the object's referenced
+    material. Re-validates; raises ``ValueError`` if the result is no longer a
+    valid ``canvas.scene.v1``.
+    """
+    scene = dict(scene)
+    objects = [dict(o) for o in scene.get("objects", [])]
+    target = next((o for o in objects if o.get("id") == object_id), None)
+    if target is None:
+        raise KeyError(f"no object with id {object_id!r}")
+
+    raw_mat = changes.get("material")
+    if raw_mat is None:
+        mat_changes = {}
+    elif isinstance(raw_mat, Mapping):
+        mat_changes = raw_mat
+    else:
+        # A bare material id (repointing to a different material) is not a
+        # supported first-cut patch — reject loudly instead of silently dropping it.
+        raise ValueError("material patch must be an object of material fields, not a bare id")
+    rest = {k: v for k, v in changes.items() if k != "material"}
+
+    for k, v in rest.items():
+        if k not in _PATCHABLE_OBJECT_FIELDS:
+            raise ValueError(f"cannot patch object field {k!r}")
+        target[k] = v
+
+    if mat_changes:
+        mat_id = target.get("material")
+        if not mat_id:
+            raise ValueError("object has no material to patch")
+        materials = [dict(m) for m in scene.get("materials", [])]
+        mat = next((m for m in materials if m.get("id") == mat_id), None)
+        if mat is None:
+            raise KeyError(f"no material with id {mat_id!r}")
+        for k, v in mat_changes.items():
+            if k not in _PATCHABLE_MATERIAL_FIELDS:
+                raise ValueError(f"cannot patch material field {k!r}")
+            mat[k] = v
+        scene["materials"] = materials
+
+    scene["objects"] = objects
+    ok, errors = validate_scene(scene)
+    if not ok:
+        raise ValueError(f"patch produced invalid scene: {errors}")
+    return scene
+
+
+def patch_scene(scene: Mapping[str, Any], changes: Mapping[str, Any]) -> Dict[str, Any]:
+    """Shallow-patch top-level scene fields (title/intent/camera/environment).
+
+    Object/material edits go through :func:`patch_object`. Re-validates.
+    """
+    scene = dict(scene)
+    allowed = {"title", "intent", "units", "camera", "environment", "provenance"}
+    for k, v in changes.items():
+        if k not in allowed:
+            raise ValueError(f"cannot patch top-level field {k!r}")
+        scene[k] = v
+    ok, errors = validate_scene(scene)
+    if not ok:
+        raise ValueError(f"patch produced invalid scene: {errors}")
+    return scene

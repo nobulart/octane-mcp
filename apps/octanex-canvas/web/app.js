@@ -30,6 +30,8 @@ const dom = {
   inspector: document.getElementById("inspector"),
   inspectorClose: document.getElementById("inspector-close"),
   inspectorReview: document.getElementById("inspector-review"),
+  inspectorControls: document.getElementById("inspector-controls"),
+  inspectorSelection: document.getElementById("inspector-selection"),
   inspectorFixes: document.getElementById("inspector-fixes"),
   camDist: document.getElementById("cam-dist"),
 };
@@ -78,11 +80,64 @@ async function getJSON(path) {
 function initRenderer() {
   state.renderer = new CanvasRenderer(dom.webgl);
   state.renderer.onPick = (id, meta) => {
-    // Expose selection to the inspector path (Phase 5 will bind edits).
     state.selectedId = id;
-    console.debug("picked", id, meta);
+    showSelection(id, meta);
   };
   state.renderer.start();
+}
+
+// Selection -> inspector (Phase 5 first cut: editable live object).
+function showSelection(id, meta) {
+  state.selectedId = id;
+  const o = (state.currentScene && state.currentScene.objects || []).find((x) => x.id === id);
+  if (!o) return;
+  const mat = (state.currentScene && state.currentScene.materials || []).find((m) => m.id === o.material);
+  const panel = dom.inspectorSelection;
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="sel-row"><span>id</span><code>${o.id}</code></div>
+    <div class="sel-row"><span>type</span><code>${o.type}</code></div>
+    <label class="sel-color">color
+      <input type="color" id="sel-color" value="${(mat && mat.color) || "#ffffff"}" />
+    </label>
+    <label class="sel-range">scale x
+      <input type="range" id="sel-scale" min="0.1" max="4" step="0.05" value="${(o.scale && o.scale[0]) || 1}" />
+    </label>
+    <label class="sel-range">opacity
+      <input type="range" id="sel-opacity" min="0.1" max="1" step="0.05" value="${(mat && mat.opacity != null) ? mat.opacity : 1}" />
+    </label>
+    <button id="sel-to-octane" class="sel-action">Send to Octane (quality)</button>
+  `;
+  panel.querySelector("#sel-color").addEventListener("input", (e) => {
+    patchSelection({ material: { color: e.target.value } });
+  });
+  panel.querySelector("#sel-scale").addEventListener("input", (e) => {
+    const s = parseFloat(e.target.value);
+    patchSelection({ scale: [s, s, s] });
+  });
+  panel.querySelector("#sel-opacity").addEventListener("input", (e) => {
+    patchSelection({ material: { opacity: parseFloat(e.target.value) } });
+  });
+  panel.querySelector("#sel-to-octane").addEventListener("click", () => {
+    // Phase 6 handoff stub: flag for Octane quality render.
+    dom.status.className = "state-queued";
+    dom.statusText.textContent = `queued Octane · ${o.id}`;
+  });
+}
+
+async function patchSelection(changes) {
+  if (!state.selectedId) return;
+  try {
+    const res = await postJSON("/canvas/patch", { object_id: state.selectedId, changes });
+    if (!res.ok) {
+      console.error("patch failed", res.error);
+      return;
+    }
+    state.currentScene = res.scene;
+    if (state.renderer) state.renderer.setScene(res.scene);
+  } catch (e) {
+    console.error("patch error", e);
+  }
 }
 
 async function buildScene(intent, plan) {
@@ -297,10 +352,14 @@ dom.paletteInput.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// ⌘I inspector (preview review; live-object editing lands in Phase 5)
+// ⌘I inspector (preview review + live-object editing, Phase 5)
 // ---------------------------------------------------------------------------
 async function openInspector() {
   dom.inspector.classList.remove("hidden");
+  if (state.selectedId) {
+    const meta = state.renderer && state.renderer.objectNodes.get(state.selectedId);
+    showSelection(state.selectedId, meta ? meta.meta : null);
+  }
   await refreshReview();
 }
 

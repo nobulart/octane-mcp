@@ -29,7 +29,7 @@ import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
 from octanex_mcp.bridge import (
     Workspace,
@@ -59,7 +59,7 @@ from octanex_mcp.server import _build_save_preview_envelope
 from octanex_mcp.animation import orbit_manifest, build_animation_commands
 from octanex_mcp.scene import swap_geometry
 from octanex_mcp.scheduler import DispatchLoop
-from octanex_mcp.canvas_scene import plan_scene
+from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
@@ -396,6 +396,31 @@ class Handler(BaseHTTPRequestHandler):
             _canvas_scene.clear()
             _canvas_scene.update(scene)
             self._send_json({"ok": True, "scene": _canvas_scene, "schema_version": scene.get("schema_version")})
+            return
+        if path == "/canvas/patch":
+            # Live edit of the current scene (Phase 5 first cut): selection ->
+            # inspector edit -> redraw. Patches object/material/top-level fields
+            # server-side (`_canvas_scene` stays the source of truth), validates,
+            # and returns the updated scene for the browser to re-hydrate.
+            if not _canvas_scene:
+                self._send_json({"ok": False, "error": "no scene built yet"}, code=404)
+                return
+            object_id = payload.get("object_id")
+            changes = payload.get("changes")
+            if not isinstance(changes, Mapping):
+                self._send_json({"ok": False, "error": "changes must be an object"}, code=400)
+                return
+            try:
+                if object_id:
+                    patched = patch_object(_canvas_scene, object_id, changes)
+                else:
+                    patched = patch_scene(_canvas_scene, changes)
+            except (ValueError, KeyError) as exc:
+                self._send_json({"ok": False, "error": str(exc)}, code=422)
+                return
+            _canvas_scene.clear()
+            _canvas_scene.update(patched)
+            self._send_json({"ok": True, "scene": _canvas_scene})
             return
         if path == "/remote/render":
             self._send_json(run_remote_bridge_and_pull(), code=200)

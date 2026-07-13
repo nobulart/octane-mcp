@@ -87,6 +87,41 @@ class TestCanvasRoutes(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertEqual(body["scene"]["objects"][0]["type"], "box")
 
+    def test_patch_object_color_updates_scene(self):
+        self._post("/canvas/build", {"intent": "orbital decay"})
+        status, body = self._post(
+            "/canvas/patch", {"object_id": "earth", "changes": {"material": {"color": "#ff0000"}}}
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(body["ok"])
+        mat = next(m for m in body["scene"]["materials"] if m["id"] == "blue_planet")
+        self.assertEqual(mat["color"], "#ff0000")
+        # The stored scene reflects the patch too.
+        _, stored = self._get("/canvas/scene")
+        stored_mat = next(m for m in stored["scene"]["materials"] if m["id"] == "blue_planet")
+        self.assertEqual(stored_mat["color"], "#ff0000")
+
+    def test_patch_no_scene_404(self):
+        status, body = self._post(
+            "/canvas/patch", {"object_id": "earth", "changes": {"scale": [2, 2, 2]}}
+        )
+        self.assertEqual(status, 404)
+        self.assertFalse(body["ok"])
+
+    def test_patch_invalid_field_422(self):
+        self._post("/canvas/build", {"intent": "cube"})
+        status, body = self._post(
+            "/canvas/patch", {"object_id": "cube", "changes": {"bogus": 1}}
+        )
+        self.assertEqual(status, 422)
+        self.assertFalse(body["ok"])
+
+    def test_patch_top_level_title(self):
+        self._post("/canvas/build", {"intent": "cube"})
+        status, body = self._post("/canvas/patch", {"changes": {"title": "Renamed"}})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["scene"]["title"], "Renamed")
+
 
 if __name__ == "__main__":
     unittest.main()
