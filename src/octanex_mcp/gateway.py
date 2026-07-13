@@ -58,6 +58,7 @@ from octanex_mcp.schema import command_schema, validate_command, validate_queue
 from octanex_mcp.server import _build_save_preview_envelope
 from octanex_mcp.animation import orbit_manifest, build_animation_commands
 from octanex_mcp.scene import swap_geometry
+from octanex_mcp.scheduler import DispatchLoop
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
@@ -369,6 +370,24 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/remote/render":
             self._send_json(run_remote_bridge_and_pull(), code=200)
             return
+        if path == "/dispatch/start":
+            poll = float(payload.get("poll_seconds", 15.0))
+            drain = int(payload.get("drain_timeout", 240))
+            self._send_json(start_dispatch_daemon(poll_seconds=poll, drain_timeout=drain))
+            return
+        if path == "/dispatch/stop":
+            self._send_json(stop_dispatch_daemon())
+            return
+        if path == "/dispatch/status":
+            self._send_json(dispatch_status())
+            return
+        if path == "/dispatch/tick":
+            # One unit of work without a long-lived daemon (cron-friendly).
+            # A live render.lock from another actor makes this a safe no-op.
+            from octanex_mcp.scheduler import DispatchLoop as _DL
+
+            self._send_json(_DL().tick())
+            return
         self._send_json({"ok": False, "error": "unknown route"}, code=404)
 
     # --- static ------------------------------------------------------------ #
@@ -393,13 +412,75 @@ def make_server(host: str = "127.0.0.1", port: int = 8731) -> ThreadingHTTPServe
     return ThreadingHTTPServer((host, port), Handler)
 
 
+# --------------------------------------------------------------------------- #
+# Shared-engine dispatch daemon (one per gateway process)
+# --------------------------------------------------------------------------- #
+# A single DispatchLoop serves the shared Octane queue. It is guarded by a lock
+# so the gateway never starts two loops. The filesystem render.lock inside
+# DispatchLoop still serializes this daemon against any OTHER actor (cron tick,
+# hand-rolled drain) — so the engine is never double-driven even if both run.
+_dispatch_loop: Optional[DispatchLoop] = None
+_dispatch_lock = threading.Lock()
+
+
+def start_dispatch_daemon(
+    *,
+    poll_seconds: float = 15.0,
+    drain_timeout: int = 240,
+    max_retries: int = 5,
+) -> Dict[str, Any]:
+    """Idempotently start the background dispatch loop (no-op if already running)."""
+    global _dispatch_loop
+    with _dispatch_lock:
+        if _dispatch_loop is not None and not _dispatch_loop._stop:
+            return {"ok": True, "running": True, "already": True}
+        loop = DispatchLoop(
+            poll_seconds=poll_seconds,
+            drain_timeout=drain_timeout,
+            max_retries=max_retries,
+        )
+        _dispatch_loop = loop
+    t = threading.Thread(target=loop.run, name="octanex-dispatch", daemon=True)
+    t.start()
+    return {"ok": True, "running": True, "already": False}
+
+
+def stop_dispatch_daemon() -> Dict[str, Any]:
+    global _dispatch_loop
+    with _dispatch_lock:
+        loop = _dispatch_loop
+        _dispatch_loop = None
+    if loop is not None:
+        loop.stop()
+        return {"ok": True, "stopped": True}
+    return {"ok": True, "stopped": False}
+
+
+def dispatch_status() -> Dict[str, Any]:
+    with _dispatch_lock:
+        loop = _dispatch_loop
+    if loop is None:
+        return {"ok": True, "running": False, "loop": None}
+    return {"ok": True, "running": not loop._stop, "loop": loop.status()}
+
+
 def main() -> None:
     import argparse
 
     ap = argparse.ArgumentParser(description="OctaneX Agentic Canvas HTTP gateway")
     ap.add_argument("--port", type=int, default=int(os.environ.get("OCTANEX_GATEWAY_PORT", "8731")))
     ap.add_argument("--host", default=os.environ.get("OCTANEX_GATEWAY_HOST", "127.0.0.1"))
+    ap.add_argument(
+        "--dispatch",
+        action="store_true",
+        help="auto-start the shared-engine dispatch loop (serves the job queue)",
+    )
+    ap.add_argument("--dispatch-poll", type=float, default=float(os.environ.get("OCTANEX_DISPATCH_POLL", "15.0")))
+    ap.add_argument("--dispatch-drain-timeout", type=int, default=int(os.environ.get("OCTANEX_DISPATCH_DRAIN", "240")))
     args = ap.parse_args()
+    if args.dispatch:
+        start_dispatch_daemon(poll_seconds=args.dispatch_poll, drain_timeout=args.dispatch_drain_timeout)
+        print(f"octanex dispatch loop enabled (poll={args.dispatch_poll}s)", flush=True)
     server = make_server(args.host, args.port)
     print(f"octanex gateway listening on http://{args.host}:{args.port}", flush=True)
     try:
@@ -407,6 +488,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        stop_dispatch_daemon()
         server.server_close()
 
 

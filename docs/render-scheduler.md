@@ -59,6 +59,23 @@ queue/*.json                 # GLOBAL drain staging — at most ONE job's comman
   path**: promote oldest queued job → lock-aware drain → write `done.json`.
   Marks failed + releases the lock on hard drain failure so the next agent retries.
 
+## Dispatch loop (auto-serving the shared queue)
+The engine can be driven automatically so multiple agents just `octane_submit_job`
+and the queue drains itself in FIFO order, crash-safely.
+
+- `DispatchLoop` (scheduler.py): polls the filesystem and calls
+  `dispatch_and_drain` on the oldest queued job. Holds no in-memory queue.
+  A single long-lived loop (or a cron `tick`) is enough; the render.lock
+  serializes every entry point, so running the gateway daemon AND a cron tick
+  can't double-drive Octane — the second finds a live lease and no-ops.
+- Gateway: `--dispatch` flag auto-starts a daemon thread; POST
+  `/dispatch/start|stop|status` control it, `/dispatch/tick` runs one unit
+  of work (cron-friendly, safe no-op under a live lease).
+- CLI: `python3 scripts/dispatch_loop.py --dispatch` (long-lived server, for
+  mac-studio launchd) or `--tick` (one-shot, for cron). Uses the repo venv.
+- Killed loop can't strand a job: the next driver reclaims the stale lease and
+  re-promotes from `jobs/<id>/commands/` (the source of truth).
+
 ## Drain contract (`scripts/octane_drain.applescript`)
 - **Lock-aware**: reads `ROOT/render.lock`; refuses to drive Octane if another
   agent holds a live lease (returns `busy:true`). Without this guard a

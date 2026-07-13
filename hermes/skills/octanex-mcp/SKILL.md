@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.13
+version: 1.9.14
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -348,6 +348,15 @@ sequence:
    live lease gets `promoted_job_id: null` (busy) instead of double-driving
    Octane. The hand-rolled `osascript scripts/octane_drain.applescript` is also
    lock-aware (refuses to drain if another agent holds a live lease).
+   **Auto-serving the queue (DispatchLoop):** to let agents just submit and
+   have the engine drain itself, run `python3 scripts/dispatch_loop.py
+   --dispatch` (long-lived, for mac-studio launchd) or `--tick` (cron).
+   The gateway also auto-starts a daemon with `--dispatch`, controllable via
+   `POST /dispatch/start|stop|status` and `POST /dispatch/tick` (one unit,
+   safe no-op under a live lease). The render.lock serializes the gateway
+   daemon, the CLI, and any cron tick — so the engine is never double-driven
+   even if all three run. A killed driver cannot strand a job: the next driver
+   reclaims the stale lease and re-promotes from `jobs/<id>/commands/`.
 4. **Build and queue the complete scene pipeline** (import → material → camera
    → light → save-preview). When using the scheduler, queue into a job
    (`octane_submit_job`) rather than the bare global `queue/`.

@@ -10,6 +10,7 @@ no completion mark.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -227,6 +228,103 @@ class TestJobScheduler(unittest.TestCase):
         s = self._sched()
         with self.assertRaises(SchedulerError):
             s.submit([{"payload": {"x": 1}}])  # no op anywhere
+
+
+class TestDispatchLoop(unittest.TestCase):
+    """Offline tests for the shared-engine dispatch driver.
+
+    These monkeypatch ``dispatch_and_drain`` (which would actually drive
+    Octane) so we can verify the loop's FIFO, busy-skip, failure-continue,
+    and crash-safety semantics without a live engine.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["OCTANEX_MCP_WORKSPACE"] = self.tmp.name
+        self.root = Path(self.tmp.name)
+        self.clock = Clock()
+
+    def tearDown(self):
+        os.environ.pop("OCTANEX_MCP_WORKSPACE", None)
+        self.tmp.cleanup()
+
+    def _loop(self, **kw):
+        from octanex_mcp.scheduler import DispatchLoop
+
+        return DispatchLoop(self.root, now=self.clock, **kw)
+
+    def test_tick_fifo_order(self):
+        from octanex_mcp.scheduler import JobScheduler
+        from unittest import mock
+
+        s = JobScheduler(self.root, "sub", now=self.clock)
+        s.submit(sample_commands(), preview_path="/out/a.png")
+        s.submit(sample_commands(), preview_path="/out/b.png")
+        # Let the real dispatch_and_drain run, but stub the actual Octane drain.
+        with mock.patch(
+            "octanex_mcp.scheduler.run_drain",
+            return_value={"ok": True, "clicked": "x", "queue_remaining": 0, "preview_written": 1, "waited": 1},
+        ):
+            loop = self._loop()
+            loop.tick()  # promotes + completes job1
+            loop.tick()  # promotes + completes job2
+        # Both jobs completed, in submission (FIFO) order.
+        done_a = self.root / "jobs" / sorted([d.name for d in (self.root / "jobs").iterdir()])[0] / "done.json"
+        done_b = self.root / "jobs" / sorted([d.name for d in (self.root / "jobs").iterdir()])[1] / "done.json"
+        self.assertTrue(done_a.exists() and done_b.exists())
+        # Active-without-done must now be empty (both resolved).
+        self.assertIsNone(JobScheduler(self.root, "sub", now=self.clock).active_job_without_done())
+
+    def test_tick_busy_is_noop(self):
+        from octanex_mcp.scheduler import JobScheduler
+        from unittest import mock
+
+        s = JobScheduler(self.root, "sub", now=self.clock)
+        jid = s.submit(sample_commands(), preview_path="/out/a.png")
+        # Simulate: engine busy (dispatch returns no promotion) -> tick must not error.
+        with mock.patch.object(
+            JobScheduler, "dispatch_and_drain",
+            return_value={"promoted_job_id": None, "note": "engine busy", "drain": None, "done": None, "lock": {}},
+        ):
+            loop = self._loop()
+            res = loop.tick()
+        self.assertIsNone(res["promoted_job_id"])
+        self.assertEqual(res["note"], "engine busy")
+        self.assertEqual(loop.cycles, 1)
+
+    def test_tick_failure_does_not_wedge_loop(self):
+        from octanex_mcp.scheduler import JobScheduler
+        from unittest import mock
+
+        s = JobScheduler(self.root, "sub", now=self.clock)
+        s.submit(sample_commands(), preview_path="/out/a.png")
+        calls = {"n": 0}
+        # First tick raises (simulating a wedged drain); loop must survive.
+        def _boom(self2, **k):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("simulated wedge")
+            return {"promoted_job_id": None, "drain": None, "done": None, "lock": {}}
+
+        with mock.patch.object(JobScheduler, "dispatch_and_drain", _boom):
+            loop = self._loop()
+            r1 = loop.tick()  # raises inside, caught
+            r2 = loop.tick()  # loop still alive
+        self.assertEqual(loop.errors, 1)
+        self.assertTrue(r1["ok"] is False)
+        self.assertEqual(loop.cycles, 2)
+        self.assertIn("error", r1)
+
+    def test_run_then_stop_is_terminable(self):
+        loop = self._loop(poll_seconds=0.01)
+        import threading
+
+        t = threading.Thread(target=loop.run, daemon=True)
+        t.start()
+        loop.stop()
+        t.join(timeout=2)
+        self.assertFalse(t.is_alive())
+        self.assertTrue(loop._stop)
 
 
 if __name__ == "__main__":

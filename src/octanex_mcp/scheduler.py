@@ -682,3 +682,96 @@ def _hostname() -> str:
         return socket.gethostname()
     except Exception:
         return "unknown"
+
+
+class DispatchLoop:
+    """Crash-safe background driver that serves the shared Octane queue.
+
+    A single long-lived loop (or a cron invocation of ``tick``) repeatedly calls
+    ``JobScheduler.dispatch_and_drain`` so the engine auto-serves every queued
+    job in FIFO order. All arbitrage lives in the filesystem lock, so:
+
+    * running the gateway daemon AND a cron ``tick`` can't double-drive Octane —
+      the second call finds a live lease and returns ``busy``;
+    * a killed loop can't strand a job — the next tick reclaims the stale lease
+      and re-promotes from the job's ``commands/`` dir;
+    * a job that ends in a hard drain failure is marked ``failed`` and its lock
+      released so the next tick retries the following job.
+
+    The loop is intentionally dumb: it holds no in-memory queue, just polls the
+    filesystem and sleeps. ``agent_id`` defaults to ``gateway-dispatch`` so its
+    lock is attributable to the dispatcher rather than a submitter.
+    """
+
+    def __init__(
+        self,
+        root: Optional[Path] = None,
+        *,
+        agent_id: Optional[str] = None,
+        poll_seconds: float = 15.0,
+        drain_timeout: int = 240,
+        max_retries: int = 5,
+        now=None,
+        lease_seconds: int = DEFAULT_LEASE_SECONDS,
+    ):
+        if root is not None:
+            self.root = Path(root)
+        else:
+            from .config import resolve_config
+
+            self.root = resolve_config().workspace
+        self.agent_id = agent_id or f"gateway-dispatch@{_hostname()}"
+        self.poll_seconds = poll_seconds
+        self.drain_timeout = drain_timeout
+        self.max_retries = max_retries
+        self._now = now
+        self.lease_seconds = lease_seconds
+        self._stop = False
+        self.last_result: Optional[Dict[str, Any]] = None
+        self.cycles = 0
+        self.errors = 0
+
+    def _sched(self) -> JobScheduler:
+        return JobScheduler(
+            self.root, self.agent_id, now=self._now, lease_seconds=self.lease_seconds
+        )
+
+    def tick(self) -> Dict[str, Any]:
+        """One unit of work: dispatch + drain the oldest job (or no-op if busy /
+        nothing queued). Returns the scheduler result dict."""
+        sched = self._sched()
+        try:
+            res = sched.dispatch_and_drain(
+                timeout_seconds=self.drain_timeout, max_retries=self.max_retries
+            )
+        except Exception as exc:  # never let one bad job wedge the loop
+            self.errors += 1
+            res = {"promoted_job_id": None, "ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        self.last_result = res
+        self.cycles += 1
+        return res
+
+    def run(self) -> None:
+        """Blocking loop until ``stop()``. Safe to run in a daemon thread."""
+        self._stop = False
+        while not self._stop:
+            self.tick()
+            # If the engine is busy or idle, don't spin hot — sleep before retrying.
+            if not self._stop:
+                time.sleep(self.poll_seconds)
+
+    def stop(self) -> None:
+        self._stop = True
+
+    def status(self) -> Dict[str, Any]:
+        sched = self._sched()
+        return {
+            "agent_id": self.agent_id,
+            "running": not self._stop,
+            "cycles": self.cycles,
+            "errors": self.errors,
+            "last_result": self.last_result,
+            "queue": sched.queued_jobs(),
+            "active_without_done": sched.active_job_without_done(),
+            "lock": sched.lock.state(),
+        }
