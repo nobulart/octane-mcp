@@ -279,26 +279,23 @@ def build():
     # Blue dial
     b.add_cylinder(center=(0, 0, dial_z), radius=dial_r, height=0.05, segments=72, material="mat_dial")
 
-    # White radial hour markers (radial orientation fix vs first pass); chunkier at
-    # 12/3/6/9. Tapered batons (slightly narrower at the outer tip) so they read
-    # as shaped, and a touch smaller than the first pass.
+    # White hour markers as small spheres in a ring near the dial edge (chunkier
+    # at 12/3/6/9). Spheres catch specular highlights so they read clearly vs the
+    # flat batons that vanished against the blue dial.
     for k in range(12):
-        a = 2.0 * math.pi * k / 12
+        a = math.pi / 2 - 2.0 * math.pi * k / 12
         mx, my = marker_r * math.cos(a), marker_r * math.sin(a)
-        long = 0.34 if k % 3 == 0 else 0.22
-        wide_base = 0.14 if k % 3 == 0 else 0.09
-        wide_tip = 0.07 if k % 3 == 0 else 0.045
-        add_marker_baton(b, center=(mx, my, marker_z), length=long,
-                         wide_base=wide_base, wide_tip=wide_tip, thickness=0.07,
-                         material="mat_marker", rot_z=a - math.pi / 2)
+        rad = 0.11 if k % 3 == 0 else 0.08
+        b.add_ellipsoid(center=(mx, my, marker_z), radii=(rad, rad, rad),
+                        segments_u=24, segments_v=14, material="mat_marker")
 
 
     # Gold arabic numerals just inside the markers (12 at top; classic clockwise layout)
-    numeral_r = 1.05
+    numeral_r = 1.20
     numeral_z = dial_z + 0.02
     for k in range(12):
         digit = str(12 if k == 0 else k)
-        a = 2.0 * math.pi * k / 12
+        a = math.pi / 2 - 2.0 * math.pi * k / 12
         nx, ny = numeral_r * math.cos(a), numeral_r * math.sin(a)
         add_numeral(b, digit=digit, center=(nx, ny, numeral_z), cell=0.058, thickness=0.03)
 
@@ -338,45 +335,6 @@ def build():
     add_ground(b, half=9.0, top=-0.34, thick=0.4, material="mat_ground")
 
     return b.text(), b.bounds()
-
-
-def add_marker_baton(b: ObjBuilder, *, center, length, wide_base, wide_tip,
-                     thickness=0.07, material="mat_marker", rot_z=0.0):
-    """A small tapered baton marker lying flat on the dial (+Z), oriented along
-    its local +Y and rotated by rot_z. Wider at the base (toward dial center),
-    narrower at the tip (toward the rim) -> a subtly shaped applied marker.
-    """
-    cx, cy, cz = center
-    cosr, sinr = math.cos(rot_z), math.sin(rot_z)
-
-    def place(lx, ly, lz):
-        # local: x=width axis, y=length axis (base at -L/2, tip at +L/2), z=thickness
-        x = cx + lx * cosr - ly * sinr
-        y = cy + lx * sinr + ly * cosr
-        z = cz + lz
-        return (round(x, 6), round(y, 6), round(z, 6))
-
-    hz = thickness / 2.0
-    hl = length / 2.0
-    # 8 corners: base ring (y=-hl), tip ring (y=+hl); x half-widths differ.
-    corners = [
-        place(-wide_base, -hl, -hz), place(wide_base, -hl, -hz),
-        place(wide_base, -hl, hz),  place(-wide_base, -hl, hz),
-        place(-wide_tip, hl, -hz),  place(wide_tip, hl, -hz),
-        place(wide_tip, hl, hz),    place(-wide_tip, hl, hz),
-    ]
-    b.lines.append(f"usemtl {material}")
-    for x, y, z in corners:
-        b.lines.append(f"v {x:.6f} {y:.6f} {z:.6f}")
-    # base(1-4) tip(5-8)
-    faces = [
-        (0, 1, 2, 3), (7, 6, 5, 4),
-        (4, 5, 1, 0), (5, 6, 2, 1), (6, 7, 3, 2), (7, 4, 0, 3),
-    ]
-    for f in faces:
-        b.lines.append("f " + " ".join(str(1 + i) for i in f))
-    b.vertex_count += 8
-    return
 
 
 def add_ground(b: ObjBuilder, *, half=9.0, top=-0.34, thick=0.4, material="mat_ground"):
