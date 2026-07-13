@@ -464,7 +464,12 @@ async function loadModels() {
           caps.vision ? "vision" : null,
           caps.thinking ? "think" : null,
         ].filter(Boolean).join(" · ");
-        opt.textContent = m.id + (tags ? `  (${tags})` : "");
+        // Cloud models the harness can't currently route to (no key) are shown
+        // but disabled, so the full Hermes catalog is visible without implying
+        // they're usable right now.
+        const label = m.id + (m.cloud ? "  ☁" : "") + (tags ? `  (${tags})` : "");
+        opt.textContent = label;
+        if (m.selectable === false) opt.disabled = true;
         group.appendChild(opt);
       });
       sel.appendChild(group);
