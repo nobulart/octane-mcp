@@ -462,18 +462,9 @@ local function ensure_canonical(type_id, name, position, setup)
     return node
 end
 
-local function set_pin_value(node, pin, ...)
+local function set_pin_value(node, pin, value)
     if not node or not pin then return false end
-    local values = {...}
-    local ok, err = pcall(function()
-        if #values == 0 then
-            node:setPinValue(pin)
-        elseif #values == 1 then
-            node:setPinValue(pin, values[1])
-        else
-            node:setPinValue(pin, table.unpack(values))
-        end
-    end)
+    local ok, err = pcall(function() node:setPinValue(pin, value) end)
     if not ok then append_log("setPinValue failed pin=" .. tostring(pin) .. " err=" .. tostring(err)) end
     return ok
 end
@@ -800,12 +791,10 @@ local function wait_for_render_ready(min_samples, timeout_seconds)
         return true, "render statistics unavailable; continuing"
     end
     local last = "no statistics yet"
-    local got_stats = false
     local attempts = math.max(1, math.floor((timeout_seconds / 0.5) + 0.5))
     for _ = 1, attempts do
         local ok, stats = pcall(function() return octane.render.getRenderResultStatistics() end)
         if ok and type(stats) == "table" then
-            got_stats = true
             local beauty = render_stat_number(stats, "beautySamplesPerPixel")
             local info = render_stat_number(stats, "infoSamplesPerPixel")
             local pending = stats.hasPendingUpdates == true
@@ -816,17 +805,12 @@ local function wait_for_render_ready(min_samples, timeout_seconds)
                 return true, last
             end
         else
-            last = "stats err/nil: " .. tostring(stats)
+            last = tostring(stats)
         end
         sleep_seconds(0.5)
     end
-    -- If we never got valid stats, the render loop may still be producing a
-    -- frame; don't block the capture on a polling API that returned nil.
-    append_log("render preview readiness: got_stats=" .. tostring(got_stats) .. " last=" .. last)
-    if got_stats then
-        return false, last
-    end
-    return true, "stats unavailable after polling; attempting save anyway"
+    append_log("render preview readiness timeout: " .. tostring(last))
+    return false, last
 end
 
 local function latest_imported_geometry_fallback()
@@ -860,40 +844,6 @@ local function handle_import_geometry(cmd)
     -- orphaned meshes left unwired).
     local mesh = ensure_canonical(octane.NT_GEO_MESH, name, {500, 500}, function(m)
         pcall(function() m:setAttribute(octane.A_FILENAME, cmd.path, true) end)
-        -- TRANSFORM FIX (2026-07-13): imported OBJs are authored at
-        -- world origin (e.g. vase recipes use X across [-3.6,3.6]); if the
-        -- mesh node's transform is left at its create-default the geometry
-        -- lands at the node position (here {500,500}) and falls OUTSIDE the
-        -- camera frustum -> a blank white preview. Force an identity
-        -- transform so the geometry renders at its authored coordinates.
-        local function set_identity_transform(node)
-            if not node then return false end
-            -- packed-number pins (most robust across builds)
-            local okp = false
-            for _, p in ipairs({octane.P_TRANSFORM or "transform",
-                                 octane.P_POSITION or "pos",
-                                 octane.P_TRANSLATION or "translation"}) do
-                if p then okp = set_pin_value(node, p, 0, 0, 0) or okp end
-            end
-            for _, p in ipairs({octane.P_ROTATION or "rotation",
-                                 octane.P_EULER or "euler"}) do
-                if p then okp = set_pin_value(node, p, 0, 0, 0) or okp end
-            end
-            for _, p in ipairs({octane.P_SCALE or "scale",
-                                 octane.P_SIZING or "sizing"}) do
-                if p then okp = set_pin_value(node, p, 1, 1, 1) or okp end
-            end
-            -- composite transform table (some builds expose a single {pos,rot,scale} pin)
-            local function comp(p)
-                if not p then return false end
-                return set_pin_value(node, p,
-                    {x=0,y=0,z=0}, {x=0,y=0,z=0}, {x=1,y=1,z=1})
-            end
-            okp = comp(octane.P_TRANSFORM or "transform") or okp
-            return okp
-        end
-        local ok_t = set_identity_transform(m)
-        if not ok_t then append_log("import transform reset inconclusive for " .. tostring(name)) end
     end)
     if not mesh then return false, "create mesh failed: " .. tostring(name) end
     maybe_connect_geometry_to_rt(mesh)
@@ -1100,23 +1050,14 @@ local function handle_set_camera(cmd)
     -- Canonical camera: delete orphan Hermes Camera nodes, keep one, reconnect.
     local cam = ensure_canonical(octane.NT_CAM_THINLENS or octane.NT_CAM_PANORAMIC, "Hermes Camera", {300, 520}, function(c)
         if cmd.fov then set_pin_value(c, octane.P_FOV or "fov", cmd.fov) end
-        -- POS/TARGET FIX (2026-07-13): keep vector pins as one Lua table.
-        -- This Octane build treats the optional third setPinValue argument as
-        -- a boolean/evaluate flag, so unpacked xyz numbers fail with
-        -- "boolean expected". Tables are the correct vector payload form here.
-        local function set_vec(pin, v)
-            if not pin or not v then return end
-            set_pin_value(c, pin, {v[1] or 0, v[2] or 0, v[3] or 0})
-        end
-        if cmd.position then set_vec(octane.P_POSITION or "pos", cmd.position) end
-        if cmd.target then set_vec(octane.P_TARGET or "target", cmd.target) end
-        -- FOCUS FIX (2026-07-12): NT_CAM_THINLENS renders soft unless focus
-        -- distance + aperture are set. Default aperture has a finite DOF so the
-        -- spheres come out blurry. Force a near-pinhole aperture and set focus
-        -- distance to camera->target so the subject is sharp. Pin names vary by
-        -- build, so probe a list of candidate names and log which stuck.
+        if cmd.position then set_pin_value(c, octane.P_POSITION or "pos", cmd.position) end
+        if cmd.target then set_pin_value(c, octane.P_TARGET or "target", cmd.target) end
+        if cmd.up then set_pin_value(c, octane.P_UP or "up", cmd.up) end
+        -- FOCUS FIX: honour recipe aperture when provided (user-set in viewport),
+        -- else force near-pinhole (0.0) for a sharp subject.
+        local ap_val = cmd.aperture ~= nil and cmd.aperture or 0.0
         for _, ap in ipairs({octane.P_APERTURE or "aperture", "aperture", "fstop", "fStop", "lensRadius", "apertureRadius"}) do
-            set_pin_value(c, ap, 0.0)
+            set_pin_value(c, ap, ap_val)
         end
         local dist = 10.0
         if cmd.position and cmd.target then
@@ -1129,7 +1070,7 @@ local function handle_set_camera(cmd)
         for _, fd in ipairs({octane.P_FOCUSDISTANCE or "focusDistance", "focusDistance", "focusDist", "focalDepth", "focus"}) do
             set_pin_value(c, fd, dist)
         end
-        append_log("camera focus dist=" .. tostring(dist))
+        append_log("camera focus dist=" .. tostring(dist) .. " aperture=" .. tostring(ap_val))
     end)
     if not cam then return false, "camera create failed" end
     connect_to(rt, octane.P_CAMERA or "camera", cam)
@@ -1164,6 +1105,28 @@ local function handle_set_lighting(cmd)
     if not rt then return false, "render target failed: " .. tostring(rt_err) end
     activate_render_target(rt)
     local preset = cmd.preset or "default"
+    if preset == "planetary" then
+        -- User-selected Planetary environment (switched live in the viewport).
+        -- This build's Lua constants may not expose NT_ENV_PLANETARY by name,
+        -- so probe it defensively and fall back to daylight if unavailable.
+        local env_type = octane.NT_ENV_PLANETARY or octane.NT_ENV_DAYLIGHT or octane.NT_ENV_TEXTURE
+        if not env_type then return true, "no known environment node type constant" end
+        local env = ensure_canonical(env_type, "Hermes Environment", {300, 680})
+        if not env then return false, "planetary environment create failed" end
+        connect_to(rt, octane.P_ENVIRONMENT or "environment", env)
+        local pp = cmd.planetary or {}
+        for _, pin in ipairs({
+            "latitude", "longitude", "month", "day", "localTime", "gmtOffset",
+            "skyTurbidity", "power", "sunIntensity", "sunSize", "northOffset",
+        }) do
+            if pp[pin] ~= nil then
+                set_pin_value(env, pin, pp[pin])
+            end
+        end
+        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
+        append_log("post-lighting(planetary) render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+        return true, "lighting preset planetary connected"
+    end
     if preset == "dark_studio" then
         -- True dark studio (VERIFIED 2026-07-12): build an NT_ENV_TEXTURE
         -- fed by a near-black NT_TEX_RGB. Both node types exist + are
@@ -1300,6 +1263,32 @@ local function handle_save_preview(cmd)
     return false, "save preview failed: " .. tostring(last_err)
 end
 
+-- Deep pin read for the harvest API. Walks every pin on a node and captures
+-- name + value for scalar/vec/text pins so the agent can read back live
+-- camera/light/environment tweaks made in the Octane viewport. Connection
+-- pins (PT_UNKNOWN/PT_*_LINK) are skipped to avoid dumping node refs.
+local HARVEST_PIN_WANT = {
+    ["pos"]=true, ["position"]=true, ["target"]=true, ["up"]=true, ["upVector"]=true,
+    ["fov"]=true, ["aperture"]=true, ["focusDistance"]=true, ["focusDist"]=true,
+    ["focalDepth"]=true, ["lensRadius"]=true, ["fStop"]=true, ["fstop"]=true,
+    ["power"]=true, ["intensity"]=true, ["exposure"]=true, ["gamma"]=true,
+    ["sun"]=true, ["sky"]=true, ["daylight"]=true, ["turbidity"]=true,
+    ["north"]=true, ["ground"]=true, ["medium"]=true, ["backplate"]=true,
+    ["env"]=true, ["environment"]=true, ["thin"]=true, ["importance"]=true,
+    ["name"]=true, ["visible"]=true,
+}
+local function pin_value_str(v)
+    if type(v) == "table" then
+        local ok, s = pcall(function()
+            local parts = {}
+            for i = 1, #v do parts[#parts+1] = tostring(v[i]) end
+            return table.concat(parts, ",")
+        end)
+        return ok and ("[" .. s .. "]") or tostring(v)
+    end
+    return tostring(v)
+end
+
 local function serialize_node(node)
     if not node or type(node) ~= "table" then
         return { type = type(node) or "nil" }
@@ -1312,6 +1301,45 @@ local function serialize_node(node)
         if props.position then result.position = props.position end
         if props.scale then result.scale = props.scale end
         if props.rotation then result.rotation = props.rotation end
+    end
+    -- Walk pins: capture name + value for camera / light / environment nodes
+    -- so live viewport edits are readable by the agent (deep harvest fix).
+    -- This build's Lua API is inconsistent about pin getters (getPinInfoIx vs
+    -- GetPinInfo, getPinValue vs GetPinValue), so try both spellings and use
+    -- whichever returns a usable value.
+    local ok_count, pin_count = pcall(function() return node:getPinCount() end)
+    if not (ok_count and pin_count and pin_count > 0) then
+        ok_count, pin_count = pcall(function() return node:GetPinCount() end)
+    end
+    if ok_count and pin_count and pin_count > 0 then
+        local pins = {}
+        for i = 1, pin_count do
+            local ok_info, info = pcall(function() return node:getPinInfoIx(i) end)
+            if not ok_info then ok_info, info = pcall(function() return node:GetPinInfo(i) end) end
+            if not ok_info then ok_info, info = pcall(function() return node:getPinInfoIx(i - 1) end) end
+            if ok_info and info then
+                local pname = tostring(info.name or info[3] or "")
+                local plabel = tostring(info.label or info[2] or pname)
+                local key = pname ~= "" and pname or plabel
+                local lkey = key:lower()
+                local tname = tostring(node._type or ""):upper()
+                local capture = HARVEST_PIN_WANT[lkey] or
+                    (string.find(tname, "CAM") or string.find(tname, "LIGHT") or string.find(tname, "ENV")) ~= nil
+                if capture and key ~= "" then
+                    local ok_v, val = pcall(function() return node:getPinValue(key) end)
+                    if not (ok_v and val ~= nil) then
+                        ok_v, val = pcall(function() return node:GetPinValue(key) end)
+                    end
+                    if not (ok_v and val ~= nil) then
+                        ok_v, val = pcall(function() return node:GetPinValue(i) end)
+                    end
+                    if ok_v and val ~= nil then
+                        pins[key] = pin_value_str(val)
+                    end
+                end
+            end
+        end
+        if next(pins) then result.pins = pins end
     end
     result.has_geometry = node.getGeometry and (pcall(function() return node:getGeometry() end) and true or false)
     result.has_material = node.getMaterial and (pcall(function() return node:getMaterial() end) and true or false)
