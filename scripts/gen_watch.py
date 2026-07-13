@@ -262,8 +262,8 @@ def build():
     case_top = case_half
     dial_r = 1.62
     dial_z = case_top + 0.04
-    marker_r = 1.40
-    marker_z = dial_z + 0.05
+    marker_r = 1.50
+    marker_z = dial_z + 0.025
     hand_z = dial_z + 0.07
     second_z = hand_z + 0.04
     cap_z = second_z + 0.02
@@ -285,7 +285,7 @@ def build():
     for k in range(12):
         a = math.pi / 2 - 2.0 * math.pi * k / 12
         mx, my = marker_r * math.cos(a), marker_r * math.sin(a)
-        rad = 0.11 if k % 3 == 0 else 0.08
+        rad = 0.077 if k % 3 == 0 else 0.056
         b.add_ellipsoid(center=(mx, my, marker_z), radii=(rad, rad, rad),
                         segments_u=24, segments_v=14, material="mat_marker")
 
