@@ -55,14 +55,13 @@ class TestRecipeContractOffline(TestCase):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
         self.assertEqual(report["total"], 30)
-        # 28/30 recipe dirs ship a real reference preview and pass the offline
-        # contract. `earth-moon-space` (degenerate live capture) and the new
-        # `earth-hemisphere` point-cloud recipe (pending native preview) are the
-        # intentional exceptions.
-        self.assertEqual(report["contract_ok"], 28, report)
-        self.assertEqual(report["contract_failed"], 2)
+        # 29/30 recipe dirs ship a real reference preview and pass the offline
+        # contract. `earth-moon-space` is the remaining intentional exception
+        # until it receives a checked-in native preview.
+        self.assertEqual(report["contract_ok"], 29, report)
+        self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
-        self.assertEqual(failed, ["earth-hemisphere", "earth-moon-space"], report)
+        self.assertEqual(failed, ["earth-moon-space"], report)
 
     def test_verify_recipe_library_single_slug(self):
         report = verify_recipe_library(dry_run=True, slug="data-bars")

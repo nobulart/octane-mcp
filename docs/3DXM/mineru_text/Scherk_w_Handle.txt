@@ -1,0 +1,28 @@
+About the Scherk Surface with Handle
+H. Karcher
+
+This surface is a genus one version of Scherk’s doubly-periodic
+surface. Existence and embeddedness is proved in [KWH], and
+our formulas are from there.
+The conjugate fundamental domain is bounded by straight lines.
+This piece can be rotated to be a graph over a convex domain,
+and in this position the original piece is also a graph. For this
+we suggest the associate family morphing.
+The surface has a period problem, because the position of the
+punctures is not determined on the square torus by qualitative
+considerations. We suggest the (joint) position of the punctures
+as morphing parameter (ee), again to illustrate the use of intermediate value arguments for killing periods.
+For a discussion of techniques for creating minimal surfaces with
+various qualitative features by appropriate choices of Weierstrass
+data, see either [KWH], or pages 192–217 of [DHKW].
+[KWH] H. Karcher, F. Wei, and D. Hoffman, The genus one
+helicoid, and the minimal surfaces that led to its discovery,
+in “Global Analysis in Modern Mathematics, A Symposium in
+Honor of Richard Palais’ Sixtieth Birthday”, K. Uhlenbeck Editor, Publish or Perish Press, 1993
+[DHKW] U. Dierkes, S. Hildebrand, A. Kuster, and O. Wohlrab,
+Minimal Surfaces I, Grundlehren der math. Wiss. v. 295
+Springer-Verlag, 1991
+
+1
+
+

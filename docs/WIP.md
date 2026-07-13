@@ -1,27 +1,28 @@
-1|# OctaneX MCP — Work In Progress
-2|
-3|Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-4|brainstorm, kept as a fast-glance status doc. Last updated **2026-07-13** against
-5|HEAD `196185c`.
-6|
-7|## Current state (evidence, 2026-07-13)
-8|
-9|| Area | State |
-10||------|-------|
-11|| Repo | `main` = `196185c` (`feat(geo): EGM2008 geoid heightfield recipe + gen_geo_displacement/queue_geo_surface tooling`), tracking `origin/main`; **12 commits ahead** of the docs' claimed `296e7f9`. Tree: clean (adding `docs/visualization-backends-research.md` as roadmap WP15 / backend-research doc). |
-12|| Tests | **381 ran / 1 failure / 3 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. Benchmark subset: **14 ran / 0 failures / 1 skipped** (via `tests.test_benchmarks -v`). `compileall src` clean. The 1 failure is the **pre-existing** `test_lua_bridge_parity::test_scene_handler_semantics_match_between_one_shot_and_persistent_bridges` (`wait_for_render_ready` body drift between one-shot and persistent templates). **+24 new tests** (WP7 pre-render sanity adoption). |
-13|| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X running; persistent bridge `status=processed`, `render_stage=ready`, `samples_done=1200`, `samples_target=1200`, `last_preview_path=.../renders/egm2008_octane-preview.png`, `last_event=save_preview preview saved`. |
-14|| Recipe library | **27 recipe dirs** via `_recipe_dirs`. **26** declare `native_octane_verified=true`; **25** carry `octane-preview.png`. **1** unverified: `earth-moon-space` (no preview PNG — live render gap, not metadata). `helicoid-spiral` stays `false` (REJECTED by pixel-QA, blank flat field; has `.png` file but the flag remains false). |
-15|| Core mechanics | Broad and green: schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks (24 new tests for the report dataclasses, engine checks, manifest/graph analysis, and round-trips), recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. |
-16|| Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, **WP15 renderer-agnostic backend abstraction**. |
-17|
-18|**Bottom line:** the bridge is live and the offline suite is solid (381 green, 1 pre-existing failure). The docs' status snapshot has drifted 12 commits behind HEAD; fresh evidence is refreshed below. The active risk is no longer "does the queue work?"; it is WP12 single-source Lua handler generation and WP13 registry-backed material/light reporting closing the bridge-hardening loop.
+# OctaneX MCP — Work In Progress
+
+Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-13** against
+HEAD `4f9b9ab`.
+
+## Current state (evidence, 2026-07-13)
+
+| Area | State |
+|------|-------|
+| Repo | `main` = `4f9b9ab` (`feat(earth-hemisphere): v4.1 smooth spheres + LLSVP/plume + off-axis Hermes Camera`), tracking `origin/main`; tree contains this sweep's code/docs fixes plus new `docs/3DXM/` math-grammar reference material. |
+| Tests | **408 ran / 0 failures / 10 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. Benchmark subset: **14 ran / 0 failures / 1 skipped**. `compileall src` clean. This sweep fixed the Pillow-missing source check, stale recipe-contract counts, and one-shot/persistent `wait_for_render_ready` parity drift. |
+| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=800`, `samples_target=800`, `last_event=save_preview preview saved .../renders/octane-preview.png`. Stdio MCP boot probe returned **64 tools** and found `octane_find_grammar`. |
+| Recipe library | **30 recipe dirs** via `_recipe_dirs`. **24** declare `native_octane_verified=true`; **29** carry `octane-preview.png`. **6** currently have `native_octane_verified=false`: `earth-hemisphere`, `earth-moon-space`, `headphones-studio`, `helicoid-spiral`, `photoreal-vase-studio`, `wristwatch`. Only `earth-moon-space` is missing a preview PNG. Offline recipe contract is **29/30 OK**; `earth-moon-space` is the remaining contract failure. |
+| Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
+| Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. |
+| Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
+
+**Bottom line:** the repo has grown into a working visual workbench with 30 recipe dirs and a live bridge, but the current closure risk is documentation/test drift after rapid recipe additions. This sweep consolidates that drift and keeps the remaining gaps explicit instead of silently promoting unverified renders.
 
 ## Ranked backlog / next steps
 
-1. ~~A2 — Recipe verification reconciliation~~ **DONE 2026-07-12** (LOW effort / HIGH integrity): `birthday-cake` promoted to `native_octane_verified=true` (pixel-QA + vision confirm); `helicoid-spiral` preview rejected by pixel-QA (blank flat field) → stays false with corrected `native_render_rejected_blank` status; `earth-moon-space` stays false (no preview PNG — needs fresh live render). Recipe-book + WIP updated. *Remaining live gap:* render `earth-moon-space` natively and verify before flipping.
-2. **I — Capability-driven bridge hardening** (MEDIUM effort / VERY HIGH fit): finish WP10–WP13. `octane_capabilities`/`octane_probe_types` are exposed; next is WP12 single-source Lua handler generation and WP13 registry-backed material/light behavior reporting. *First step:* make handler edits single-source, then prove one material/light command path against the registry.
-3. **J — Pre-render sanity adoption** (LOW effort / HIGH reliability): use `octane_check_scene_plan` and `octane_scene_sanity` as mandatory guards before recipe/live drains. *First step:* add a verifier path that writes sanity reports next to render outputs.
+1. **I — Capability-driven bridge hardening** (MEDIUM effort / VERY HIGH fit): finish WP12 single-source Lua handler generation and WP13 registry-backed material/light behavior reporting. *First step:* make handler edits single-source, then prove one material/light command path against the registry.
+2. **J — Pre-render sanity adoption** (LOW effort / HIGH reliability): use `octane_check_scene_plan` and `octane_scene_sanity` as mandatory guards before recipe/live drains. *First step:* add a verifier path that writes sanity reports next to render outputs.
+3. **M — 3DXM parametric/Weierstrass mesher** (MEDIUM-HIGH effort / HIGH research fit): turn `docs/3DXM/` and `docs/recipe-gap-fill.md` into reusable mesh generators for non-implicit math-museum surfaces. *First step:* implement one parametric surface recipe from `docs/3DXM/minimal-surfaces.md` and gate it with pixel QA + local vision.
 4. **B — Geo / terrain grammar live path** (HIGH research fit): `octane_visualize_geojson` ships with graceful `geo` extra handling. *Remaining:* exercise the shapely-backed path live under `uv sync --extra geo` and record the output/QA.
 5. **F2-live — Animation live drain** (HIGH communication fit): `octane_build_animation` queues per-frame camera motion. *Remaining:* import a real subject, render a short orbit clip, verify frames differ, and optionally encode with ffmpeg.
 6. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
@@ -30,14 +31,13 @@
 
 ## Recommended next move
 
-Do **A2 first** to keep the recipe library honest, then **I** because capability-backed dispatch prevents whole classes of future bridge regressions. Run **J** alongside every live render task. Use **K** as the next user-facing integration slice once the status/capability API is stable. Add **L** (renderer-agnostic backend) to the architecture backlog once K's surface is stable.
+Do **I** first because handler-generation and registry-backed reporting prevent whole classes of future bridge regressions. Run **J** alongside every live render task. Start **M** as the math-gallery unblocker once one clean implicit recipe pass has been reviewed, then use **K/L** for the user-facing multi-backend surface.
 
 ## Done recently
 
-- `d7a2c1f` — pre-render sanity adoption: tests for `SanityReport`/`SanityIssue` dataclasses, `analyze_scene_plan`/graph engine checks, manifest graph analysis, and JSON round-trips (24 tests).
-- `196185c` — EGM2008 geoid heightfield recipe + `gen_geo_displacement`/`queue_geo_surface` tooling.
-- `80f3fdf` — gallery: embed preview images in all 7 TPMS READMEs + recipe-book entries; reconcile index.
-- `296e7f9` — bowl-of-fruit still-life recipe with native preview asset.
-- `617014e` — pre-render node-graph sanity gate: live scene harvest analysis, offline manifest/framing checks, `octane_scene_sanity`, `octane_check_scene_plan`, 22 tests.
-- `be8b0eb` / `0a4d1ae` / `9a29048` — birthday-cake recipe and realism lessons, including persistent-bridge silent-exit and single-source queue-pipeline notes.
-- `6590d5d` / `35f64a9` / `f0cc70d` — API corpus/capability/probe surface and dark-studio/graph-owner bridge fixes.
+- `4f9b9ab` — earth-hemisphere v4.1 smooth spheres + LLSVP/plume + off-axis Hermes Camera.
+- `3db043e` — README points vase preview at native render.
+- `6fcd43a` / `737e8e3` — earth-hemisphere v3 jello cutaway recipe + drain/queue recovery docs.
+- `e4c8b3a` — shared-engine dispatch loop (gateway daemon + CLI + cron tick).
+- `4ae0e65` — pointcloud merge pipeline and native vase render.
+- `c325609` — shared-engine render lock + per-agent job queue.

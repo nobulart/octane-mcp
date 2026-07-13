@@ -1,0 +1,113 @@
+Monkey Saddle, Torus, Dupin Cyclide *
+The Monkey Saddle is a saddle shaped surface with three
+down valleys, allowing the two legs and the tail of the monkey to hang down. At its symmetry point both principal
+curvatures are 0, and, this umbilic point is the simplest
+singularity of a curvature line field. Choose in the Action
+Menu: Add Principal Curvature Fields; in Wireframe
+Display the parameter lines are omitted, the curvature
+line fields (or one of them) represent the surface.
+Its Parametrization as graph of a function is
+FM onkey (u, v) = (aa · v, bb · u, cc · (u3 − 3uv 2 )).
+In Geometry the word Torus usually implies a surface of
+revolution; often a circle in the x-z-plane ist rotated around
+the z-axis. In 3DXM an ellipse with axes bb, cc is rotated,
+its midpoint rotates in the x-y-plane on a circle of radius
+aa. The followingParametrization is used:
+
+
+(aa + bb · cos u) cos v
+FT orus (u, v) =  (aa + bb · cos u) sin v 
+cc · sin u
+Note that the parameter lines are principal curvature lines,
+see Action Menu: Add Principal Curvature Fields.
+
+The Torus is also visualized among the Implicit Surfaces,
+we derive its equation. In the x-z-plane we have two ellipses
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+12
+
+and we multiply their equations:
+° x − aa ¢2 ° z ¢2
+° x + aa ¢2 ° z ¢2
+(
++
+− 1) · (
++
+− 1)
+bb
+cc
+bb
+cc
+° x2 − aa2 ¢2
+° x2 + aa2 ¢ ° z ¢2
+° z ¢2
+2
+=
++
+2
+(
+−
+1)
++
+(
+−
+1)
+.
+bb2
+bb2
+cc
+cc
+
+For the
+p rotation around the z-axis we have to replace x by
+r = x2 + y 2 . The second expression avoids square roots.
+Implicit Equation of the Torus:
+p
+fT orus (~x) = f (r, z) = 0 with r = x2 + y 2 and
+f (r, z) :=
+° r2 − aa2 ¢2
+° r2 + aa2 ¢ ° z ¢2
+° z ¢2
+2
++
+2
+(
+−
+1)
++
+(
+−
+1)
+.
+2
+2
+bb
+bb
+cc
+cc
+
+The Cyclides of Dupin are obtained by inverting the
+above torus in a sphere. The sphere of inversion has its
+center ~
+m = (dd, 0, ee) in the x-z-plane and has radius f f .
+The Default Morph moves the center closer to the torus.
+Note that inversions map curvature lines to curvature lines.
+ 
+0
+f f 2 (~x − ~
+m)
+The Inversion: ~x 7→ Inv(~x) :=
++~
+m +  0 ,
+2
+|~x − ~
+m|
+hh
+Parametrization: FCyclide (~x) := Inv(FT orus (~x)),
+Implicit Equation: fCyclide (~x) := fT orus (Inv−1 (~x)) = 0.
+
+13
+
+

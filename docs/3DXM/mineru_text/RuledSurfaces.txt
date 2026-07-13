@@ -1,0 +1,93 @@
+Ruled Surfaces *
+Cylinders, Cones, 1-sheeted Hyperboloid, Hyperbolic
+Paraboloid, Helicoid, Right Conoid, Whitney Umbrella.
+In other sections: Double Helix, Möbius Strip.
+Informally speaking, a ruled surface is one that is a union
+of straight lines (the rulings). To be more precise, it is a
+surface that can be represented parametrically in the form:
+x(u, v) = δ(u) + v ∗ ∏(u)
+where δ is a regular space curve (i.e., δ 0 never vanishes)
+called the directrix and ∏ is a smooth curve that does
+not pass through the origin. Without loss of generality, we
+can assume that |∏(t)| = 1. For each fixed u we get a line
+v 7→ δ(u) + v ∗ ∏(u) lying in the surface, and these are the
+rulings. (Some surfaces can be parameterized in the above
+form in two essentially diﬀerent ways, and such surfaces
+are called doubly-ruled surfaces.)
+A ruled surface is called a cylinder if the directrix lies in
+a plane P and ∏(u) is a constant direction not parallel to
+P , and it is called a cone if all the rulings pass through a
+fixed point V (the vertex).
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+9
+
+Two more interesting examples are quadratic surfaces:
+The Hyperboloid of One Sheet:
+x2
+y2
+z2
++ 2 − 2 = 1,
+2
+a
+b
+c
+which is in fact doubly-ruled, since it can be given parametrically by:
+x+ (u, v) = a(cos(u) − v sin(u)), b(sin(u) + v cos(u), cv)
+and
+x− (u, v) = a(cos(u) + v sin(u)), b(sin(u) − v cos(u), −cv),
+and the Hyperbolic Paraboloid:
+(x, y, z) = (a u, b v, c u v) = a(u, 0, 0) + v(0, b, c u).
+Another interesting ruled surface is a minimal surface:
+the Helicoid, aa = 0, (Catenoid, aa = π/2) in the family:
+°
+¢
+F (u, v) = bb sin(aa) cosh(v) cos(u), cosh(v) sin(u), v
+°
+¢
++ bb cos(aa) sinh(v) sin(u), − sinh(v) cos(u), u
+°
+¢
+= sin(aa) (0, 0, bb v) + bb cosh(v)(cos(u), sin(u), 0)
+°
+¢
++ cos(aa) (0, 0, bb u) + bb sinh(v)(sin(u), − cos(u), 0) .
+10
+
+A ruled surface is called a (generalized) right conoid if its
+rulings are parallel to some plane, P , and all pass through
+a line L that is orthogonal to P . The Right Conoid is
+given by taking P to be the xy-plane and L the z-axis:
+Parametrized: F (u, v) = (v cos u, v sin u, 2 sin u),
+x
+4
+Implicitly:
+( )2 − 2 = 1.
+y
+z
+This surface has at (sin(u) = ±1, v = 0) two pinch point
+singularities. The default morph in 3DXM
+deforms the Right Conoid to a Helicoid
+so that the two stable pinch point singularities disappear,
+at the final moment, through two unstable singularities:
+Faa (u, v) = ( v cos(u), v sin(u), 2aa sin(u) + (1 − aa)u ) .
+Famous for such a singularity is the Whitney Umbrella,
+another right conoid with rulings parallel to the x-y-plane:
+F (u, v) = (u · v, u, v · v), implicitly: x2 − y 2 z = 0.
+Again the default morph emphasizes the visualization of
+the singularity by embedding the Whitney Umbrella
+into a family of ruled surfaces, which develop a second
+pinch point singularity that closes the surface at the top:
+
+
+u · (aa · v + (1 − aa) sin(πv))
+.
+Faa (u, v) = 
+u
+aa · v 2 − (1 − aa) cos(πv)
+R.S.P.
+
+11
+
+

@@ -1,0 +1,35 @@
+About the Costa Minimal Surface
+H. Karcher
+This surface was responsible for the re-kindling
+of interest in minimal surfaces in 1982. It is a
+minimal embedding of the 3-punctured square
+torus. Its planar symmetry lines cut this surface
+into four conformal squares and the two straight
+lines through the saddle are the diagonals of these
+squares. Because of the emphasis on the symmetries, our formulas are taken from [K2.]
+The Gauss map of such a surface is determined by
+its qualitative properties only up to a multiplicative factor cc which we suggest for the morphing
+(as in the Chen-Gackstatter case). It closes the
+period (at cc0) with an intermediate value argument.
+After Costa’s existence discovery, Hoffman-Meeks
+proved embeddedness; they also found a deformation family through rectangular tori, where the
+middle end deforms from a planar one to a catenoid end. They generalized this family to any genus
+by increasing the dihedral symmetry.
+
+[K2] H. Karcher, Construction of minimal surfaces, in “Surveys in Geometry”, Univ. of Tokyo,
+1989, and Lecture Notes No. 12, SFB 256, Bonn,
+1989, pp. 1–96.
+For a discussion of techniques for creating minimal surfaces with various qualitative features by
+appropriate choices of Weierstrass data, see either
+[KWH], or pages 192–217 of [DHKW].
+[KWH] H. Karcher, F. Wei, and D. Hoffman,
+The genus one helicoid, and the minimal surfaces
+that led to its discovery, in “Global Analysis in
+Modern Mathematics, A Symposium in Honor of
+Richard Palais’ Sixtieth Birthday”, K. Uhlenbeck
+Editor, Publish or Perish Press, 1993
+[DHKW] U. Dierkes, S. Hildebrand, A. Kuster,
+and O. Wohlrab, Minimal Surfaces I, Grundlehren
+der math. Wiss. v. 295 Springer-Verlag, 1991
+
+

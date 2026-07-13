@@ -1,0 +1,102 @@
+About the Classical Enneper Surface
+and some Polynomial Relatives
+See also: About Minimal Surfaces
+Definition with explicit formulas
+The classical Enneper Surface is a minimal immersion
+of the complex plane, C, into Euclidean space R3 . It
+is given by the formula
+F (z) := real({z 3 /3 − z, i ∗ (z 3 /3 + z), z 2 }).
+If one wants to see coordinate lines on the image one
+can use Cartesian coordinates for the complex plane,
+z := x + i · y, or polar coordinates z := r · (cos ϕ +
+i · sin ϕ), and map those grids with F . The Cartesian
+choice is natural here since its parameter lines are
+principal curvature lines. However the polar choice
+also has merits—namely, rotations around the origin are isometries and the coordinate lines are orbits.
+Moreover all symmetry lines of the surface are radial
+parameter lines. The Action Menu of 3DXM allows
+to switch between these parametrizations.
+In 3DXM one can also deform this classical surface,
+but we need to explain the significance of what one
+
+sees. See the last page of this text.
+Early in the second half of the nineteenth century the
+Enneper-Weierstraß representation of minimal surfaces was discovered. Its main advantage is that it
+permits one to write a formula for a minimal surface
+in terms of important geometric quantities. Every
+surface in R3 can be mapped to the 2-sphere S2 by
+sending each point on the surface to the unit normal
+at this point; this map is called the geometric Gauß
+map N . For minimal surfaces this map is angle preserving, but orientation reversing. Composition of N
+with the orientation reversing stereographic projection therefore gives a map g from the surface into C
+which is both and orientation preserving. Finally, if
+we interpret 90◦ rotation on each tangent space of a
+surface in R3 as multiplication of tangent vectors by i,
+then with this convention g becomes a meromorphic
+function, the meromorphic Gauß map of the minimal
+surface. This meromorphic Gauß map is one-half of
+the Weierstraß data which are needed to write down
+the Enneper-Weierstraß representation. The remaining part of these data is the differential dF 3 of the
+third component of F , i.e., of the height function on
+the minimal surface. It might seem at first that we
+
+must know a minimal surface rather well before we
+have its Weierstraß data. However, on a large class of
+geometrically important minimal surfaces the situation is simple indeed. If a minimal surface is complete
+and has finite total curvature then the Gauß map g
+is determined—up to a constant factor—by its zeros
+and poles, in other words by its vertical normals. This
+important result extends to differentials, in particular to the differential of the height function, after we
+perform a small trick, namely extend the real valued
+differential dF 3 to a complex valued one by putting
+for every tangent vector v of the surface
+dh(v) := dF 3 (v) − i · dF 3 (i · v)
+:= dF 3 (v) − i · dF 3 (Rot90 (v)).
+To make matters even simpler, observe that the points
+on the surface, where the normal is vertical, are the
+same points where the differential of the height function is zero. More precisely, the zeros and poles of g
+on the minimal surface are precisely the zeros of dh,
+even with the same multiplicity. (To complete this
+discussion we would have to study the situation at
+infinity, but we will omit this.) The main point is
+to point out that very few, finitely many, data about
+
+such minimal surfaces suffice to find their Weierstraß
+data and therefore explicitly parametrize them. Here
+is this famous formula:
+Weierstraß Representation in terms of g, dh:
+Z z  
+
+
+
+
+1
+1
+i
+1
+F (z) := Re
+g−
+dh,
+g+
+dh, dh
+2
+g
+2
+g
+∗
+The classical Enneper surface is obtained if we put
+g(z) = z, dh = zdz.
+This generalizes to polynomials P (z), put:
+g(z) = P (z), dh = P (z)dz.
+3DXM allows P (z) := aa · z + bb · z 2 + cc · z 3 .
+The pure powers have again the rotations around the
+origin as metric isometry group and polar coordinates
+provide a much better view of these surfaces and are
+recommended. All surfaces of the associate family
+are, for g(z) = z k , congruent. There are straight
+lines on the surface, and if one looks in the direction
+of the z-axis onto the surface, then the portion below
+these lines is drawn first. The default morph deforms
+two such surfaces into each other.
+
+

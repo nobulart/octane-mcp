@@ -1,0 +1,127 @@
+Minimal Surfaces: Catalan, Henneberg, Scherk*
+These surfaces are early discovered minimal surfaces. They
+were found as explicitly parametrized surfaces, while soon
+afterwards variations of the Weierstrass representation became the main tool of description. This changed again in
+the early 1930s when Douglas and Rado solved the Plateau
+Problem with Functional Analysis methods. The Weierstrass representation had, after the work of Ossermann, a
+comeback in the 1980s.
+Scherk’s doubly periodic minimal surface (1835):
+x(u, v) :=
+
+u
+v
+1
+cos(v)
+, y(u, v) :=
+z(u, v) :=
+ln(
+).
+bb
+bb
+bb
+cos(u)
+
+Catalan’s minimal surface (1855), associate family:
+1
+( cos(aa · π)(u − sin(u) cosh(v))+
+bb
+sin(aa · π)(v − cos(u) sinh(v)) − 4)
+1
+y(u, v) := ( cos(aa · π)(1 − cos(u) cosh(v))+
+bb
+sin(aa · π) sin(u) sinh(v))
+1
+z(u, v) := ( cos(aa · π)4 sin(u/2) sinh(v/2)+
+bb
+sin(aa · π)4 cos(u/2) cosh(v/2)).
+
+x(u, v) :=
+
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+Henneberg’s minimal surface (1875), associate family:
+2 cos(aa · π)
+2 sin(aa · π)
+caa :=
+, saa :=
+0.01 + |bb|
+0.01 + |bb|
+1
+x(u, v) :=caa · (sinh(u) cos(v) − sinh(3u) cos(3v))
+3
+1
++saa · (cosh(u) sin(v) − cosh(3u) sin(3v))
+3
+1
+y(u, v) :=caa · (sinh(u) sin(v) + sinh(3u) sin(3v))
+3
+1
+4cc
++saa·(− cosh(u) cos(v) − cosh(3u) cos(3v) +
+)
+3
+3
+z(u, v) :=caa · (cosh(2u) cos(2v) − cc)
++saa · sinh(2u) sin(2v)
+u ∈ R, v ∈ [−π, π], a cylinder domain.
+The default value of the translation parameter, cc = 0,
+puts the symmetry point of Henneberg’s surface at the
+origin. If one wants to scale up a neighborhood of the
+branch point at u = 0, v = 0, use cc = 1 to put that
+branch point at the origin and make use of the scaling
+parameter bb in the denominator.
+Scherk’s discovery of the above doubly periodic surface, of
+its singly periodic conjugate surface and of three less spectacular ones was a sensation since the only other known
+minimal surfaces, the catenoid and the helicoid, were already 50 years old. Scherk’s surfaces were destined to play
+a major role in the discovery period after 1980.
+2
+
+Catalan’s surface was next, 20 years later. This slow progress reflects the fact that no methods for the construction
+of minimal surfaces were known. This changed with Riemann, Weierstrass, Enneper and finally Schwarz. Their
+methods built on complex analysis and allowed to write
+down arbitrarily many examples. Therefore the emphasis
+shifted to examples that had additional properties. In particular complete, embedded minimal surfaces were sought.
+Quite a few triply periodic embedded ones were found,
+but it took another 100 years before the next embedded
+finite total curvature example after the catenoid was constructed: Costa’s example, a minimal embedding of the
+thrice punctured square torus.
+Henneberg’s minimal surface was studied a lot because of
+its two branch point singularities (on the z-axis). Such singularities are diﬃcult to imagine and Henneberg’s surface
+is a simple example to exhibit them. The default image
+in 3DXM shows a small neighborhood of the two branch
+points. The segment between them is a selfintersection line
+of the surface. The lines {x = ±y, z = 0} lie also on the
+surface. 180◦ rotation around any of these straight lines
+is a symmetry of the surface and the conjugate surface
+has, correspondingly, the three planes which pass through
+the origin and are orthogonal to one of these three lines,
+as symmetry planes. - Note: The conjugate surface has
+twice the area of Henneberg’s surface. This is because
+Henneberg’s surface is covered twice. For about 100 years
+it was the only known non-orientable minimal surface.
+3
+
+The last entry in the Action Menu emphasizes a Möbius
+band on Henneberg’s surface. The default morph is the
+associate family morph.
+The Range Morph (from the Animate Menu) shows larger
+and larger pieces of the surface - scaled down to fit on the
+screen. One can see still larger portions by increasing uMax
+beyond 0.95. (Choose b1 > 1 to compensate for the growing size.)
+A third morph expands a band around the two branch
+points and moves it over the surface.
+The parameter line u = 0, v ∈ [−π, π] is a symmetry
+line of the domain cylinder. It is mapped to the segment
+between the branch points on the z-axis and 180◦ rotation
+around it is a symmetry of the surface. The two lines v = 0
+and v = π are also symmetry lines of the domain cylinder.
+They are mapped to curves of reflectional symmetry, reflection in the x-z-plane. They end in the branch points
+like a Neil parabola, {x3 = z 2 }.
+H.K.
+
+4
+
+

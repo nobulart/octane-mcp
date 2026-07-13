@@ -1,0 +1,101 @@
+About the Plane Curves Category
+A plane curve is described by a map of an interval, [tM in, tM ax] in t-space into (x, y)-space. Each
+point t is mapped to a two-dimensional point P with
+coordinates (x(t), y(t)). The mapping is given by
+two real-valued functions that give the values of x
+and y as a function of the t and nine global “parameters”, called aa, bb, cc, dd, ee, ff, gg, hh, ii. Most
+curves use only 1,2,3 or even none of these parameters. (For example, an ellipse depends on two semiaxes, aa and bb). To discretize the curve, the interval
+[tM in, tM ax] is subdivided into tResolution equispaced points running from tM in to tM ax. These
+points divide the domain interval into subintervals.
+When a curve is “Create”-ed, the mapping t → (x, y)
+is applied to each of the subdivision points, so each of
+the subintervals in t-space is mapped to a segment in
+the plane, and this collection of segments is a polygon
+that is what actually represents the immersed curve.
+When you have selected a particular curve from
+the Plane Curve menu, a version with certain default
+parameter values will be displayed. You can then
+choose “About This Object...” from the Action Menu
+1
+
+to see the equations for the curve as a function of t
+and the parameters, (and perhaps to see some interesting properties of the curve). You can change the
+parameters in the Settings Menu and then re-Create
+the curve.
+The program can also interpolate linearly between two curves of the same family that you can set
+by choosing “Set Morphing...” in the Settings Menu.
+The number of steps in the “morph” is the Number of
+Frames in the ﬁlmstrip, an integer that you can also
+set. Playing back the ﬁlmstrip gives a “movie” of the
+curve changing gradually (“morphing”) between the
+initial and ﬁnal curves.
+A user can deﬁne a curve by choosing one of the
+User Deﬁned... items from the Plane Curve menu.
+This will bring up a dialog that will permit one to create algebraic expressions describing the curve involving the variables t and the nine parameters, aa, bb, ..., ii.
+Note that if you want to create the graph of a function, f (x), i.e., display the curve y = f (x), then you
+can use the parametric equations x(t) := t, y(t) :=
+f (t).
+The user can also deﬁne a plane curve by giving its curvature, k, as a function of t (and the usual
+2
+
+parameters aa, ...ii). To do this choose User (Curvature)... from the Planar Curves menu. The resulting
+curve will have t as its arclength parameter, and will
+start (at t = 0) from the origin with tangent the
+unit vector in the x direction. (By the fundamental theorem of plane curves, there is a unique such
+curve.) The interval [tM in, tM ax] must contain zero
+of course—or the curve will be empty.
+See the corresponding discussion in About the
+Surface Category for more detail on how to enter expressions.
+Plane curves can also be given “implicitly”, as
+the solutions of an equation, f(x,y) = constant. There
+are three curves in the Plane Curve menu that are
+given this way, the Cuspidal Cubic, y 2 − x3 = f f ,
+the Nodal Cubic, y 2 − x2 ∗ (1 − x) = f f , and the
+Tacnodal Quartic, y 3 + y 2 − x4 = f f . There is also
+a User (Implicit)... menu item in the Plane Curve
+menu, that brings up a dialog that will let you enter
+an expression (deﬁning a function f (x, y)) a value for
+f f , and a rectangle in the x, y-plane. Clicking on the
+Create button will display the solution of f (x, y) =
+f f inside the rectangle.
+
+3
+
+There are several items in the Plane Curve menu
+that create special animations:
+First there is Show Parallel Curves. This ﬁrst
+draws the normals to the selected plane curve, from
+the curve to the center of the osculating circle. It then
+leaves behind a trace of the evolute (the locus of all
+centers of osculating circles) and draws the parallel
+curves to the selected curve. (Singularities develop
+when the parallel curve reaches the evolute.)
+Secondly, there is Draw Generalized Cycloid. This
+rolls a circle (of radius hh) on the selected curve, and
+a point D along a ﬁxed radius traces out a curve.
+(If ii = 0 the drawing point, D, is the center of the
+circle, if ii = 1, it is the point on the rim, and in
+general ii is the signed distance from the center in
+units of the radius. Changing the sign of hh will
+change the side of the curve on which the circle rolls.
+If gg is not zero, then the value of hh (the radius) is
+modiﬁed to the nearest value that makes the length
+of the circle go an integral number of times into the
+length of the curve (so that the cycloid closes up). If
+you change the parameters gg, hh, ii, and then choose
+Draw Generalized Cycloid again, then a new generalized cycloid is drawn of course, and the old one is
+4
+
+ﬁrst erased unless you hold down Shift as you make
+the menu selection.
+Finally, selecting Draw Osculating Circles will
+draw (in blue) the osculating circles of a selected
+parametric curve (and their radii) at a point that
+moves along the curve. As the point moves, the centers of the osculating circles trace out the evolute of
+the curve in red. (If you press the Shift key while selecting Draw Osculating Circles, the normals to the
+radii of the osculating circles will be drawn in red
+before the osculating circles are drawn.)
+
+5
+
+

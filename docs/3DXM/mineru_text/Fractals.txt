@@ -1,0 +1,82 @@
+Fractals & Chaos
+
+The mathematical ideas that are encapsulated in the
+terms “Fractal” and “Chaos” are not easy to make
+precise in non-technical terms. Yet somehow these
+terms have become “buzz words” that have caused
+an unprecedented stir in the popular culture. Usually bookstores have very few mathematics books directed at the layman, but the past decade has seen
+an explosion of popular books with the stated goals
+of explaining the theory and applications of fractals
+and chaos to the non-mathematician.
+These concepts have also proved exciting for professional mathematicians. The beginnings of both theories can be traced back at least a century, but in retrospect it is clear that each required the visualization
+capabilities that modern computers have provided in
+order to progress beyond a fairly primitive stage. In
+fact both areas were dormant for many years prior
+to the 1970s when the ability to model fractals and
+chaotic systems on computers provided some striking
+examples that gave the necessary impetus for important progress.
+1
+
+We will not try here to give precise deﬁnitions of what
+it means to say that a geometric object is a fractal
+or that a dynamical system is chaotic. Rather, we
+will try to explain these concepts in intuitive terms
+that are directly related to the visualizations that 3DXplorMath provides.
+The ﬁrst property is a geometric one that applies to
+subsets of the plane or higher dimensional spaces and
+goes by the name of scaling invariance. What this
+means is that there are arbitrarily small pieces of the
+set that when “scaled-up” (i.e., seen under a high
+power microscope) look very similar to much larger
+pieces of the set. Such sets are called fractals, because
+in a certain precise sense they have a dimension which
+is a non-integer value.
+Chaos on the other hand describes a characteristic behavior of certain dynamical processes that is
+usually referred to as “sensitive dependence on initial
+conditions”. For simplicity we will restrict our attention here to fairly special dynamical systems, namely
+discrete dynamical systems in the complex plane deﬁned by a polynomial function, f (z), of degree d
+greater than one. (In fact, the case of a quadratic
+polynomial already exhibits most of the interesting
+2
+
+behavior.) Let us denote by f ◦n the polynomial obtained by composing f with itself n times. Roughly
+speaking, “complex dynamics” is concerned with the
+study of the asymptotic properties of the sequences
+of iterates f ◦n (z) as n teds to inﬁnity, and how this
+asymptotic behavior changes as the initial condition,
+z, varies.
+We deﬁne B∞ (f ) to be the so-called attractor
+basin of inﬁnity, namely the set of all initial conditions z for which the sequence f ◦n (z) tends to inﬁnity.
+It is easy to see that B∞ (f ) is an open set. Moreover, from d ≥ 2 it follows that there is some disk,
+say of radius R, and a constant K > 1 such that
+|f (z)| > K|z| for all initial conditions z with |z| > R,
+and it follows that the complement of the disk of radius R is included in B∞ (f ), so in particular B∞ (f )
+is non-empty. On the other hand B∞ cannot be the
+whole complex plane. For example, any solution of
+the polynomial equation f (z) − z = 0 is a ﬁxed point
+of f so that f ◦n (z) = z for all n, and so z is not in
+B∞ . It follows that the boundary ∂B∞ of the basin
+of inﬁnity is a non-empty compact set, J(f ) called
+the Julia set of f .
+
+3
+
+Note that by deﬁnition J(f ) is a “bifurcation set” for
+f , in the sense that given any point j of J(f ) there are
+points p and q arbitrarily close to j such that f ◦n (p)
+tends to inﬁnity while f ◦n (q) remains bounded. In
+other words, for z near j, the asymptotic behavior of
+the sequence f ◦n (z) depends sensitively on the initial
+value z, the hallmark of Chaos.
+Example. If f (z) = z 2 , show that B∞ (f ) is the
+complement of the unit disk, so that J(f ) is the unit
+circle.
+It turns out that this example is highly atypical—in
+general J(f ) is not a smooth curve, and in fact it is
+usually a fractal set, establishing a relation between
+fractals and chaos. For more details see the ATO for
+the Mandelbrot set and Julia sets.
+
+4
+
+

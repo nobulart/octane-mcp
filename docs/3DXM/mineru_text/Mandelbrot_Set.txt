@@ -1,0 +1,598 @@
+The Mandelbrot Set And Its Julia Sets ∗
+
+If one wants to study iterations of functions or mappings, f ◦n = f ◦ · · · ◦ f , as n becomes arbitrarily large
+then Julia sets are an important tool. They show up
+as the boundaries of those sets of points p whose iteration sequences f ◦n(p) converge to a selected fixed
+point pf = f (pf ). One of the best studied cases is the
+study of iterations in the complex plane given by the
+family of quadratic maps
+z → fc(z) := z 2 − c.
+The Mandelbrot set will be defined as a set of parameter values c. It provides us with some classification of the different ‘dynamical’ behaviour of the functions fc in the following sense: If one chooses a c-value
+from some specific part of the Mandelbrot set then
+one can predict rather well how the iteration sequences
+zn+1 := fc(zn) behave.
+1) Infinity is always an attractor. Or, more
+precisely, for each parameter value c we can define a
+∗
+
+This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+Radius Rc ≥ 1 such that for |z| > Rc the iteration
+sequences f ◦n(z) converge to infinity. Proof: The triangle inequality shows that |fc(z)| ≥ |z|2 −|c| and then
+|fc(z)| > |z| is certainly true if |z 2| − |c| >p
+|z|. Therefore it is sufficient to define Rc := 1/2 + 1/4 + |c|,
+which is the positive solution of R2 − R − |c| = 0.
+This implies: if we start the iteration with z1 > Rc then
+the absolute values |zn| increase monotonically—and
+indeed faster and faster to infinity. Moreover, any starting value z1 whose iteration sequence converges to infinity will end up after finitely many iterations in this
+neighborhood of infinity, U∞ := {z ∈ C | |z| > Rc}.
+The set of all points whose iteration sequence converges
+to infinity is therefore an open set, called the attractor
+basin A∞(c) of infinity.
+2) Definition of the Julia set Jc. On the other
+hand, the attractor basin of infinity
+pis never all of C,
+since fc has fixed points zf = 1/2± 1/4 + c (and also
+points of period n, that satisfy a polynomial equation
+of degree 2n, namely f ◦n(z) = z).
+
+2
+
+Definition. The nonempty, compact boundary of the
+attractor basin of infinity is called the Julia set of fc,
+Jc := ∂A∞(c).
+Example. If c = 0 then the exterior of the unit circle is the attractor basin of infinity, its boundary, the
+unit circle, is the Julia set J0. The open unit disk
+is the attractor basin of the fixed point 0 of fc. The
+other fixed point 1 lies on the Julia set; 1 is an expanding fixed point since fc0 (1) = 2; its iterated preimages
+−1, ±i, . . . all lie on the Julia set.
+Qualitatively this picture persists for parameter values
+c near 0 because the smaller fixed point remains attractive. However, the Julia set immediately stops being a
+smooth curve—it becomes a continuous curve that oscillates so wildly that no segment of it has finite length.
+Its image is one of those sets called a fractal for which
+a fractional dimension between 1 and 2 can be defined.
+Our rainbow coloration is intended to show Jc as a
+continuously parametrized curve. We next take a more
+carefull look at attractive fixed points.
+3
+
+3) c-values for which one fixed point of fc is
+attractive.
+There is a simple criterion for this: if the derivative at
+the fixed point satisfies |fc0 (zf )| = |2zf | < 1 then zf
+is a linearly attractive fixed point; if |2zf | > 1 then
+zf is an expanding fixed point; if the derivative has
+absolute value 1 then no general statement is true (but
+interesting phenomena occur for special values of the
+derivative).
+Since the sum of the two fixed points is 1, the derivative
+fc0 can have absolute value < 1 at most at one of them.
+Let wc be that square root of 1 + 4c having a positive
+real part. Then |1 − wc| is the smaller of the absolute
+values (of the derivatives of fc at the fixed points). The
+set of parameter values c with a (linearly) attractive
+fixed point of fc is therefore the set {c | |1 − wc| < 1},
+or {c = (w2 − 1)/4 | |1 − w| < 1}. In other words,
+the numbers 1 + 4c are the squares of numbers w that
+lie in a disk of radius one with 0 on its boundary. The
+apple shaped boundary is therefore the square of a circle
+through 0. It is called a cardioid.
+4
+
+4) The definition of the Mandelbrot set in
+the parameter plane.
+The behavior of the iteration sequence zn+1 := fc(zn)
+in the z-plane depends strongly on the value of the
+parameter c. It turns out that for those c satisfying
+|c| > Rc, the set of points z whose iteration sequences
+do not converge to infinity has area = 0. Such points
+are too rare to be found by trial and error, but one can
+still compute many as iterated preimages of an unstable
+fixed point. It follows from |c| > Rc that only the
+points of the Julia set Jc do not converge to infinity.
+Moreover, the Julia set is no longer a curve, but is a
+totally disconnected set: no two points of the Julia set
+can be joined by a curve inside the Julia set. (In this
+case our coloration of Jc has no significance.)
+The Mandelbrot set is defined by the opposite behaviour
+of the Julia sets:
+Mandelbrot Set : M := {c | Jc is a connected set}
+There is an 80 year old theorem by Julia or Fatou that
+says:
+
+5
+
+M = {c ; fc◦n(0) stays bounded}
+= {c ; |fc◦n(0)| < Rc for all n}.
+This provides us with an algorithm for determining the
+complement of M; namely c 6∈ M if and only if the
+iteration sequence {fc◦n(0)} reaches an absolute value
+> Rc for some positive integer n. (But, the closer c is
+to M, the larger this termination number n becomes).
+On the other hand, if fc has an attractive fixed point,
+then it is also known that {fc◦n(0)} converges towards
+that fixed point. The interior of the cardioid described
+above is therefore part of the Mandelbrot set, and in
+fact it is a large part of it.
+As experiments we suggest to choose c-values from the
+apple-shaped belly of the Mandelbrot set and observe
+how the Julia sets deform as c varies from 0 to the
+cardioid boundary. For an actual animation, choose
+the deformation interval with the mouse (Action Menu)
+and then select ‘Morph’ in the Animation Menu. To
+see how the derivative at the fixed point controls the
+iteration near the fixed point, choose ‘Iterate Forward’
+6
+
+(Action Menu) and watch how chosen points converge
+to the fixed point. This is very different for c from
+different parts of the Mandelbrot belly.
+5) Attractive periodic orbits. As introduction
+let us determine the orbits of period 2, i.e., the fixed
+points of fc ◦ fc that are not also fixed points of fc.
+Observe that:
+fc ◦ fc(z) − z = z 4 − 2cz 2 − z + c2 − c
+= (z 2 − z − c)(z 2 + z − c + 1).
+The roots of the first quadratic factor are the fixed
+points of fc, the roots of the other quadratic factor are
+a pair of points that are not fixed points of fc, but are
+fixed points of fc ◦fc, which means, they are an orbit of
+period 2, clearly the only one. Such an orbit is (linearly)
+attractive if the product of the derivatives at the points
+of the orbit has absolute value < 1. The constant coefficient in the quadratic equation is the product of its
+roots, i.e. the product of the points of period 2 is 1 − c.
+Therefore: The set of c-values for which the orbit of
+period 2 is attractive is the disk {c ; |1 − c| < 1/4}.
+Again, this disk is part of the Mandelbrot set since
+7
+
+{fc◦n(0)} has the two points of period 2 as its only
+limit points.
+The interior of the Mandelbrot set has only two components that are explicitly computable. These are the
+c-values giving attractive fixed points or attractive orbits of period 2. For example, the points of period 3
+are the zeros of a polynomial of degree 6, namely:
+ 2
+fc ◦ fc ◦ fc(z) − z /(z − z − c)
+= z 6 + z 5 + (1 − 3c)z 4 + (1 − 2c)z 3 +
++(1 − 3c + 3c2)z 2 + (c − 1)2z + 1 − c(c − 1)2.
+But since this polynomial cannot be factored (with
+c a parameter) into two polynomials of degree 3 it
+does not provide us with a description of the attractive orbits of period 3. However, it does give those
+c-values for which the period 3 orbits are superattractive (i.e. (f ◦3)0(orbit point) = 0), since in this case the
+constant term must vanish. Approximate solutions of
+1−c(c−1)2 = 0 are c = 1.7549, c = 0.12256±0.74486i.
+One can navigate the Mandelbrot set and observe that
+the complex solutions are between the two biggest blobs
+that touch the primary apple from either side.
+8
+
+Linearly attractive orbits always have c-values which
+belong to open subsets of the Mandelbrot set (in particular all the blobs touching the two explicit components), but the closure of these open subsets does not
+exhaust the Mandelbrot set. For example for c = i the
+orbit of 0 is 0 7→ −i 7→ −1 − i 7→ i 7→ −1 − i . . . , i.e.,
+after two preliminary steps it reaches an orbit of period 2. Since this orbit stays clearly bounded we have
+i ∈ M (by the criterium quoted before). On the other
+hand, if the iteration z 7→ z 2 − i had any attractor (besides ∞), then the orbit of 0 would have to converge
+to the attracting orbit. Therefore there is no attractor
+and no attractor basin. In fact, the complement of the
+Julia set is the (simply connected) attractor basin of
+∞. Because of its appearance, this Julia set is called a
+dendrite.
+To generalize this observation, consider, for any c, the
+orbit of 0: 0 7→ −c 7→ c2 − c 7→ c4 − 2c3 + c2 − c 7→
+(c4 − 2c3 + c2 − c)2 − c 7→ . . . . If 0 is on a periodic
+orbit for some c, then this orbit is superattractive. If
+the periodicity starts later then this periodic orbit may
+not be an attractor even though the orbit of 0 reaches
+9
+
+it in finitely many steps. For example c2 − c is periodic
+of period 3, if c3 · (c − 2) · (c3 − 2c2 + c − 1)2 · (c6 −
+2c5 + 2c4 − 2c3 + c2 + 1) = 0; c = 2 is the largest point
+on the Mandelbrot set, the third factor has as roots the
+three c-values (mentioned before) for which the iteration has superattractive orbits of period 3. The last
+factor has the root c = 1.239225555 + 0.4126021816 · i,
+its Julia set is another dendrite. A third dendrite is
+obtained, for example, if the 4th point c4 − 2c3 + c2 − c
+in the orbit of 0 is a fixed point, which is the case
+if c4(c − 2)(c3 − 2c2 + 2c2 − 2) = 0; here the last
+factor has the numerical solutions c = 1.543689 and
+c = 0.2281555 ± 1.1151425 · i.
+6) Suggestions for experiments. The final entry
+in the Action Menu for the Julia set fractal is a hierachical menu with five submenus, each of which lists a
+number of related c-values that you may select. The cvalues in these menus were selected because they typify
+either some special topological property of the associated Julia set or some dynamical property of the iteration dynamics of z 7→ z 2 − c, and these properties are
+10
+
+referenced by special abbreviations added to the menu
+item. (In addition some menu items also list a “name”
+that is in common use to refer to the Julia set, usually
+deriving from its shape). For convenience we will list
+in the next couple of pages all the items from these five
+menus, but first we explain the abbreviations used to
+describe them.
+Abbreviations used in the following lists of interesting C-values. ‘FP’ means ‘fixed point’, the corresponding c-values are from the belly of the Mandelbrot
+set. ‘cyc k’ means ‘cyclic of period k’, the corresponding c-values are from the blobs directly attached to the
+belly; its Julia sets have a fixed point which is a common boundary point of k components of the attractor
+basin and the attractive orbit wanders cyclicly through
+these k components. ‘per 2 · 3’ means: this c-value
+has an attractor of period 6 and the c-value is from a
+blob which is attached to the disk in M (which gives
+the attractive orbits of period 2). By contrast, ‘per
+3 · 2’ means that the c-value is from the biggest blob
+which is attached to a period-3 blob (attached to the
+11
+
+belly); its attractor has also period 6, but the open sets
+through which the attractive orbit travels are arranged
+quite differently in the two cases. One should compare
+both of them with the cyclic attractors of period 2 resp.
+3. The abbreviation ‘tch 1-2’ means that the c-value is
+in the Mandelbrot set a common boundary point between the belly (i.e. the component of attractive fixed
+points) and the component of attractors of period 2.
+For the ‘Siegel disks’ see Nr. 8 of this ATO first; the
+column entry in the list gives the rotation number of
+the derivative (of the iteration map) at the fixed point.
+In the dendrite section of the list we mean by ‘ev per
+2’ that the orbit of 0 is ‘eventually periodic with period
+2’, as explained in Nr5 of this ATO. Finally, if c 6∈ M
+then the Julia set is a totally disconnected Cantor set
+and there are no such easy distinctions between different kinds of behaviour of the iteration on the Julia set
+(all other points are iterated to ∞).
+
+12
+
+Interesting C-values From the Action Submenus.
+C−values
+Popular Name
+Behaviour
+Attractors Menu.
+0.0
++
+0.0
+·i
+Circle
+FP
+0.0
++
+0.1
+·i
+Rough Circle
+FP
+0.127
++
+0.6435
+·i
+Near-Rabbit
+FP
+−0.353
+−
+0.1025
+·i
+Near-Dragon
+FP
+0.7455
++
+0.0
+·i Near San Marco
+FP
+1.0
++
+0.0
+·i
+cyc 2
+1.0
++
+0.2
+·i
+cyc 2
+0.1227
++
+0.7545
+·i
+Rabbit
+cyc 3
+1.756
++
+0.0
+·i
+Airplane
+cyc 3
+−0.2818
++
+0.5341
+·i
+cyc 4
+1.3136
++
+0.0
+·i
+per 2 · 2
+−0.3795
++
+0.3386
+·i
+cyc 5
+0.5045
++
+0.5659
+·i
+cyc 5
+−0.3909
++
+0.2159
+·i
+cyc 6
+0.1136
++
+0.8636
+·i
+per 3 · 2
+1.1409
++
+0.2409
+·i Rabbit’s Shadow per 2 · 3
+−0.3773
++
+0.1455
+·i
+cyc 7
+−0.1205
++
+0.6114
+·i
+cyc 7
+−0.36
+−
+0.1
+·i
+Dragon
+cyc 8
+0.3614
++
+0.6182
+·i
+cyc 8
+−0.3273
++
+0.5659
+·i
+per 4 · 2
+1.0
++
+0.2659
+·i
+per 2 · 4
+1.3795
++
+0.0
+·i
+per 2 · 2 · 2
+0.0318
++
+0.7932
+·i Rabbit Triplets
+per 3 · 3
+−0.0500
++
+0.6318
+·i
+cyc 10
+−0.4068
++
+0.3409
+·i
+per 5 · 2
+0.5341
++
+0.6023
+·i
+per 5 · 2
+0.9205
++
+0.2477
+·i
+per 2 · 5
+13
+1.2114
++
+0.1545
+·i
+per 2 · 5
+0.6977
++
+0.2818
+·i
+cyc 11
+0.4864
++
+0.6023
+·i Quintuple Rabbits per 5 · 3
+0.65842566307252 − 0.44980525145595·i SuperAttractor
+per 21
+
+Interesting C-values From the Action Submenus.
+C−values
+
+Popular Name
+
+Between Attractors Menu.
+0.75
+1.25
+0.125
+−0.35676
+
++
++
++
++
+
+Siegel Disks Menu.
+0.390540870218
+−0.08142637539
+0.66973645476
+
++ 0.586787907347 ·i
++ 0.61027336571 ·i
+− 0.316746426417 ·i
+
+0.0
+0.0
+0.64952
+0.32858
+
+·i
+San Marco
+tch 1-2
+·i San Marco’s Shadow tch 2-2·2
+·i Balloon Rabbit
+tch 1-3
+·i
+tch 1-5
+
+One Simply Connected Open Component Menu.
+0.0
++
+1.0
+·i
+0.2281554936539
++ 1.1151425080399·i
+1.2392255553895
+− 0.4126021816020·i
+−0.4245127190500
+− 0.2075302281667·i
+1.1623415998840
++ 0.2923689338965·i
+Outside Mandelbrot set Menu.
+0.765
++
+−0.4
+−
+−0.4253
+−
+
+14
+
+0.12
+0.25
+0.2078
+
+Behaviour
+
+·i
+·i
+·i
+
+2π · i · gold
+√
+2π · i/√2
+2π · i/ 5
+
+Dendrite
+Dendrite
+Dendrite
+
+Cantor set
+Cantor set
+Cantor set
+
+ev per 2
+FP[after 3]
+ev per 3
+FP after 7
+per 2 after 7
+
+An experiment which one should always make after one
+has computed a Julia set for some c from the Mandelbrot set: Remember from which part of M c came and
+then ‘Iterate Forward’ (Action Menu) mouse selected
+points until they visually converge to a periodic attractor. Observe how the shape of the Julia set lets one
+guess the period of its attractor and how this relates to
+the position of c in M.
+7) Computation of the Julia set. In addition to
+the attractor at infinity there is at most one further attractor in the z → (z 2 − c) systems. All preimages
+of non-attractive fixed points or non-attractive periodic orbits are points on the Julia set. Since |fc0 | > 1
+along the Julia set (with some exceptions), the preimage computation is numerically stable. This is a common method for computing Julia sets.
+In our program we compute preimages starting from
+the circle {z; |z| = Rc} around the wanted Julia set.
+Under inverse images these curves converge from outside to the Julia set. Such an approximation by curves
+allows us to color the Julia set in a continuous way
+15
+
+and thus emphasize that, despite its wild looks it is
+the image of a continuous curve—at least for c ∈ M ,
+otherwise we recall that the Julia set is totally disconnected, so in particular is not the image of a curve. Our
+computation works also for c 6∈ M, since our ‘curves’
+of course consist of only finitely many points, and the
+inverse images of each of these points have their limit
+points on the Julia set.
+8) Self-similarity of a Julia set. A well advertised property of these Julia sets is their so called ‘selfsimilarity’. By this one means: Take a small piece of the
+Julia set and enlarge it; the result looks very much like
+a larger piece of that same Julia set. For the Julia sets
+of the present quadratic iterations, this self-similarity
+is easily understood from the definitions: The iteration
+map fc is a conformal map that stretches its Julia set
+1:2 onto itsself. In other words, the iteration map itself
+maps any small piece of its Julia set to roughly twice as
+large a piece, and it does so in an angle preserving way.
+From this point of view self-similarity should come as
+no surprise.
+16
+
+9) Siegel Disks. We next would like to explain an experimentally observable phenomenon that mathematicians find truly surprising, but this needs a little preparation.
+Simplifying Mappings. Imagine that we want to describe something on the surface of the earth, for example a walk. For a long time, people have been more comfortable giving the description on a map of the earth
+rather than on the earth itself. Mathematicians view a
+map of the earth more precisely as a mapping F from
+the earth to a piece of paper and they describe (or
+even prove) properties of the map by properties of the
+mapping F . An example of a useful property is ‘conformality’: angles between curves on the earth are the
+same as the angles between the corresponding curves
+on the map.
+Conjugation by simplifying mappings. Let us consider one of the above iteration maps fc and assume
+that it has an attractive fixed point zf with derivative
+q := fc0 (zf ), |q| < 1. The simplest map with the same
+derivative is the linear map L(z) := q · z. It is the definition of derivative that the behaviour of fc near the
+17
+
+fixed point looks ‘almost’ like the behaviour of L near
+its fixed point 0, and ‘almost’ means: the smaller the
+neighborhoods of the fixed points (on which the maps
+are compared) the more the maps look alike. But more
+is true for fc because of the assumption |q| < 1, we have
+the theorem: There exists on a fixed(!) neighborhood
+of the fixed point zf a simplifying map F to a neighborhood of 0 ∈ C that makes fc look exactly like its linear
+approximation L, by which we mean: fc = F −1 ◦L◦F .
+In particular, this tells us everything about the iterations of fc in terms of the iterations of L because they
+also look the same when compared using (‘conjugation’
+by) F : fc◦n = F −1 ◦ L◦n ◦ F .
+Siegel’s Theorem. The previous result cannot be true
+in general if |q| = 1. For example if q = exp(2πi/k),
+then L◦k = id, but fc◦k =/ id. Therefore they cannot
+look alike under a simplifying (i.e., ‘conjugating’) mapping F . But if z → q · z is an irrational rotation and if
+some further
+√ condition is satisfied, for example if q :=
+exp(2πi/ 2), then there is again such a simplifying
+mapping F such that fc looks near that fixed point exactly like its linearization, namely: fc = F −1 ◦L◦F .
+18
+
+Experiment. While Siegel’s proof insures only very
+small neighborhoods on which the simplifying mapping
+F exists, these neighborhoods are surprisingly large in
+the present case. One can ‘observe’ Siegel’s theorem by
+first choosing c = ((1 − q)2 − 1)/4 such that fc0 (zf ) = q
+√
+with q = exp(2πi · k/ p), p prime (or square free),
+then one chooses points on a fairly straight radial curve
+from the fixed point almost out to the Julia set. Under
+repeated iterations these points travel on closed curves
+around the fixed point (’circles’ when viewed with F )
+and all of them travel with the same angular velocity,
+i.e., one observes that they remain on non-intersecting
+radial curves.
+H.K.
+
+19
+
+

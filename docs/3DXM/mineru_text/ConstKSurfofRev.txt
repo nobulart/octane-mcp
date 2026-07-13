@@ -1,0 +1,69 @@
+Surfaces of Revolution*
+with Constant Gauß Curvature
+A surface of revolution is usually described by giving its
+meridian curve s 7→ (r(s), h(s)). The surface is then obtained by rotation:
+(x, y, z)(s, ϕ) := (r(s) cos ϕ, r(s) sin ϕ, h(s)).
+Any kind of curvature condition can be expressed as an
+ordinary diﬀerential equation for the meridian curve.
+The case of given Gauß curvature K(s) is particularly
+simple if the meridian is parametrized by arclength, i.e.,
+r02 + h02 = 1. In this case the meridian is, under the condition |r0 (s)| < 1, determined by
+Z sp
+r00 (s) + K(s) · r(s) = 0,
+h(s) =
+1 − r0 (t)2 dt.
+0
+
+In the case of K(s) := 0 each solution r(s) is a linear function. We obtain circular cylinders and cones.
+Ferdinand Minding (1806 - 1885) studied the case of constant nonzero curvature. He determined the geodesics on
+the Pseudosphere (K = −1), but we could not find whether
+he was the first to describe this famous surface. He obtained the following formulas:
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+The examples for K = 1:
+The Sphere:
+r(s) = sin(s),
+0≤s≤π
+With cone points:
+r(s) = a sin(s), 0 ≤ s ≤ π, 0 < a < 1
+With singularity curve:
+r(s) = a cos(s), −b ≤ s ≤ b, a > 1, sin(b) = 1/a.
+The examples for K = −1:
+The Pseudosphere (with singular curve {s = 0}):
+r(s) = exp(−s), 0 ≤ s
+With cone point and singular curve:
+r(s) = a sinh(s), 0 ≤ s ≤ b, 0 < a < 1, cosh(b) = 1/a
+With two singular curves:
+r(s) = a cosh(s), −b ≤ s ≤ b, 0 < a, sinh(b) = 1/a.
+The Pseudosphere cannot be extended beyond the singular
+curve {s = 0}, but the metric of the Pseudosphere,
+ds2 + exp(−2s)dϕ2 ,
+extends to a complete metric on R × R with K = −1 and
+the same is true for the metric of the last example:
+ds2 + a2 cosh2 (s)dϕ2 .
+The fact that such a simply connected complete Riemannian plane with K = −1 is isometric to the non-Euclidean
+2
+
+geometry of Bolyai and Lobachevsky was not yet established when Minding studied geodesic triangles on the Pseudosphere.
+Surfaces with K = −1 in R3 have another interesting
+property: If the asymptote directions are described by
+two vectorfields of constant length, then these vector fields
+commute. For parametrizations of K = −1 surfaces with
+asymptote lines as parameter lines one therefore has: the
+edge lengths of the parameter quadrilaterals are all the
+same. Such nets are called Tchebycheﬀ nets. They are
+determined by the angle between the asymptote lines. A
+quite unexpected theory developed from here. It is outlined in
+About Spherical Surfaces (see the Documentation Menu).
+The Pseudosphere turns out to be the simplest example of
+that theory.
+These Tebycheﬀ nets also play a crucial role in the proof of
+Hilbert’s theorem, stating that the hyperbolic plane cannot be smoothly immersed isometrically into R3 .
+H.K.
+
+3
+
+

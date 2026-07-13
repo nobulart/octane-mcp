@@ -1,0 +1,151 @@
+Part I: Platonic Solids*
+Relations among them, Simple Truncations
+Part II below: Archimedean Solids,
+includes: Cubeoctahedron, Icosidodecahedron, Buckyball
+Part III below: Dual Polyhedra
+There are five (and only five) Platonic solids. Three of
+them are easy to imagine — Cube, Octahedron and Tetrahedron — while the remaining two are more diﬃcult: Icosahedron and Dodecahedron. The earliest known models
+date from the Stone Age.
+
+What to do in 3D-XplorMath?
+First, the program shows how the other four Platonic solids
+are obtained from the Cube: Select first one of the other
+polyhedra, then in the Action Menu:
+Show Relation with Cube.
+For the Octahedron one sees that its six vertices are the
+midpoints of the faces of a cube; the Octahedron faces are
+equilateral triangles. The Tetrahedron sits in the cube so
+that its four vertices are vertices of the Cube, and the six
+Tetrahedron edges are face diagonals of the Cube. The
+Icosahedron can be placed inside a Cube so that its twelve
+vertices lie on the six faces of the Cube: see the default
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+morph in 3DXM, preferably when Show Relation with
+Cube is chosen. The Dodecahedron can be placed around
+a Cube so that its twelve pentagon faces rest on the twelve
+edges of the cube. See again the default morph going from
+the Rhombic Dodecahedron via the Platonic Dodecahedron to a cube with subdivided faces.
+Second, by cutting oﬀ appropriately the vertices or the
+edges of a Platonic solid one obtains the simpler ones of the
+Archimedean solids. These are polyhedra whose faces
+are (several kinds of) regular polygons, whose edges all
+have the same length and whose vertices all look the same.
+Select in the Action Menu any of the three Truncations
+and then do the associated default Morph. For example,
+the Edge Truncations morph from one Platonic solid to
+another one (which is called its dual).
+Third, since our intuition handles two dimensions better
+than three, it is interesting to project the Platonic solids
+from their midpoints onto a circumscribed sphere. View
+in Wire Frame and select in the Action Menu:
+Show Central Projection to Sphere
+.
+These two-dimensional spherical views of the Platonic solids
+come very close to explaining why there are no other such
+beautiful polyhedra.
+Fourth, the Icosahedron and the Dodecahedron have very
+beautiful Stellations, polyhedra that fascinated Kepler. Select (Action Menu): Create Stellated. Note that all the
+mentioned views have their own default morphs. Kepler
+2
+
+imagined the stellated Dodecahedron as having pentagon
+stars as faces. One can also select it in the Polyhedra Menu
+as Kepler’s Great Dodecahedron. In 3DXM it is drawn
+as a (negative) stellation of the Icosahedron.
+Fifth, for the Cube and the Icosahedron there are two special entries in the Action Menu when viewing these solids
+in Wire Frame. For the Cube select Show Intersection
+With Plane, preferably in one of the stereo modes. The
+plane is represented by random dots and the dots inside
+the Cube are deleted; the Cube can be rotated and moved
+forward and backward, always showing its polygonal intersection with the plane. For the Icosahedron select in
+the Action Menu Add Borromean Link, preferably in one
+of the stereo modes. Note how the boundaries of the emphasized rectangles are intertwined or linked. The edge
+lengths of each rectangle are equal to the lengths of an
+edge and a diagonal of a regular pentagon, thus showing
+the relation of the Icosahedron inside the Cube with the
+Golden Ratio. Also, the default morph of this image is
+worth viewing.
+Finally, stone objects with Platonic Symmetry were found,
+mainly in Scotland. They were dated 2500 B.C. They are
+carved from bigger stones, but they look as if they were
+conceived as collections of balls. Therefore we have added
+the Action Menu entry: Show As Stone Balls. In Patch
+Display the balls are fine triangulations of the Bucky Ball,
+in Wire Frame the balls are shown with random dots. One
+3
+
+can also view other sphere triangulations after one has
+selected (in Patch Display) Create Subdivided: another
+entry appears: Triangulate Further.
+Part II: Archimedean Solids
+Here is the definition again: All faces are regular polygons
+(of up to three diﬀerent kinds). All edges have the same
+length. All vertices (with their outgoing edges) are congruent. In addition to the five Platonic solids there are
+twelve of them.
+We have already seen the simplest ones: Truncate the vertices of a Platonic solid; there are two possibilities, if some
+portion of the edges remain this is called Standard Truncation, and if the truncation cuts go through the midpoints of the edges we have a Midpoint Truncation. One
+can also truncate the edges; this deformation leads to
+the same Archimedean solid if one starts from the Octahedron or the Cube, and also if one starts from the Icosahedron or the Dodecahedron. Two more are obtained if
+one truncates the edges and the vertices; the deformation
+is easier to observe if one uses the standard truncation on
+either the Cubeoctahedron or the Icosidodecahedron. In
+fact, not quite the standard truncation, because that would
+make rectangles instead of squares from the truncated vertices.
+Finally there are the Snub Polyhedra. We could not find
+what ’snub’ means in this context. We describe the construction and call it ’to snub’. Each face of a Platonic
+4
+
+solid is scaled down from its midpoint and also rotated
+around the midpoint. The ’snubbed’ polyhedron is the
+convex hull of these deformed faces. This 2-parameter deformation can be adjusted to give a 1-parameter family
+of polyhedra whose faces are either regular polygons or
+isosceles triangles. In each family is an Archimedean solid.
+A snubbed Tetrahedron is an Icosahedron, snubbed Cube
+and Octahedron give the same Archimedean solid and also
+snubbed Dodecahedron and Icosahedron agree.
+One can probably understand all these truncations better
+if one selects in the Action Menu
+Snub Or Truncate Polyhedron In Polyhedron.
+This will add the original polyhedron (as wire frame) to
+the truncation.
+Adapted Morphs: Each selection in the Action Menu
+will cause that the default deformation, Morph in the Animation Menu, is adjusted to the Action Menu selection.
+Part III: Dual Polyhedra
+Duality has the simplest definition for Platonic solids: The
+convex hull of the centers of the faces is the dual polyhedron. The following definition works for Platonic and
+Archimedean solids: Take the tangent planes to the circumscribed sphere at the vertices of the polyhedron; consider them as the boundaries of halfspaces which contain
+the polyhedron; the intersection of these halfspaces is the
+dual polyhedron. For example the rhombic dodecahedron
+is dual to the cubeoctahedron. Similarly, consider convex
+5
+
+polyhedra whose inscribed sphere touches all faces; the
+convex hull of the contact points of the faces with the inscribed sphere is the dual polyhedron.
+These definitions of duality are unique up to scaling. For a
+general convex polyhedron definitions are no longer unique
+up to scaling. Choose an interior point and project the
+polyhedron radially onto a sphere around the chosen point;
+one obtains a tessalation of the sphere with the same combinatorial properties as the boundary of the polyhedron;
+consider on the sphere the Dirichlet or Voronoi domains of
+the vertices (the points which are closer to one vertex than
+to all others); these domains form the dual tessalation; any
+polyhedron whose radial projection to the sphere has the
+same combinatorics as this dual tessalation, is called a dual
+polyhedron to the given one.
+In 3D-Xplormath one can view all Archimedean solids inside their dual polyhedra: First select one of the Platonic
+solids from the Polyhedra Menu. Then check in the Action
+Menu the entry:
+Show All Polyhedra Inside Their Duals
+.
+Now, each of the provided truncations gives an Archimedean
+solid, shown inside its dual polyhedron. These images can
+be morphed, including the surrounding dual polyhedra.
+H.K.
+
+6
+
+

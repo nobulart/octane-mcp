@@ -1,0 +1,34 @@
+About the Schwarz H family
+H. Karcher
+
+This is a 1-parameter family of triply periodic surfaces. The
+surfaces are made of pieces which one could call “triangular
+catenoids”; annular Plateau solutions bounded by two parallel
+equilateral triangles. In the morphing aa changes the height-toedge length ratio of these triangular catenoids. Observe that, as
+in the case of circles bounding catenoids, the distance between
+the triangles has to be small enough and then they bound a stable and an unstable triangular catenoid. In the PD-family with
+dd=0 one can observe analogous “square catenoids”, except that
+our parametrization does not emphasize them.
+When Alan Schoen found more triply periodic surfaces around
+1970 he named these “Schwarz’ H surfaces”. (Maybe Schwarz
+constructed only one member of the family.) Later, the Swedish
+chemist, Lidin, found another embedded example (now called
+the Lidinoid) in the same associate family, when aa is approximately 0.55, and the associate family parameter is 0.7139, (about
+64.25 degrees).
+For a discussion of techniques for creating minimal surfaces with
+various qualitative features by appropriate choices of Weierstrass
+data, see either [KWH], or pages 192–217 of [DHKW].
+[KWH] H. Karcher, F. Wei, and D. Hoffman, The genus one
+helicoid, and the minimal surfaces that led to its discovery,
+in “Global Analysis in Modern Mathematics, A Symposium in
+Honor of Richard Palais’ Sixtieth Birthday”, K. Uhlenbeck Editor, Publish or Perish Press, 1993
+
+1
+
+[DHKW] U. Dierkes, S. Hildebrand, A. Kuster, and O. Wohlrab,
+Minimal Surfaces I, Grundlehren der math. Wiss. v. 295
+Springer-Verlag, 1991
+
+2
+
+

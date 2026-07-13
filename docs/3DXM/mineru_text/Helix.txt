@@ -1,0 +1,28 @@
+The Helix*
+The helix is the simplest nonplanar space curve. It can
+be translated along itsself by a group of isometries (called
+screw motions) and therefore has its geometric invariants
+– the curvature and the torsion – constant.
+Our (circular) helix as a parametrized curve c is given (with
+defaults aa = bb = 1.5, cc = 0.25) as
+c(t) = (aa cos(t), bb sin(t), cc(t − tmin) − 3).
+In the default Morph we extend the helix like pulling a bed
+spring and therefore want to keep its length constant. To
+do this we compute f := (aa2 + cc2 )−1/2 and show the
+reparametrized curve c(f · t).
+Before we do the morph we select from the Action Menu
+Show As Tube. These tubes are either made with the
+’Frenet Frame’ or with a ’Parallel Frame’. The tube behaves like an elastic rod if we choose in the Action Menu
+Parallel Frame. The default morph now shows (at the
+right end, the left is kept fixed) that the tube also twists
+around itsself while it is extended. When this occurs with
+electrical wires or water hoses that are pulled sideways
+from their coil, it is a well known and annoying phenomenon.
+H.K.
+
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+

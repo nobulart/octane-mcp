@@ -1261,8 +1261,8 @@ geometry, the launcher `-2741` bug, and TCC.
 - Confirmed subject with native vision: recognizable multi-tier cake, pastel-pink icing, cyan/amber/yellow sprinkles, white candle, under studio lighting. Pixel-QA + vision agree.
 - Flipped `native_octane_verified: true` in `scene.json`; set `final_bundle.status: native_verified` and a dated `note`.
 ### Signals / evidence
-- `verify_recipe_library(dry_run=True)` reports `total=26, contract_ok=25` after the `ancient-temple` merge — `earth-moon-space` remains the sole `contract_failed` (no preview PNG); `birthday-cake` is now `native_verified`.
-- `tests.test_verify_recipes` 10/10 pass; full `unittest discover` 357/0.
+- `verify_recipe_library(dry_run=True)` now reports `total=30, contract_ok=29` after the recent recipe additions — `earth-moon-space` remains the sole `contract_failed` (no preview PNG); `birthday-cake` remains `native_verified`.
+- `tests.test_verify_recipes` 10/10 pass; full `unittest discover` ran 408 tests / 0 failures / 10 skipped in the 2026-07-13 sweep.
 ### Follow-ups
 - Keep the v2.2 realism lessons (satin icing roughness 0.62, teardrop flame, rod sprinkles) — see the birthday-cake entry above.
 

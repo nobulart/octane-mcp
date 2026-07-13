@@ -235,6 +235,9 @@ def draw_label_overlay(
     instead of an import traceback when it is absent, so offline environments
     can still run the projection/layout logic in tests.
     """
+    if not Path(source_png).exists():
+        raise ValueError(f"label overlay: source preview not found: {source_png}")
+
     try:
         from PIL import Image, ImageDraw
     except Exception as exc:  # pragma: no cover - exercised when Pillow missing
@@ -242,9 +245,6 @@ def draw_label_overlay(
             "Pillow is required to draw the label overlay. Install it with: "
             "uv sync --extra harvest   (or: pip install pillow)"
         ) from exc
-
-    if not Path(source_png).exists():
-        raise ValueError(f"label overlay: source preview not found: {source_png}")
 
     img = Image.open(source_png).convert("RGBA")
     draw = ImageDraw.Draw(img)

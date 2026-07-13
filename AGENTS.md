@@ -15,7 +15,8 @@ docs/                   command-schema, recipe-book, octane-bridge, roadmap,
                         agent-quickstart, canvas-roadmap, local-model-rich-moa, scene-plan,
                         benchmark-suite, WIP, coord-protocol, octane-x-no-cli,
                         octane-lua-api-bridge-review, canvas-implementation-roadmap,
-                        visualization-backends-research, pointcloud-visualization, OctaneX/ (offline Markdown mirror of the OT oy Standalone
+                        visualization-backends-research, pointcloud-visualization, render-scheduler, recipe-gap-fill,
+                        3DXM/ (math-surface grammar notes), OctaneX/ (offline Markdown mirror of the OT oy Standalone
                         user manual — 430 pages + images/, local research copy)
   reference/            derived reference from the mirror (machine/human-consumable)
     material-pins.md    material/light pin vocabulary extracted from OctaneX/

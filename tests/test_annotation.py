@@ -106,6 +106,7 @@ class TestRasterMissingDep(unittest.TestCase):
         # Force the Pillow-absent path regardless of environment by hiding the
         # import, and confirm the precise install hint.
         import builtins
+        import tempfile
         import octanex_mcp.annotation as ann
 
         real_import = builtins.__import__
@@ -117,9 +118,12 @@ class TestRasterMissingDep(unittest.TestCase):
 
         builtins.__import__ = _blocked
         try:
-            with self.assertRaises(RuntimeError) as ctx:
-                draw_label_overlay("anything.png", [], "out.png")
-            self.assertIn("harvest", str(ctx.exception))
+            with tempfile.TemporaryDirectory() as td:
+                source = f"{td}/anything.png"
+                open(source, "wb").close()
+                with self.assertRaises(RuntimeError) as ctx:
+                    draw_label_overlay(source, [], "out.png")
+                self.assertIn("harvest", str(ctx.exception))
         finally:
             builtins.__import__ = real_import
 

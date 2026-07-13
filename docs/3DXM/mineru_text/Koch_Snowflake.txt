@@ -1,0 +1,53 @@
+About the Koch Snowflake (or Island)*
+The Koch Snowflake Curve (aka the Koch Island) is a fractal planar curve of infinite length and dimension approximately 1.262. It is defined as the limit of a sequence of
+polygonal curves defined recursively as follows:
+1) The first polygon is an equilateral triangle.
+2) The (n+1)-st polygon is created from the n-th polygon
+by applying the following rule to each edge: construct
+an equilateral triangle with base the middle third of
+the edge and pointing towards the outside of the polygon, then remove the base of this new triangle.
+Note that at each step the number of segments increases
+by a factor 4 with the new segments being one third the
+length of the old ones. Since all end points of segments
+are already points on the limit curve we see that no part
+of the limit curve has finite length.
+Actually this is true for a 1-parameter family of similar
+constructions: Vary the parameter aa (Set Parameters
+in the Settings Menu) in the interval [0.25, 0.5] and watch
+how the iterations evolve or choose Morph in the Animation
+Menu and observe the deformation of the limit curves.
+Hausdorff Dimension: Consider the union of those disks
+which have a segment of one polygonal approximation as
+a diameter, then this union covers all the further approximations. From one step to the next the diameter of the
+disks shrinks to one third while the number of disks is mul* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+tiplied by 4—so that the area of these covering disk unions
+converges to zero. The fractal Hausdorff d-measure is defined as the infimum (as the diameter goes to zero) of the
+quantity (diameter)d × (number-of-disks), and the fractal
+Hausdorff dimension is the infimum of those d for which the
+d-measure is 0. This shows that the Hausdorff dimension
+of the Koch curve is less than or equal to log(4)/ log(3),
+and since the union of the disks of every second segment
+does not cover the limit curve one can conclude that the
+Hausdorff dimension is precisely log(4)/ log(3).
+The artist Escher has made rather complicated fundamental domains for tilings of the plane by modifying the boundary between neighboring tiles. This idea can be used to illustrate the flexibility of fractal constructions: Select from
+the Action Menu of the Koch Snowflake Choose Escher
+Version and observe:
+The new polygonal curves remain boundaries of tiles of the
+plane under the iteration steps that make them more and
+more complicated.
+Finally, one can choose in the Action Menu to map any
+selected Fractal curve by either the complex map z → z 2
+or by the complex exponential. The program waits for a
+mouse click and then chooses the mouse point as origin.
+Note that one gets the graph of a continuous function if
+one plots the x-coordinate of a continuous curve against
+the curve parameter. This can be viewed with the last
+Action Menu entry.
+H.K.
+2
+
+

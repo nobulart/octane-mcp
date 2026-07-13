@@ -33,12 +33,10 @@ from octanex_mcp.acceptance import evaluate_acceptance
 from octanex_mcp.acceptance import _hue_to_rgb  # pure helper, no IO
 from octanex_mcp.visuals import ObjBuilder, bounds_from_points, camera_for_bounds
 
-from benchmarks.spec import BenchmarkTask
-
 # Runtime registry of auto-promoted tasks (importable; `run_all` can extend to
 # include these). Persistence to benchmarks/spec.py is via the per-entry
 # promotion_snippet.py (copy-paste keeps spec.py the single source of truth).
-PROMOTED_TASKS: list[BenchmarkTask] = []
+PROMOTED_TASKS: list[Any] = []
 
 # Default candidate scene parameters (mirror benchmarks/spec.py conventions).
 _DEFAULT_LIGHTING = "soft_studio"
@@ -204,8 +202,10 @@ def iterate_entry(
     }
 
 
-def make_promoted_task(slug: str, title: str, tier: int, scene_spec: dict[str, Any]) -> BenchmarkTask:
+def make_promoted_task(slug: str, title: str, tier: int, scene_spec: dict[str, Any]) -> Any:
     """Wrap a converged scene spec as a first-class ``BenchmarkTask``."""
+    from benchmarks.spec import BenchmarkTask
+
     captured = dict(scene_spec)
     return BenchmarkTask(
         tier=tier,
@@ -239,7 +239,7 @@ def promote_entry(
     report: dict[str, Any],
     *,
     tier: int = 7,
-    registry: list[BenchmarkTask] | None = None,
+    registry: list[Any] | None = None,
 ) -> dict[str, Any]:
     """Persist a converged render as an auto-promoted benchmark task.
 
@@ -291,6 +291,7 @@ def live_render_fn(spec: dict[str, Any], *, container=None, dry_run: bool = Fals
     Lazy-imports benchmarks.harness so this module stays offline-importable.
     """
     from benchmarks.harness import run_task
+    from benchmarks.spec import BenchmarkTask
 
     task = BenchmarkTask(
         tier=0, slug=spec.get("mesh_name", "wp9_live"), title="WP9 live render",

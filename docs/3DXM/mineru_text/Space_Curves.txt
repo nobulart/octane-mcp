@@ -1,0 +1,82 @@
+About the Space Curves Category
+A space curve is described by a map of an interval,
+[tM in, tM ax] in t-space into (x, y)-space. Each point
+t is mapped to a three-dimensional point P with coordinates (x(t), y(t), z(t)). The mapping is given by
+three real-valued functions that give the values of
+x(t), y(t), and z(t) as a function of the t and nine
+global “parameters”, called aa, bb, cc, . . . , ii. Most
+curves use only 1,2,3 or even none of these parameters. To discretize the curve, the interval [tM in, tM ax]
+is subdivided into tResolution equi-spaced points running from tM in to tM ax. These points divide the
+domain interval into subintervals. When a curve is
+“Create”-ed, the mapping t → (x, y, z) is applied to
+each of the subdivision points, so each of the subintervals in t-space is mapped to a segment in 3-space,
+and this collection of segments is a polygon that is
+what actually represents the immersed curve.
+When you have selected a particular curve from the
+Space Curve menu, a version with certain default parameter values will be displayed. You can then choose
+“About This Object...” from the Action Menu to see
+the equations for the curve as a function of t and
+1
+
+the parameters, (and perhaps to see some interesting
+properties of the curve). You can change the parameters in the Settings Menu and then re-Create the
+curve.
+The program can also interpolate linearly between
+two curves of the same family that you can set by
+choosing “Set Morphing...” in the Settings Menu.
+The number of steps in the “morph” is the Number
+of Frames in the ﬁlmstrip, an integer that you can also
+set. Playing back the ﬁlmstrip gives a “movie” of the
+curve changing gradually (“morphing”) between the
+initial and ﬁnal curves.
+A user can deﬁne a curve by choosing one of the User
+Deﬁned... items from the Space Curve menu. This
+will bring up a dialog that will permit one to create
+algebraic expressions describing the curve involving
+the variables t and the nine parameters, aa, bb, . . . , ii.
+You can also deﬁne a space curve by giving its curvature, κ, and its torsion, τ , as a function of t (and
+the usual parameters aa, . . . , ii). To do this choose
+User (Curvature & Torsion)... from the Space Curves
+menu. The resulting curve will have t as its arclength
+parameter, and will start (at t = 0) from the origin
+with tangent the unit vector in the x direction. (By
+2
+
+the fundamental theorem of space curves, there is a
+unique such curve.) The interval [tM in, tM ax] must
+contain zero of course—or the curve will be empty.
+See the corresponding discussion in About the Surface Category for more detail on how to enter expressions.
+Space curves can also be given “implicitly”, as the solutions of two equation, f (x, y, z) = ff and g(x, y, z) =
+gg. There is a User (Implicit)... menu item in the
+Space Curve menu that brings up a dialog that will let
+you enter expressions (deﬁning the function f (x, y, z))
+and g(x, y, z) and values for ff and gg, and a rectanglular box in the x, y, z-space. Clicking on the Create button will display the simultaneous solution of
+f (x, y, z) = ff and g(x, y, z) = gg inside the box.
+The Action Curve menu has an item “Show as Tube”.
+If you select it, the current space curve will be drawn
+as a “tube”, i.e., instead of the curve itself being
+drawn, a surface that is the boundary of a tube with
+polygonal cross-section centered on the curve gets
+drawn. The cross-section of the tube is a regular
+n-gon, where n = 4 by default, but you can choose
+any value between 3 and 18 in the Set Resolution
+And Scale dialog. To draw the tube it is necessary to
+3
+
+choose a frame ﬁeld along the curve. There are two
+natural choices—the Frenet frame ﬁeld and a parallel
+frame ﬁeld. The Frenet frame is chosen by default,
+but you can switch between them using the Action
+menu.
+A good way to see the Frenet “moving trihedral” (or
+the parallel one) is to choose “Show Repère Mobile”
+from the Action menu. This is particularly striking
+in stereo! Another interesting animation is provided
+by showing projections of a small part of the curve
+on the osculating, normal, and rectifying planes (or
+on all three!) at a point that moves along the curve.
+Again, this is best seen in stereo.
+
+4
+
+

@@ -1,0 +1,49 @@
+Torus Knots*
+Torus knots are quite popular space curves because they
+represent the simplest way to write down knotted curves
+in R3 . Our knots are parametrized as
+
+
+aa + bb · cos(dd · t) · cos(ee · t)
+c(t) :=  aa + bb · cos(dd · t) · sin(ee · t) 
+cc · sin(dd · t)
+with defaults aa = 3, bb = 1.5, cc = 1.5, dd = 5, ee = 2.
+The default Morph changes the torus size. If, before the
+morph, one chooses in the Action Menu Show As Tube and
+Parallel Frame then one notices that the twisting of the
+tube (see the ATO of the helix for more details) is clearly
+visible already for rather small changes of the shape of the
+torus.
+The Action Menu has also the entry Show Dotted Torus.
+Selecting it adds the torus to the picture. This is more
+spectacular when viewing in Anaglyph Stereo Vision,
+through red/green filter glasses. Observe that our brain
+gets these several thousand dots sorted out into corresponding pairs of red and green dots that then form the
+torus surface in R3 - and this seems to happen instantly.
+The best method to get a feeling for the curvature of a
+space curve is to select in the Action Menu Show Osculating Circles & Evolute. The Radius r of the circle
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+is the radius of curvature of the curve at the current point
+and κ := 1/r is called the curvature (at that point). The
+direction from c(t) to the midpoint of the osculating circle
+determines always the direction of the second basis vector
+of the Frenet frame.
+If one uses the Parallel Frame, then one has to represent
+the curvature by a vector of length κ in the plane spanned
+by the two normal vectors of the Parallel frame. If one has
+selected, in the Action Menu, Parallel Frame and clicks
+Show Repére Mobile then this curvature vector is drawn,
+together with its past history, in each normal plane. – The
+last entry in the Action Menu, Show Frenet Integration
+does the opposite: if the curvature vector function is given
+in the initial normal plane then the demo reconstructs the
+curve by integrating the Frenet equation.
+H.K.
+
+2
+
+

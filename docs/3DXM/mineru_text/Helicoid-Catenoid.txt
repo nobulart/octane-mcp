@@ -1,0 +1,37 @@
+The Helicoid - Catenoid Family*
+Lagrange found in 1762 the minimal surface equation as
+Euler-Lagrange equation for the area minimization problem. Geometrically, this equation means that the mean
+curvature is 0. He found no other solution than the plane.
+In 1776 Meusnier discovered that the Helicoid and the
+Catenoid are also solutions. The next solutions were found
+60 years later by Scherk.
+The Helicoid (aa = 0) – Catenoid (aa = 0.5) Family:
+x(u, v) := cos(aa · π) sin(u) sinh(v)+
+sin(aa · π) cos(u) cosh(v))
+y(u, v) := cos(aa · π) cos(u) sinh(v)+
+sin(aa · π) sin(u) cosh(v)
+z(u, v) := cos(aa · π) · u + sin(aa · π) · v
+These formulas describe, for each aa, a minimal surface.
+Moreover, these surfaces are all isometric to each other;
+their Riemannian metrics, in the given parametrization, all
+have the same expression. The parameter lines u = const
+on the Helicoid (aa = 0) are straight lines and no other
+minimal surface is such a ruled surface. The Catenoid
+(aa = 0.5) is the only minimal surface of revolution. These
+two are the only embedded surfaces in the aa-family.
+The isometric aa-deformation is very fascinating, use Cyclic
+* This file is from the 3D-XplorMath project. Please see:
+http://3D-XplorMath.org/
+
+1
+
+Morph in the Animation Menu. The small parameter squares
+do not change size or shape during the deformation, they
+just get bent a little. If the two sides of the surfaces are colored diﬀerently and aa varies from aa = 0.5 to aa = 1.5,
+one can observe that the Catenoid is turned inside out.
+The deformation period is 2 and really amazing to watch.
+H.K.
+
+2
+
+
