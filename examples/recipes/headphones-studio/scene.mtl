@@ -1,0 +1,8 @@
+# Blender/OBJ material intent companion.
+# Octane X does not rely on Kd from this file; scene.json creates and assigns
+# the explicit MCP material used by the verified render.
+newmtl scene_mat
+Kd 0.018 0.024 0.035
+Ns 420
+Ks 0.55 0.55 0.55
+illum 2

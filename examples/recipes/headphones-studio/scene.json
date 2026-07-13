@@ -1,0 +1,80 @@
+{
+  "slug": "headphones-studio",
+  "title": "Over-Ear Studio Headphones with Path-Following Spiral Cord",
+  "category": "Photoreal/product geometry",
+  "purpose": "Reusable product-studio scene for over-ear headphones resting on a polished surface, with opposing cylindrical earcups, a broad flat headband, and a long spiral cord terminating in a stepped jack plug.",
+  "preview_note": "octane-preview.png is a verified native Octane X render from the one-shot bridge refinement pass.",
+  "camera": {
+    "position": [0.0, -8.2, 7.0],
+    "target": [0.0, -1.1, 0.25],
+    "fov": 58
+  },
+  "lighting": {
+    "preset": "soft_studio",
+    "intent": "dark polished product surface, softbox highlights, contact shadow, restrained metallic reflections"
+  },
+  "materials": {
+    "scene_mat": {
+      "kind": "glossy metallic product/surface material",
+      "color": [0.018, 0.024, 0.035],
+      "metallic": 0.55,
+      "roughness": 0.075,
+      "ior": 1.5
+    }
+  },
+  "geometry_notes": [
+    "Single combined OBJ: the Octane build reliably exposes one imported mesh to the active render target.",
+    "Earcups use stepped cylindrical shells with planar end closures and opposing axes.",
+    "The headband uses a broad flat rectangular profile with the dominant axis rotated 90 degrees.",
+    "The cord is a swept spiral around a curved tabletop path, with a decaying radius and a long foreground run.",
+    "The jack plug is modeled as a stepped barrel, collars, tapered tip, and strain relief."
+  ],
+  "quality_checklist": [
+    "Cups read as opposing cylindrical studio earcups rather than spherical discs.",
+    "Headband reads as a broad flat padded band.",
+    "Cord visibly follows a path while retaining a continuous spiral.",
+    "Cylinder ends are closed and catch specular highlights.",
+    "Headphones and cord are grounded by the polished surface and shadow.",
+    "Native Octane output is inspected before claiming success."
+  ],
+  "known_pitfalls": [
+    "Separate imported meshes are not all connected to the active render target; keep the headphone assembly and polished surface in one OBJ.",
+    "OBJ/MTL colours are not sufficient; create and explicitly assign the scene material.",
+    "A repeated loop chain is not equivalent to a cord following a path; preserve the swept spiral construction.",
+    "The current reliable combined-mesh material route does not independently bind cap metal from the shared scene material."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/headphones-studio/octane-preview.png",
+    "candidate_image": "examples/recipes/headphones-studio/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": ["cup axis opposition", "cylindrical bevels and closed ends", "flat headband profile", "spiral path and plug length", "grounding and reflections"],
+    "patch_dimensions": ["geometry", "camera", "materials", "lighting"],
+    "required_evidence": ["bridge result metadata for queued commands", "native Octane candidate preview at octane-preview.png", "final native Octane render bundled as octane-preview.png"],
+    "stop_conditions": ["cups oppose and read cylindrically", "cord follows a continuous path", "closed ends and grounding are visible", "remaining gaps require independent material-group binding"] ,
+    "baseline_sweep": {
+      "enabled": true,
+      "purpose": "Compare front, three-quarter, cord-emphasis, and top-oblique product framings.",
+      "camera_or_scene_variants": [{"name": "front"}, {"name": "three_quarter"}, {"name": "cord_emphasis"}, {"name": "top_oblique"}],
+      "visual_grammar_axes": ["cup_axis", "headband_profile", "spiral_radius", "cord_length", "camera_distance"],
+      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/headphones-studio/octane-preview.png",
+    "iteration_dir": "examples/recipes/headphones-studio/iterations",
+    "final_review": "examples/recipes/headphones-studio/iterations/final-review.json",
+    "result_metadata_pattern": "workspace/results/<command_id>.json copied or summarized into iterations/",
+    "bundled_assets": ["scene.obj", "scene.json", "octane-preview.png"],
+    "status": "native_verified"
+  },
+  "commands": [
+    {"op": "import_geometry", "payload": {"path": "examples/recipes/headphones-studio/scene.obj", "format": "obj", "name": "headphones_scene"}},
+    {"op": "create_material", "payload": {"name": "scene_mat", "kind": "glossy", "color": [0.018, 0.024, 0.035], "metallic": 0.55, "roughness": 0.075, "ior": 1.5}},
+    {"op": "assign_material", "payload": {"object_name": "headphones_scene", "material_name": "scene_mat"}},
+    {"op": "set_camera", "payload": {"position": [0.0, -8.2, 7.0], "target": [0.0, -1.1, 0.25], "fov": 58}},
+    {"op": "set_lighting", "payload": {"preset": "soft_studio"}},
+    {"op": "save_preview", "payload": {"path": "examples/recipes/headphones-studio/octane-preview.png", "width": 1280, "height": 1280, "quality": "high", "samples": 384, "min_samples": 96, "timeout_seconds": 90}}
+  ]
+}

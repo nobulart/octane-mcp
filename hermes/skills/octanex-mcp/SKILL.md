@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-|version: 1.9.10
+|version: 1.9.11
 |author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -409,6 +409,13 @@ render that never finishes:
 - **`import_geometry` connects only the LAST imported mesh** to the render
   target, so earlier imports become orphaned. For multi-part scenes, emit ONE
   combined OBJ (all groups in one file) rather than several imports.
+- **Product headphones recipe pattern:** for a reusable over-ear product scene,
+  use stepped cylindrical cup shells with explicit planar end caps, orient the
+  cup axes to oppose across the headband, and model the headband as a broad flat
+  profile rather than a round tube. A coiled cable should be a swept spiral
+  around a curved path with a decaying radius; repeated independent loops read
+  as beads or a spring detached from the product. See
+  `examples/recipes/headphones-studio/` and `docs/recipe-book.md`.
 - **`maxSamples` is an INVALID key for `octane.render.start` on this Octane
   build.** Including it is silently ignored, so the render runs **unbounded**;
   the next `save_preview` is then rejected with *"Can't start a new render before

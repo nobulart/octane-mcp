@@ -17,6 +17,29 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 ### Follow-ups
 - What a future agent should try, avoid, or verify.
 
+## Over-ear studio headphones with opposing cylindrical cups and path-following spiral cord
+
+- **Outcome:** success
+- **Recorded:** 2026-07-13 01:10 UTC
+- **Context:** Iteratively converted a headphone concept into a reusable native Octane recipe after user review rejected spherical earcups, an incorrectly oriented headband, a repeated-loop cord, open cylinder ends, and insufficient grounding.
+
+### Steps
+- Built a single combined OBJ containing the headphone assembly and polished surface because the active Octane build reliably exposes one imported mesh to the render target.
+- Replaced spherical earcups with stepped cylindrical shells; rotated the cup axes approximately 90 degrees so the cups oppose one another across the headband.
+- Added planar end caps to every cup section so the cylinders are closed and catch specular highlights.
+- Used a broad flat headband profile with its dominant axis swapped 90 degrees.
+- Generated the cable as a continuous spiral swept around a curved tabletop path, with a decaying spiral radius, then extended the path and plug into the foreground.
+- Validated the 1280×1280 native render with deterministic pixel QA and local visual inspection.
+
+### Signals / evidence
+- Native preview: `examples/recipes/headphones-studio/octane-preview.png`.
+- Final preview: 409,383 bytes, 1280×1280, `likely_blank=false`, `likely_clipped=false`.
+- Visual inspection confirmed opposing cylindrical cups, broad flat headband, longer path-following spiral cord, closed ends, polished surface, and grounding shadow.
+
+### Follow-ups
+- If independent cap metal is required, split the caps into a separate mesh/material route or extend the renderer's reliable material-group binding; the current combined OBJ path uses one dependable material pin.
+- Increase illumination and material separation for a more photographic commercial-studio finish; geometry and path construction are now the reusable baseline.
+
 ## Desk fan with tubular cord and cage guard
 
 - **Outcome:** success
