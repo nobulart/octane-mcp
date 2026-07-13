@@ -57,7 +57,8 @@ from octanex_mcp.review import (
 from octanex_mcp.schema import command_schema, validate_command, validate_queue
 from octanex_mcp.server import _build_save_preview_envelope
 from octanex_mcp.animation import orbit_manifest, build_animation_commands
-from octanex_mcp.scene import swap_geometry
+from octanex_mcp.scene import swap_geometry, queue_scene_plan
+from octanex_mcp.bridge_control import octane_process_status, reset_octane_scene, run_bridge_script
 from octanex_mcp.scheduler import DispatchLoop
 from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
@@ -70,6 +71,34 @@ WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
 # and the agent loop edits it server-side; we do not persist scene state to disk
 # in this phase (that lands with /canvas/scene POST + history in Phase 3).
 _canvas_scene: Dict[str, Any] = {}
+
+
+def _hex_to_rgb(hex_str: str) -> list[float]:
+    """Convert ``#rrggbb`` (canvas subset) to a 0..1 RGB array for Octane."""
+    h = (hex_str or "").lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    if len(h) != 6:
+        return [0.6, 0.6, 0.6]
+    return [int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+
+
+def _octane_ready_plan(scene: Mapping[str, Any]) -> Dict[str, Any]:
+    """Return a copy of the canvas scene with hex colors converted to Octane RGB arrays.
+
+    The live scene the browser owns keeps its WebGL-friendly hex subset;
+    only the Octane handoff needs the array form.
+    """
+    plan = dict(scene)
+    mats = []
+    for m in scene.get("materials", []):
+        if isinstance(m, Mapping):
+            m = dict(m)
+            if isinstance(m.get("color"), str):
+                m["color"] = _hex_to_rgb(m["color"])
+        mats.append(m)
+    plan["materials"] = mats
+    return plan
 _canvas_backend = WebGLBackend()
 
 
@@ -434,6 +463,35 @@ class Handler(BaseHTTPRequestHandler):
             _canvas_scene.clear()
             _canvas_scene.update(patched)
             self._send_json({"ok": True, "scene": _canvas_scene})
+            return
+        if path == "/canvas/to-octane":
+            # Phase 6 handoff: push the live WebGL scene into the Octane
+            # render pipeline. Flush the shared queue first (per AGENTS.md),
+            # queue the scene's OBJs + command sequence, then drain the whole
+            # queue via one oneshot bridge run. The browser flips to Final/
+            # Split to watch the result.
+            if not _canvas_scene:
+                self._send_json({"ok": False, "error": "no scene built yet"}, code=404)
+                return
+            try:
+                # Canvas uses hex colors (WebGL-friendly subset); the Octane
+                # bridge expects RGB arrays. Convert at the boundary so the
+                # live scene the browser owns stays untouched.
+                plan = _octane_ready_plan(_canvas_scene)
+                flush_queue(Workspace(), backup=True)
+                queued = queue_scene_plan(plan, workspace=Workspace())
+                bridge = run_bridge_script("oneshot", dry_run=bool(payload.get("dry_run", False)))
+                result = {"ok": bool(queued.get("queued_commands") and bridge.get("ok")),
+                          "scene_id": queued.get("scene_id"),
+                          "queued_commands": len(queued.get("queued_commands") or []),
+                          "bridge": bridge}
+            except Exception as exc:  # noqa: BLE001 - surface any handoff failure
+                self._send_json({"ok": False, "error": str(exc)}, code=500)
+                return
+            if not result["ok"]:
+                self._send_json(result, code=502)
+                return
+            self._send_json(result, code=200)
             return
         if path == "/config/models":
             # Set the Hermes Agent harness model that powers the agentic

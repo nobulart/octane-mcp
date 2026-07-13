@@ -122,10 +122,27 @@ function showSelection(id, meta) {
   panel.querySelector("#sel-opacity").addEventListener("input", (e) => {
     patchSelection({ material: { opacity: parseFloat(e.target.value) } });
   });
-  panel.querySelector("#sel-to-octane").addEventListener("click", () => {
-    // Phase 6 handoff stub: flag for Octane quality render.
+  panel.querySelector("#sel-to-octane").addEventListener("click", async () => {
+    // Phase 6 handoff: push the live scene to the Octane quality pipeline.
     dom.status.className = "state-queued";
-    dom.statusText.textContent = `queued Octane · ${o.id}`;
+    dom.statusText.textContent = `sending ${o.id} to Octane…`;
+    try {
+      const res = await postJSON("/canvas/to-octane", {});
+      if (!res.ok) {
+        console.error("to-octane failed", res.error);
+        dom.status.className = "state-error";
+        dom.statusText.textContent = `Octane handoff failed: ${(res.error || "").slice(0, 60)}`;
+        return;
+      }
+      dom.status.className = "state-render";
+      dom.statusText.textContent = `Octane rendering · ${res.queued_commands} cmds`;
+      // Flip to Final so the quality frame shows when it lands.
+      setViewMode("final");
+    } catch (e) {
+      console.error("to-octane error", e);
+      dom.status.className = "state-error";
+      dom.statusText.textContent = "handoff error";
+    }
   });
 }
 
