@@ -84,10 +84,27 @@ FACE_COUNTS = {
 CRUST_SHELL_DENSITY = 2.0
 CRUST_FACE_DENSITY = 2.0
 ATMOSPHERE_DENSITY = 0.5  # atmosphere is proportionally less dense than solid
-POINT_RADIUS_SOLID = 0.058
-POINT_RADIUS_ATMO = 0.205  # soft fuzzy atmospheric shells (low opacity)
-JITTER_INTERIOR = 0.018  # edge-localized particle jitter for a naturally perturbed interior
-JITTER_FACE = 0.010      # smaller jitter on the flat cut face so the layering stays legible
+POINT_RADIUS_SOLID = 0.0464  # -20% size vs v4 (0.058)
+POINT_RADIUS_ATMO = 0.164    # soft fuzzy atmospheric shells (low opacity), -20% size
+SPHERE_SEGMENTS = 8        # smooth spheres; 4 segments read as low-poly icosahedrons in closeup
+INTERIOR_DENSITY_SCALE = 0.70 * 1.20  # -30% internal density, then +20% per request -> net -16% vs solid
+JITTER_GLOBAL = 0.04       # -20% jitter vs v4 (0.05): break lattice, less smear
+GLOBAL_DENSITY_SCALE = 1.20  # +20% overall particle density per request
+
+# Reduce internal (solid-shell) density ~30% per request; crust + atmosphere unchanged.
+for _n in ("inner_core", "outer_core", "lower_mantle", "upper_mantle"):
+    SHELL_COUNTS[_n] = int(round(SHELL_COUNTS[_n] * INTERIOR_DENSITY_SCALE))
+    FACE_COUNTS[_n] = int(round(FACE_COUNTS[_n] * INTERIOR_DENSITY_SCALE))
+
+# --- LLSVP provinces + mantle plume tendrils (CMB-rooted thermochemical
+#     upwellings; plumes initiate at LLSVP edges — see geodynamics literature) ---
+LLSVP_COLOR = (0.78, 0.22, 0.52)   # magenta-plum thermochemical pile (distinct from orange core)
+PLUME_COLOR = (1.00, 0.80, 0.45)   # hot gold buoyant upwelling
+CMB_KM = 3480.0                     # core-mantle boundary (outer core / lower mantle)
+LLSVP_HEIGHT_KM = 1300.0            # LLSVPs extend ~1000-1500 km above the CMB
+PLUME_TOP_KM = 6000.0               # plumes rise to mid-upper mantle
+LLSVP_BASE_COUNT = 100000           # per province (x density)
+PLUME_BASE_COUNT = 35000            # per tendril (x density)
 
 
 # --------------------------------------------------------------------------
@@ -158,6 +175,90 @@ def section_annulus(lower_km: float, upper_km: float, count: int) -> list:
     return pts
 
 
+def _force_lower(d: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Force a direction into the rendered (lower) hemisphere by mirroring z<=0."""
+    return (d[0], d[1], -abs(d[2]))
+
+
+def _norm(v: tuple[float, float, float]) -> tuple[float, float, float]:
+    n = math.hypot(*v) or 1.0
+    return (v[0] / n, v[1] / n, v[2] / n)
+
+
+def apply_flat(p: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Apply WGS84 oblateness (Y-axis compression) to an already-scaled point,
+    and clamp to the rendered lower hemisphere (z <= 0) so no structure floats
+    in the cut-away upper half."""
+    z = min(0.0, p[2])
+    return (p[0], p[1] * FLAT, z)
+
+
+def _random_direction_around(center: tuple[float, float, float], max_angle: float) -> tuple[float, float, float]:
+    """Rejection-sample a unit direction within `max_angle` of `center`."""
+    while True:
+        x, y, z = (random.uniform(-1, 1) for _ in range(3))
+        n = math.hypot(x, y, z)
+        if n < 1e-6:
+            continue
+        d = (x / n, y / n, z / n)
+        dot = max(-1.0, min(1.0, d[0] * center[0] + d[1] * center[1] + d[2] * center[2]))
+        if math.acos(dot) <= max_angle:
+            return d
+
+
+def blob_cloud(center_dir: tuple[float, float, float], angular_radius: float,
+               r0_km: float, r1_km: float, count: int, phase: float = 0.0) -> list:
+    """Broad, low thermochemical province: points scattered within an angular cap
+    around `center_dir`, radius r0..r1 (scene units)."""
+    center = tuple(center_dir)
+    out = []
+    r0, r1 = r0_km / KM, r1_km / KM
+    while len(out) < count:
+        d = _random_direction_around(center, angular_radius)
+        if d[2] > 0.0:  # keep only the rendered (lower) hemisphere; else floats in cut-away space
+            continue
+        r = r0 + random.random() * (r1 - r0)
+        out.append(apply_flat((d[0] * r, d[1] * r, d[2] * r)))
+    return out
+
+
+def plume_tendril(axis_dir: tuple[float, float, float], r0_km: float, r1_km: float,
+                  count: int, width_km: float, freq: float, phase: float) -> list:
+    """Thin, wavy conduit rising from the CMB (r0) toward the upper mantle (r1).
+    Lateral meander (perpendicular to the rise axis) gives the tendril/organic
+    look; a second out-of-phase offset adds curl."""
+    axis = tuple(axis_dir)
+    tmp = (0.0, 1.0, 0.0) if abs(axis[1]) < 0.9 else (1.0, 0.0, 0.0)
+    cx = axis[1] * tmp[2] - axis[2] * tmp[1]
+    cy = axis[2] * tmp[0] - axis[0] * tmp[2]
+    cz = axis[0] * tmp[1] - axis[1] * tmp[0]
+    nl = math.hypot(cx, cy, cz) or 1.0
+    u = (cx / nl, cy / nl, cz / nl)
+    vx = axis[1] * u[2] - axis[2] * u[1]
+    vy = axis[2] * u[0] - axis[0] * u[2]
+    vz = axis[0] * u[1] - axis[1] * u[0]
+    nl2 = math.hypot(vx, vy, vz) or 1.0
+    v = (vx / nl2, vy / nl2, vz / nl2)
+    r0, r1 = r0_km / KM, r1_km / KM
+    w, m = width_km / KM, width_km / KM
+    out = []
+    for i in range(count):
+        t = i / max(1, count - 1)
+        r = r0 + t * (r1 - r0)
+        off = w * (0.4 + 0.6 * t) * math.sin(t * freq * math.tau + phase)
+        off2 = m * 0.6 * math.cos(t * freq * 0.7 * math.tau + phase * 1.7)
+        bx, by, bz = axis[0] * r, axis[1] * r, axis[2] * r
+        px = bx + (u[0] * off + v[0] * off2)
+        py = by + (u[1] * off + v[1] * off2)
+        pz = bz + (u[2] * off + v[2] * off2)
+        j = w * 0.25
+        px += random.uniform(-j, j)
+        py += random.uniform(-j, j)
+        pz += random.uniform(-j, j)
+        out.append(apply_flat((px, py, pz)))
+    return out
+
+
 # --------------------------------------------------------------------------
 # Crust continent mask (deterministic, reproducible)
 # --------------------------------------------------------------------------
@@ -178,7 +279,7 @@ def crust_class(lon: float, lat: float) -> str:
 # --------------------------------------------------------------------------
 # OBJ writing
 # --------------------------------------------------------------------------
-def write_sphere(lines: list[str], point: tuple[float, float, float], pr: float, base: list[int], segments: int = 4) -> None:
+def write_sphere(lines: list[str], point: tuple[float, float, float], pr: float, base: list[int], segments: int = SPHERE_SEGMENTS) -> None:
     x, y, z = point
     r = max(pr, 1e-4)
     # three perpendicular rings (XY, YZ, XZ) sampled at `segments` steps each
@@ -213,7 +314,7 @@ def main() -> None:
         help="global point-density multiplier; 0.05 is a bounded live-render preset",
     )
     args = ap.parse_args()
-    d = args.density
+    d = args.density * GLOBAL_DENSITY_SCALE  # +20% overall particle density per request
     out = args.output_dir
     out.mkdir(parents=True, exist_ok=True)
 
@@ -224,7 +325,7 @@ def main() -> None:
     for name, lo, hi, _c, _k, _r, _e in SOLID_LAYERS:
         radial_levels = max(4, int(8 * d))
         directions = max(2000, int(SHELL_COUNTS[name] * d))
-        groups[name].extend(radial_point_cloud(lo, hi, radial_levels, directions, phase=hash(name) % 100, jitter=JITTER_INTERIOR))
+        groups[name].extend(radial_point_cloud(lo, hi, radial_levels, directions, phase=hash(name) % 100, jitter=JITTER_GLOBAL))
 
     # --- crust (surface shell, differentiated) — dense colour bitmap ---
     crust_shell = max(4000, int(SHELL_COUNTS["crust_cont"] * d * CRUST_SHELL_DENSITY))
@@ -242,6 +343,26 @@ def main() -> None:
         mid = (lo + hi) / 2.0
         cnt = max(2000, int(SHELL_COUNTS[name] * d * ATMOSPHERE_DENSITY * 4))
         groups[name].extend(shell_surface(mid, cnt, phase=hash(name) % 100))
+
+    # --- LLSVP thermochemical provinces + mantle plume tendrils ---
+    # Two broad CMB-rooted provinces (Africa / Pacific) at the base of the lower
+    # mantle; thin wavy plumes rise from their edges toward the mid-upper mantle.
+    llsvp_dirs = [
+        _norm((0.4, -0.6, -0.7)),   # Africa-ish province (lower hemisphere, z<=0 so it's inside the cut body)
+        _norm((-0.5, 0.5, -0.6)),   # Pacific-ish province (opposite side, lower hemisphere)
+    ]
+    # Keep both provinces inside the rendered (lower) hemisphere: if a center lands
+    # in the cut-away upper half (z>0) its blob would float in empty space.
+    llsvp_dirs = [_force_lower(d) for d in llsvp_dirs]
+    llsvp_cnt = max(6000, int(LLSVP_BASE_COUNT * d))
+    for d0 in llsvp_dirs:
+        groups["llsvp"].extend(blob_cloud(d0, math.radians(42), CMB_KM, CMB_KM + LLSVP_HEIGHT_KM, llsvp_cnt, phase=hash(str(d0)) % 100))
+    # 2-3 plumes per province edge, rising to mid-upper mantle with meander
+    plume_cnt = max(2500, int(PLUME_BASE_COUNT * d))
+    for d0 in llsvp_dirs:
+        for k in range(3):
+            edge = _norm(tuple(d0[i] + 0.55 * ((i + k) % 2 * 2 - 1) * 0.4 for i in range(3)))
+            groups["plume"].extend(plume_tendril(edge, CMB_KM, PLUME_TOP_KM, plume_cnt, width_km=320.0, freq=2.2 + 0.3 * k, phase=k * 2.1))
 
     # --- section face (dense cut at z=0) ---
     # pre-compute crust cut classification by (x,y) using same mask via lon/lat
@@ -266,9 +387,33 @@ def main() -> None:
         cnt = max(2000, int(FACE_COUNTS[name] * d * ATMOSPHERE_DENSITY))
         for p in section_annulus(mid, mid + 0.01, cnt):
             groups["face_" + name].append(p)
+    # LLSVP / plume on the cut face: project the 3D structures onto z=0 so the
+    # cross-section also shows the thermochemical province + rising tendrils.
+    face_llsvp_cnt = max(4000, int(LLSVP_BASE_COUNT * d))
+    for d0 in llsvp_dirs:
+        for _ in range(face_llsvp_cnt):
+            dd = _random_direction_around(d0, math.radians(42))
+            r = (CMB_KM + random.random() * LLSVP_HEIGHT_KM) / KM
+            groups["face_llsvp"].append((dd[0] * r, (dd[1] * r) * FLAT, 0.0))
+    face_plume_cnt = max(2500, int(PLUME_BASE_COUNT * d))
+    for d0 in llsvp_dirs:
+        for k in range(3):
+            edge = _norm(tuple(d0[i] + 0.55 * ((i + k) % 2 * 2 - 1) * 0.4 for i in range(3)))
+            for _ in range(face_plume_cnt):
+                t = random.random()
+                r = (CMB_KM + t * (PLUME_TOP_KM - CMB_KM)) / KM
+                w = (320.0 / KM) * (0.4 + 0.6 * t)
+                a = random.uniform(0, math.tau)
+                ux, uy, uz = edge[1], -edge[0], 0.0  # crude perpendicular in-plane
+                un = math.hypot(ux, uy) or 1.0
+                off = w * 0.6 * random.uniform(-1, 1)
+                x = edge[0] * r + (ux / un) * off
+                y = edge[1] * r + (uy / un) * off
+                groups["face_plume"].append((x, y * FLAT, 0.0))
 
     # --- material + group ordering (shell then face) ---
-    solid_names = [n for n, *_ in SOLID_LAYERS] + ["crust_cont", "crust_ocean"]
+    # add LLSVP + plume materials/faces for ordering + colours
+    solid_names = [n for n, *_ in SOLID_LAYERS] + ["crust_cont", "crust_ocean", "llsvp", "plume"]
     atmo_names = [n for n, *_ in ATMOSPHERE]
     # Every OBJ material group has a unique label.  Reusing a label for both a
     # shell and a cut face makes the Octane importer's material-pin diagnostics
@@ -281,6 +426,8 @@ def main() -> None:
         colors[name] = (col, kind, rough, extra)
     colors["crust_cont"] = (CRUST_CONT_COLOR, "glossy", 0.82, {})
     colors["crust_ocean"] = (CRUST_OCEAN_COLOR, "glossy", 0.60, {})
+    colors["llsvp"] = (LLSVP_COLOR, "glossy", 0.50, {"emission": 0.18, "opacity": 0.55, "transmission": 0.30})
+    colors["plume"] = (PLUME_COLOR, "glossy", 0.35, {"emission": 0.45, "opacity": 0.92, "transmission": 0.05})
     for name, lo, hi, col, kind, rough, extra in ATMOSPHERE:
         colors[name] = (col, kind, rough, extra)
 
@@ -306,7 +453,12 @@ def main() -> None:
         group_index[mat] = idx
         pr = POINT_RADIUS_ATMO if mat.startswith("mat_trop") or mat.startswith("mat_strat") or mat.startswith("mat_meso") or mat.startswith("mat_therm") else POINT_RADIUS_SOLID
         for p in pts:
-            write_sphere(lines, p, pr, base)
+            # uniform positional jitter on every particle (shell/face/crust/atmo)
+            # to break the golden-angle lattice and homogenize the volumes
+            gx = p[0] + random.uniform(-JITTER_GLOBAL, JITTER_GLOBAL)
+            gy = p[1] + random.uniform(-JITTER_GLOBAL, JITTER_GLOBAL)
+            gz = p[2] + random.uniform(-JITTER_GLOBAL, JITTER_GLOBAL)
+            write_sphere(lines, (gx, gy, gz), pr, base)
         idx += 1
 
     obj_path = out / "scene.obj"
@@ -341,9 +493,12 @@ def main() -> None:
         commands.append({"op": "assign_material", "payload": {"object_name": "earth_section", "material_name": mat, "group_index": gi}})
     commands.append({
         "op": "set_camera", "payload": {
-            # Oblique ~50 deg off-axis view of the hemisphere (azimuth 50, elevation 18),
-            # pulled back to frame the full cutaway including the atmospheric sheaths.
-            "position": [16.0, 6.4, 20.6], "target": [0.0, 0.0, -1.0], "fov": 28.0, "focus_distance": 28.0,
+            # "Hermes Camera" off-axis framing (from the live Octane node inspector):
+            # azimuth ~25deg, elevation ~35deg, pulled back ~24 units. Shows the
+            # hemisphere bulge AND the layered cut face in perspective (not a head-on disc).
+            "position": [-8.982154, -19.817986, 13.783353],
+            "target": [-0.06247065, -0.09485492, -1.137385],
+            "fov": 28.0, "focus_distance": 27.631866,
         },
     })
     commands.append({"op": "set_lighting", "payload": {"preset": "soft_studio"}})
@@ -359,7 +514,7 @@ def main() -> None:
         "title": "Cutaway Earth: solid interior + atmospheric sheaths (point cloud)",
         "category": "Geoscience / planet visualization",
         "purpose": "Dense, to-scale point-cloud cutaway of the Earth's interior layers (PREM) and proportionally sparser atmospheric shells, with WGS84 centrifugal oblateness and differentiated continental/oceanic crust.",
-        "camera": {"position": [16.0, 6.4, 20.6], "target": [0.0, 0.0, -1.0], "fov": 28.0, "focus_distance": 28.0},
+        "camera": {"position": [-8.982154, -19.817986, 13.783353], "target": [-0.06247065, -0.09485492, -1.137385], "fov": 28.0, "focus_distance": 27.631866},
         "materials": materials,
         "commands": commands,
         "acceptance": [

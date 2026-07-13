@@ -1301,7 +1301,47 @@ geometry, the launcher `-2741` bug, and TCC.
 - Produce a native Octane preview for `earth-hemisphere` before flipping any verification flag. For higher-density production imagery, regenerate locally with a larger `--density` and do not commit multi-GB OBJ outputs.
 ---
 
-## Note: one-shot drain appears to render the scene twice (it does not)
+## v4.1 — earth-hemisphere final: smooth spheres, LLSVP/plume, off-axis Hermes Camera
+
+- **Outcome:** success (all prior pitfalls closed; native preview produced + committed)
+- **Recorded:** 2026-07-13 21:45 UTC
+- **Context:** Iterated the `earth-hemisphere` point-cloud recipe from v3→v4→v4.1 on the
+  Mac Studio / Octane X. v4 added smooth-sphere particles (seg 4→8, kills the
+  closeup icosahedron look), ~30% lower interior density (`INTERIOR_DENSITY_SCALE=0.70`),
+  global positional jitter on every particle (`JITTER_GLOBAL`) to break the golden-angle
+  lattice, and **LLSVP thermochemical provinces + mantle-plume tendrils** as CMB-rooted
+  upwellings (science-checked: two broad magenta piles at ~3480 km extending ~1300 km
+  into the lower mantle, with thin gold buoyant conduits rising to the mid-upper mantle).
+  v4.1 applied a requested +20% particle density (`GLOBAL_DENSITY_SCALE=1.20`), −20%
+  particle size (`POINT_RADIUS_SOLID` 0.058→0.0464), −20% jitter (0.05→0.04), and an
+  **off-axis "Hermes Camera"** baked from the live Octane node inspector
+  (`position [-8.982,-19.818,13.783]`, `target [-0.062,-0.095,-1.137]`, fov 28, focus
+  27.632) — this resolved the long-standing head-on-disc framing pitfall.
+### Steps / fixes
+- **Stray-clump fix:** one LLSVP province center originally landed in the cut-away upper
+  hemisphere, producing a detached floating blob. Fixed with three guards: `_force_lower()`
+  mirrors province centers to z≤0; `blob_cloud` rejects sampled directions with z>0;
+  `apply_flat()` clamps z≤0 as a universal chokepoint. Verified: zero points outside the
+  atmospheric envelope on the final OBJ.
+- **Render driver:** `scripts/_drain_v4.py` is a detached driver (survives message-driven
+  SIGTERMs) that recovers stray `processing/` files into the job dir, rebuilds the
+  authoritative command set, clears the global queue, force-breaks the lock, promotes
+  atomically with a full-queue assert, clicks the one-shot, then promotes the default
+  `octane-preview.png` to the job-specific name + writes `done.json`.
+### Signals / evidence
+- Generator output (v4.1, `--density 0.05`): 253,888 particles, 6.1 M verts, 23 groups
+  (19 shells/faces + `llsvp`/`plume`), 458 MB OBJ (gitignored as regenerable).
+- Ad-hoc checks: spheres smooth (24 verts/particle), interior −30% (net −16% after +20%),
+  LLSVP radial band 3481–4779 km, plume 3436–6084 km (CMB-rooted, rising to upper mantle),
+  no points beyond atmosphere radius (7.654 scene units).
+- Final 800-spp preview converged and committed to `examples/recipes/earth-hemisphere/octane-preview.png`;
+  vision confirmed: clean frame, off-axis 3D bulge + layered cut face, no grid, LLSVP/plume
+  visible, no stray clump. (The apparent right-side lobe is the dense `crust_ocean_shell`,
+  correct geometry at this angle — not a leak.)
+### Follow-ups
+- Original pipeline asks (netcdf/xarray field ingestion, surfacing via marching cubes) remain open.
+
+
 
 - **Outcome:** pitfall (false alarm)
 - **Recorded:** 2026-07-12

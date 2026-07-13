@@ -11,6 +11,10 @@ newmtl mat_crust_cont_shell
 Kd 0.550 0.480 0.380
 newmtl mat_crust_ocean_shell
 Kd 0.160 0.170 0.220
+newmtl mat_llsvp_shell
+Kd 0.780 0.220 0.520
+newmtl mat_plume_shell
+Kd 1.000 0.800 0.450
 newmtl mat_troposphere_shell
 Kd 0.620 0.800 1.000
 newmtl mat_stratosphere_shell
@@ -31,6 +35,10 @@ newmtl mat_crust_cont_face
 Kd 0.550 0.480 0.380
 newmtl mat_crust_ocean_face
 Kd 0.160 0.170 0.220
+newmtl mat_llsvp_face
+Kd 0.780 0.220 0.520
+newmtl mat_plume_face
+Kd 1.000 0.800 0.450
 newmtl mat_troposphere_face
 Kd 0.620 0.800 1.000
 newmtl mat_stratosphere_face

@@ -1,21 +1,21 @@
 {
   "slug": "earth-hemisphere",
-  "title": "Cutaway Earth: glowing core + jittered translucent layers + atmospheric sheaths (point cloud)",
+  "title": "Cutaway Earth: glowing core + LLSVP/plume tendrils + jittered translucent layers (point cloud)",
   "category": "Geoscience / planet visualization",
   "purpose": "Dense, to-scale point-cloud cutaway of the Earth's interior layers (PREM) and proportionally sparser atmospheric shells, with WGS84 centrifugal oblateness and differentiated continental/oceanic crust.",
   "camera": {
     "position": [
-      16.0,
-      6.4,
-      20.6
+      -8.982154,
+      -19.817986,
+      13.783353
     ],
     "target": [
-      0.0,
-      0.0,
-      -1.0
+      -0.06247065,
+      -0.09485492,
+      -1.137385
     ],
     "fov": 28.0,
-    "focus_distance": 28.0
+    "focus_distance": 27.631866
   },
   "materials": {
     "mat_inner_core_shell": {
@@ -87,6 +87,32 @@
         0.22
       ],
       "roughness": 0.6
+    },
+    "mat_llsvp_shell": {
+      "name": "mat_llsvp_shell",
+      "kind": "glossy",
+      "color": [
+        0.78,
+        0.22,
+        0.52
+      ],
+      "roughness": 0.5,
+      "emission": 0.18,
+      "opacity": 0.55,
+      "transmission": 0.3
+    },
+    "mat_plume_shell": {
+      "name": "mat_plume_shell",
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.8,
+        0.45
+      ],
+      "roughness": 0.35,
+      "emission": 0.45,
+      "opacity": 0.92,
+      "transmission": 0.05
     },
     "mat_troposphere_shell": {
       "name": "mat_troposphere_shell",
@@ -209,6 +235,32 @@
         0.22
       ],
       "roughness": 0.6
+    },
+    "mat_llsvp_face": {
+      "name": "mat_llsvp_face",
+      "kind": "glossy",
+      "color": [
+        0.78,
+        0.22,
+        0.52
+      ],
+      "roughness": 0.5,
+      "emission": 0.18,
+      "opacity": 0.55,
+      "transmission": 0.3
+    },
+    "mat_plume_face": {
+      "name": "mat_plume_face",
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.8,
+        0.45
+      ],
+      "roughness": 0.35,
+      "emission": 0.45,
+      "opacity": 0.92,
+      "transmission": 0.05
     },
     "mat_troposphere_face": {
       "name": "mat_troposphere_face",
@@ -345,6 +397,38 @@
           0.22
         ],
         "roughness": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_llsvp_shell",
+        "kind": "glossy",
+        "color": [
+          0.78,
+          0.22,
+          0.52
+        ],
+        "roughness": 0.5,
+        "emission": 0.18,
+        "opacity": 0.55,
+        "transmission": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_plume_shell",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.8,
+          0.45
+        ],
+        "roughness": 0.35,
+        "emission": 0.45,
+        "opacity": 0.92,
+        "transmission": 0.05
       }
     },
     {
@@ -502,6 +586,38 @@
     {
       "op": "create_material",
       "payload": {
+        "name": "mat_llsvp_face",
+        "kind": "glossy",
+        "color": [
+          0.78,
+          0.22,
+          0.52
+        ],
+        "roughness": 0.5,
+        "emission": 0.18,
+        "opacity": 0.55,
+        "transmission": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_plume_face",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.8,
+          0.45
+        ],
+        "roughness": 0.35,
+        "emission": 0.45,
+        "opacity": 0.92,
+        "transmission": 0.05
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
         "name": "mat_troposphere_face",
         "kind": "specular",
         "color": [
@@ -599,7 +715,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_troposphere_shell",
+        "material_name": "mat_llsvp_shell",
         "group_index": 7
       }
     },
@@ -607,7 +723,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_stratosphere_shell",
+        "material_name": "mat_plume_shell",
         "group_index": 8
       }
     },
@@ -615,7 +731,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_mesosphere_shell",
+        "material_name": "mat_troposphere_shell",
         "group_index": 9
       }
     },
@@ -623,7 +739,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_thermosphere_shell",
+        "material_name": "mat_stratosphere_shell",
         "group_index": 10
       }
     },
@@ -631,7 +747,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_inner_core_face",
+        "material_name": "mat_mesosphere_shell",
         "group_index": 11
       }
     },
@@ -639,7 +755,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_outer_core_face",
+        "material_name": "mat_thermosphere_shell",
         "group_index": 12
       }
     },
@@ -647,7 +763,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_lower_mantle_face",
+        "material_name": "mat_inner_core_face",
         "group_index": 13
       }
     },
@@ -655,7 +771,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_upper_mantle_face",
+        "material_name": "mat_outer_core_face",
         "group_index": 14
       }
     },
@@ -663,7 +779,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_cont_face",
+        "material_name": "mat_lower_mantle_face",
         "group_index": 15
       }
     },
@@ -671,7 +787,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_ocean_face",
+        "material_name": "mat_upper_mantle_face",
         "group_index": 16
       }
     },
@@ -679,7 +795,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_troposphere_face",
+        "material_name": "mat_crust_cont_face",
         "group_index": 17
       }
     },
@@ -687,7 +803,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_stratosphere_face",
+        "material_name": "mat_crust_ocean_face",
         "group_index": 18
       }
     },
@@ -695,25 +811,57 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_mesosphere_face",
+        "material_name": "mat_llsvp_face",
         "group_index": 19
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth_section",
+        "material_name": "mat_plume_face",
+        "group_index": 20
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth_section",
+        "material_name": "mat_troposphere_face",
+        "group_index": 21
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth_section",
+        "material_name": "mat_stratosphere_face",
+        "group_index": 22
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "earth_section",
+        "material_name": "mat_mesosphere_face",
+        "group_index": 23
       }
     },
     {
       "op": "set_camera",
       "payload": {
         "position": [
-          16.0,
-          6.4,
-          20.6
+          -8.982154,
+          -19.817986,
+          13.783353
         ],
         "target": [
-          0.0,
-          0.0,
-          -1.0
+          -0.06247065,
+          -0.09485492,
+          -1.137385
         ],
         "fov": 28.0,
-        "focus_distance": 28.0
+        "focus_distance": 27.631866
       }
     },
     {
@@ -725,7 +873,7 @@
     {
       "op": "save_preview",
       "payload": {
-        "path": "OctaneMCP_staging/earth-hemisphere-jello-v3/octane-preview.png",
+        "path": "OctaneMCP_staging/earth-hemisphere-v4/octane-preview.png",
         "width": 1280,
         "height": 1280,
         "samples": 800,
