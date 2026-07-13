@@ -32,7 +32,7 @@ The checked-in geometry uses procedural continent/cloud masks so it stays lightw
 1. Import `scene.obj` with `octane_import_geometry(path="examples/recipes/photoreal-earth-space/scene.obj", name="photoreal-earth-space")`.
 2. Apply the camera from `scene.json`.
 3. Use a hard directional sun/space lighting setup. If `space_sun` is unavailable, start with `soft_studio`, then manually tune toward black background and camera-left sunlight.
-4. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.
+4. Drain the queue once with `octane_lua/hermes_bridge_oneshot.generated.lua`, then poll `queue/` to zero.
 5. Save a native Octane preview and compare it with `photoreal-preview.png`.
 
 ## What agents should learn

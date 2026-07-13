@@ -12,7 +12,8 @@ Camera: position [28.999, 19.161, 36.194] -> target [3.45, 0.0, 0.0], fov 42.
 
 ## Assets
 
-`scene.obj`, `scene.mtl`, `scene.json`, `preview.png`, `octane-preview.png`.
+`scene.obj`, `scene.mtl`, `scene.json`, and `preview.png`. `octane-preview.png`
+is pending native verification.
 
 > **Native Octane preview: PENDING.** Both live capture attempts (2026-07-10) returned
 > near-empty frames (white background, ~2% non-background, `mean_abs_dev_from_bg` ≈ 2–4

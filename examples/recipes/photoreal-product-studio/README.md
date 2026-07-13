@@ -30,7 +30,7 @@
 1. Import `scene.obj` with `octane_import_geometry(path="examples/recipes/photoreal-product-studio/scene.obj", name="photoreal-product-studio")`.
 2. Apply the camera from `scene.json`.
 3. Use `soft_studio` lighting, then increase samples for final quality (`512+`).
-4. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.
+4. Drain the queue once with `octane_lua/hermes_bridge_oneshot.generated.lua`, then poll `queue/` to zero.
 5. Save a native Octane preview and compare it with `photoreal-preview.png`.
 
 ## What agents should learn

@@ -271,9 +271,8 @@ If the persistent bridge closes with status `released` after `start_render`, tha
 ### Card 2: Show a simple object
 
 1. Call `octane_create_test_cube(name="agent_cube", size=1.0)`.
-2. In Octane X, run `hermes_bridge_oneshot_v2.lua`.
-3. Call `octane_start_render(samples=128)` if needed.
-4. Call `octane_save_preview()`; the bridge restarts rendering, waits for ready samples, then saves PNG.
+2. Call `octane_start_render(samples=128)` if needed, then `octane_save_preview()`.
+3. In Octane X, run `hermes_bridge_oneshot.generated` from the **Script** menu once to drain the full pipeline.
 5. Call `octane_review_preview()` and verify `ok=true` before claiming success.
 
 ### Card 3: Visualize data quickly
@@ -301,7 +300,7 @@ octane_record_recipe(
   context="Persistent bridge processed queue but Octane viewport stayed stale.",
   steps=[
     "Queued octane_visualize_bars with five values.",
-    "Ran hermes_bridge_oneshot_v2.lua inside Octane X.",
+    "Ran hermes_bridge_oneshot.generated from Octane X's Script menu.",
     "Restarted render and saved preview."
   ],
   signals=["queue/ drained", "processed/ gained command files", "preview PNG existed"],

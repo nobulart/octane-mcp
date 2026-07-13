@@ -66,8 +66,8 @@ is required is **obsolete** — do not reintroduce it.
 ```bash
 osascript scripts/octane_launch.applescript
 osascript scripts/octane_reset_scene.applescript        # #2 File > New
+osascript scripts/octane_flush_queue.applescript        # clear stale work before queueing
 # ...queue commands via octanex-mcp tools / write_command...
-osascript scripts/octane_flush_queue.applescript        # optional: clear stragglers
 osascript scripts/octane_drain.applescript              # #3 + wait
 ```
 

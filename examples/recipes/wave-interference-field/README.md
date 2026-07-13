@@ -42,5 +42,5 @@
 
 1. Import `scene.obj` with `octane_import_geometry(path="examples/recipes/wave-interference-field/scene.obj", name="wave-interference-field")`.
 2. Apply camera from `scene.json`.
-3. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.
+3. Drain the queue once with `octane_lua/hermes_bridge_oneshot.generated.lua`, then poll `queue/` to zero.
 4. Save an Octane preview and replace/add it alongside `preview.png` if it teaches a useful lesson.

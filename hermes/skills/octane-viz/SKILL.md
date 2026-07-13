@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.3.3
+version: 1.3.4
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -65,7 +65,7 @@ If `doctor` fails or Octane X is not running, surface the blocker to the user. D
 
 ### 1. Prepare the scene
 
-- **Shape**: If the prompt contains an object/shape name (box, sphere, tetrahedron, torus, cylinder, pyramid, helix, etc.), construct that geometry using Octane X's standard shapes.
+- **Shape**: Use a matching recipe or `octane_build_concept` where possible. The public low-level primitive helper is `octane_create_test_cube`; torus, pyramid, helix, and other custom shapes require a generated/imported OBJ before material, camera, lighting, and save commands.
 - **Material**: If the prompt includes a material or colour hint (glossy, gold, green, cyan, magenta, copper, etc.), apply it to the geometry. Otherwise construct a default glossy cube (size=3, centred) with a glossy-blue material.
 - **Camera**: Use bounds-aware automatic framing (the visual tools compute camera from asset bounds) unless a deliberate top/front/side composition is wanted.
 - **Lighting**: Apply soft-studio lighting preset.
@@ -77,9 +77,9 @@ Map prompts to tools:
 |--------|--------------|
 | `Visualise a cube with glossy material` | `octane_create_test_cube` + `octane_create_material` + `octane_assign_material` + render |
 | `Visualize the data bars scene` | `octane_visualize_bars(...)` |
-| `Visualise with a green torus` | torus geometry + green material + render |
+| `Visualise with a green torus` | Generate/import a torus OBJ, then apply green material + render |
 | `Visualise it simply` | default glossy-blue cube + render |
-| `Visualise the helix with a copper material` | helix geometry + copper material + render |
+| `Visualise the helix with a copper material` | Generate/import a helix OBJ, then apply copper material + render |
 
 ### 1.5. Render protocol (do this every time — prevents near-black/stale renders)
 
@@ -115,9 +115,9 @@ octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
 | Symptom / code | Class | Action |
 |---|---|---|
 | `osascript` hangs then raises `TimeoutExpired` | `timed_out` | Octane busy/unresponsive modal. Wait, then retry once; if it persists, restart Octane. |
-| `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`), or the shell/terminal that launches Hermes. |
+| `-1719` assistive access denied | `tcc_blocked` | Grant Accessibility to the **Hermes agent-runtime python** (`/Users/craig/.hermes/hermes-agent/venv/bin/python` — the osascript caller, NOT `Hermes.app`), then fully quit and relaunch Hermes. |
 | `-1700` can't make data into expected type | `busy` | Octane mid-render/modal. Wait for the render to settle; do NOT re-click blindly. |
-| `-2741` expected end of line | `wrong_trigger` | You used `run script file` on Lua; use the Script-menu click path instead. |
+| `-2741` expected end of line | `wrong_trigger` | Usually `run script file` was used on Lua; use the Script-menu click path. If it recurs there, restart Hermes so the fixed `bridge_control.py` is reloaded. |
 | `Could not find <script> in Script menu` | `script_not_found` | Set Octane Preferences ▸ Scripts path → repo `octane_lua/`, then restart Octane. |
 
 The launch now waits for Octane X's menu bar to become UI-ready after `open -a` (inside the same AppleScript), eliminating the cold-launch race that produced false "script not found".
@@ -156,7 +156,7 @@ Before returning the PNG, inspect it with `vision_analyze`:
 |--------|--------|
 | `Visualise a cube with glossy material` | Construct glossy cube, apply blue material, render, inspect, return real PNG preview |
 | `Visualize the data bars scene` | Construct data bars, apply material, render, inspect, return real PNG preview |
-| `Visualise with a green torus` | Construct torus, apply green material, render, inspect, return real PNG preview |
+| `Visualise with a green torus` | Generate/import a torus OBJ, apply green material, render, inspect, return real PNG preview |
 | `Visualise it simply` | Construct default cube with glossy blue, render, inspect, return real PNG preview |
-| `Visualise the helix with a copper material` | Construct helix, apply copper material, render, inspect, return real PNG preview |
+| `Visualise the helix with a copper material` | Generate/import a helix OBJ, apply copper material, render, inspect, return real PNG preview |
 | `Visualise a photorealistic mathematical 3D surface` | Generate a parametric surface OBJ in Python (`octanex-mcp` → `scripts/gen_math_surface.py`), `import_geometry` + explicit glossy material + `assign_material` + camera/lighting + `save_preview`; flush stale commands before queueing, drain once, then poll `queue/` empty and verify. See `octanex-mcp` → `references/photoreal-math-surface.md`. |

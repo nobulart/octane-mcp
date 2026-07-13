@@ -46,7 +46,7 @@ Animated products are also possible by generating frame-by-frame scene states. S
 1. Read the recipe README and inspect `preview.png` or the recipe-specific target preview.
 2. Reuse or modify `scene.obj` / the generator pattern.
 3. Queue import/camera/render commands through MCP.
-4. Drain the queue with `octane_lua/hermes_bridge_oneshot_v2.lua`.
+4. Drain the complete queue once with `octane_run_oneshot_bridge()` or Octane X → **Script** → `hermes_bridge_oneshot.generated`, then poll `queue/` to zero.
 5. Save an Octane preview.
 6. If the result teaches anything reusable, call `octane_record_recipe(...)` or edit `docs/recipe-book.md`.
 

@@ -7,12 +7,15 @@ resolved in `src/octanex_mcp/server.py` `octane_save_preview`.
 
 | tier     | max_render_time | timeout_seconds | min_samples | samples  |
 |----------|-----------------|-----------------|-------------|----------|
+| fast     | 6               | 10              | 64          | 500      |
+| preview  | 10              | 10              | 16          | 256      |
 | standard | 30              | 30              | 24          | 512      |
 | high     | 60              | 60              | 48          | 1024     |
 | ultra    | 120             | 120             | 96          | 2048     |
 | final    | 0 (unlimited)   | 600             | 1024        | 1000000  |
 
-Raw `samples` / `min_samples` / `timeout_seconds` / `max_render_time` override
+Omitting `quality` resolves to the `fast` creator default. Raw `samples` /
+`min_samples` / `timeout_seconds` / `max_render_time` override
 the tier when passed explicitly (resolution keeps the explicit value if it
 differs from the tool default; otherwise uses the tier value).
 
@@ -37,7 +40,7 @@ render stops at the timeout and the frame is saved. Do not add GPU-pin-based
 time caps expecting them to fire.
 
 ## Verification points
-- `models.QUALITY_TIERS` keys: standard / high / ultra / final (asserted by the
+- `models.QUALITY_TIERS` keys: fast / preview / standard / high / ultra / final (asserted by the
   server import smoke test).
 - Live test: `octane_save_preview(quality="high")` on the loaded math-surface
   scene -> PNG `math_surface_high.png` (~326 KB); `wait_for_render_ready`

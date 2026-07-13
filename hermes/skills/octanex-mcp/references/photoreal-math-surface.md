@@ -7,14 +7,15 @@ Real Octane X render: `OctaneMCP/renders/math_surface.png` (1280×1280, ~327 KB)
 
 ## Pipeline (queue ALL in one live Octane session)
 1. Generate the OBJ in Python — `scripts/gen_math_surface.py` (parametrised; single `usemtl` group → one material pin, no `group_index` needed). Copy into the container workspace `OctaneMCP/assets/` (sandboxed Octane only reads container FS).
-2. MCP queue, in order:
+2. Call `octane_flush_queue()` before queueing so stale shared-queue work is archived.
+3. MCP queue, in order:
    - `import_geometry` (obj, name `math_surface`)
    - `create_material` (glossy, color `[0.85,0.55,0.25]`, roughness 0.3)
    - `assign_material` (object `math_surface`, material `math_surface_mat`)
    - `set_camera` (fov 40, pos `[11,9,11]`, target `[0,0.5,0]`)
    - `set_lighting` (preset `soft_studio`)
    - `save_preview` (1280×1280, samples 512, min_samples 256)
-3. Drain with the one-shot bridge (repeat the click until `queue/` is empty — see pitfall #2).
+3. Drain once with the one-shot bridge, then poll `queue/` until empty; do not re-click while `save_preview` is rendering.
 4. Wait 60–120 s; verify PNG.
 
 ## Signals / pitfalls (the load-bearing part)

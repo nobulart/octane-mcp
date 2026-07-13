@@ -40,8 +40,10 @@ hermes mcp call octanex octane_queue_recipe --slug birthday-cake
   (round board / drips / rod sprinkles confirmed live). **v2.2** (thicker candle +
   narrow tall flame + satin icing roughness 0.62/specular 0.2 + pulled-back camera
   `[4.5,3.5,5.1]`) is queued and awaiting a cold Octane restart + one-shot drain.
-- The bridge's `create_material` only honors `diffuse/glossy/specular/metallic`
-  (no `emission`), so the flame is a bright glossy orange, not a true emitter.
+- `create_material` forwards extended PBR fields, including `emission`, when the
+  running Octane build exposes the corresponding pin; unsupported pins are
+  reported as warnings. The committed flame uses glossy orange rather than
+  relying on emissive output.
 - Regenerate the asset: `uv run python scripts/gen_birthday_cake.py` (writes into
   the Octane container `assets/`), then re-queue the recipe.
 - **Queue pipeline is single-source:** `scripts/queue_birthday_cake_v2.py` reads
