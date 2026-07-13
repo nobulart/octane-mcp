@@ -35,6 +35,7 @@ const dom = {
   inspectorFixes: document.getElementById("inspector-fixes"),
   camDist: document.getElementById("cam-dist"),
   modelSelect: document.getElementById("model-select"),
+  voxToggle: document.getElementById("vox-toggle"),
 };
 
 const state = {
@@ -46,6 +47,8 @@ const state = {
   currentScene: null,
   viewMode: "live",
   renderer: null,
+  vox: false,
+  contract: "",
 };
 
 // ---------------------------------------------------------------------------
@@ -174,6 +177,7 @@ async function pollPreview() {
   if (state.viewMode === "live") {
     // In live-only mode the WebGL canvas owns the screen; don't cover it.
     dom.preview.classList.remove("visible");
+    dom.placeholder.style.display = "";
     return;
   }
   const url = `${GW}/preview?ts=${Date.now()}`;
@@ -185,7 +189,10 @@ async function pollPreview() {
       dom.preview.classList.toggle("final-mode", state.viewMode === "final");
       dom.placeholder.style.display = "none";
     } else {
+      // No Octane frame yet — don't leave a blank/dark block; surface the hint.
       dom.preview.classList.remove("visible");
+      dom.placeholder.style.display = "";
+      dom.placeholder.textContent = "no Octane frame yet — build or queue a recipe, or switch to Live";
     }
   } catch (_) {
     /* gateway down — leave last frame */
@@ -248,7 +255,7 @@ async function submitIntent(text) {
     await fetch(`${GW}/intent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: t }),
+      body: JSON.stringify({ text: t, voice: !!state.vox }),
     });
     localStorage.setItem("octanex.lastIntent", JSON.stringify({ text: t, ts: Date.now() }));
   } catch (_) {
@@ -512,6 +519,53 @@ function resetModelSelection() {
   loadModels();
 }
 
+// ---------------------------------------------------------------------------
+// VOX voice-mode toggle (lower-right). Enables a terser, speech-shaped
+// conversation contract for the harness. The flag is persisted locally and
+// written into ~/.hermes/config.yaml (vox.enabled) so the harness adopts the
+// contract on the next interpretation. Speech I/O itself is wired later.
+// ---------------------------------------------------------------------------
+async function loadVox() {
+  try {
+    const res = await getJSON("/config/vox");
+    state.contract = res.contract || "";
+    // User's persisted choice wins across sessions; else the server default.
+    const saved = localStorage.getItem("octanex.vox");
+    state.vox = saved !== null ? saved === "1" : !!res.enabled;
+    applyVox();
+  } catch (e) {
+    console.error("loadVox failed", e);
+  }
+}
+
+function applyVox() {
+  if (!dom.voxToggle) return;
+  dom.voxToggle.setAttribute("aria-pressed", state.vox ? "true" : "false");
+  dom.voxToggle.title = state.vox
+    ? "VOX on — terse voice contract. Click to disable."
+    : "VOX off — click to enable terse voice mode.";
+  // Hint the conversation register in the command bar.
+  dom.cmd.placeholder = state.vox
+    ? "speak… or type (VOX: terse mode)"
+    : "describe a scene, or ⌘K for recipes…";
+}
+
+async function onVoxToggle() {
+  state.vox = !state.vox;
+  localStorage.setItem("octanex.vox", state.vox ? "1" : "0");
+  applyVox();
+  try {
+    const res = await postJSON("/config/vox", { enabled: state.vox });
+    if (!res.ok) {
+      console.error("set vox failed", res.error);
+      dom.status.className = "state-error";
+      dom.statusText.textContent = "vox set failed";
+    }
+  } catch (e) {
+    console.error("vox error", e);
+  }
+}
+
 // Boot
 // ---------------------------------------------------------------------------
 initRenderer();
@@ -523,3 +577,5 @@ pollPreview();
 pollStatus();
 loadModels();
 if (dom.modelSelect) dom.modelSelect.addEventListener("change", onModelChange);
+loadVox();
+if (dom.voxToggle) dom.voxToggle.addEventListener("click", onVoxToggle);

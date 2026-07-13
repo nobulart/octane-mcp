@@ -339,6 +339,11 @@ class Handler(BaseHTTPRequestHandler):
             # selector reflects and sets the harness's authoritative model.
             self._send_json(hermes_config.list_models())
             return
+        if path == "/config/vox":
+            # Voice-conversation (STT/TTS) mode flag + the terse contract the
+            # harness adopts when VOX is enabled.
+            self._send_json(hermes_config.get_vox())
+            return
         if path == "/status":
             self._send_json(read_status())
             return
@@ -379,7 +384,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/intent":
             text = payload.get("text", "")
-            entry = {"ts": datetime.now(timezone.utc).isoformat(), "text": text}
+            voice = bool(payload.get("voice", False))
+            entry = {"ts": datetime.now(timezone.utc).isoformat(), "text": text, "voice": voice}
             log = Workspace().root / "intents.jsonl"
             try:
                 with log.open("a", encoding="utf-8") as fh:
@@ -439,6 +445,21 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 result = hermes_config.set_current_model(model_id)
+            except ValueError as exc:
+                self._send_json({"ok": False, "error": str(exc)}, code=422)
+                return
+            self._send_json({"ok": True, **result})
+            return
+        if path == "/config/vox":
+            # Enable/disable VOX voice-conversation mode. The canvas writes the
+            # flag into the Hermes config; the harness adopts the terse contract
+            # on the next interpretation when enabled.
+            enabled = payload.get("enabled")
+            if not isinstance(enabled, bool):
+                self._send_json({"ok": False, "error": "enabled must be true/false"}, code=400)
+                return
+            try:
+                result = hermes_config.set_vox(enabled)
             except ValueError as exc:
                 self._send_json({"ok": False, "error": str(exc)}, code=422)
                 return

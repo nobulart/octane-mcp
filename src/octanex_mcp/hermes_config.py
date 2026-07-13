@@ -174,3 +174,83 @@ def set_current_model(model_id: str, path: Optional[Path] = None) -> Dict[str, A
         raise ValueError("could not locate model.default in config")
     p.write_text(patched)
     return {"current": model_id}
+
+
+# ---------------------------------------------------------------------------
+# VOX (speech-in / speech-out) voice-conversation mode
+# ---------------------------------------------------------------------------
+
+# The terse conversation contract the harness adopts when VOX is on. Voice turns
+# are short; the agent should answer in the same register — no preamble, no
+# markdown walls, just the next concrete step or answer.
+VOX_CONTRACT = (
+    "Voice mode. Be terse and conversational: short spoken-length replies, "
+    "one idea per turn, no lists or markdown unless asked. Lead with the action "
+    "or answer. Ask at most one clarifying question. Keep it shaped for speech."
+)
+
+
+def get_vox(path: Optional[Path] = None) -> Dict[str, Any]:
+    """Return the VOX voice-mode state.
+
+    Shape::
+
+        {"enabled": bool, "contract": "<terse voice contract>"}
+    """
+    p = path or config_path()
+    if yaml is None or not p.exists():
+        return {"enabled": False, "contract": VOX_CONTRACT, "error": "config unavailable"}
+    data = yaml.safe_load(p.read_text()) or {}
+    enabled = bool((data.get("vox") or {}).get("enabled", False))
+    return {"enabled": enabled, "contract": VOX_CONTRACT}
+
+
+def set_vox(enabled: bool, path: Optional[Path] = None) -> Dict[str, Any]:
+    """Surgically enable/disable VOX by writing ``vox.enabled``.
+
+    Only the ``vox:`` block is touched — the rest of the user's config
+    (comments, other keys) is preserved verbatim. Inserts a ``vox:`` block
+    if one is absent.
+    """
+    p = path or config_path()
+    if yaml is None or not p.exists():
+        raise ValueError("config unavailable")
+    text = p.read_text()
+    flag = "true" if enabled else "false"
+
+    # Locate the vox: block (top-level key: column 0, no leading space).
+    m = re.search(r"(?m)^vox\s*:", text)
+    if not m:
+        # No vox: block — append a clean one, preserving file trailing newline.
+        sep = "" if text.endswith("\n") or not text else "\n"
+        patched = f"{text}{sep}vox:\n  enabled: {flag}\n"
+    else:
+        start = m.start()
+        # Find the block's end: the next top-level (col-0) key, or EOF.
+        rest = text[m.end():]
+        nxt = re.search(r"(?m)\n[A-Za-z_][\w-]*\s*:", rest)
+        if nxt is not None:
+            end = m.end() + nxt.start()
+        else:
+            end = m.end() + len(rest)
+        block = text[start:end]
+        if re.search(r"(?m)^\s*enabled\s*:", block):
+            # Replace the enabled line *inside this block only*.
+            new_block = re.sub(
+                r"(?m)^(\s*)enabled\s*:.*$",
+                lambda mm: f"{mm.group(1)}enabled: {flag}",
+                block,
+                count=1,
+            )
+        else:
+            # Block exists but has no enabled line yet — add it under vox:.
+            indent = re.match(r"\s*", block[m.end() - start:]).group(0)
+            new_block = f"{block.rstrip()}\n{indent}  enabled: {flag}\n"
+        patched = text[:start] + new_block + text[end:]
+
+    if patched == text:
+        # Idempotent no-op: the flag was already in the requested state.
+        # Don't error — just report success without rewriting the file.
+        return {"enabled": enabled}
+    p.write_text(patched)
+    return {"enabled": enabled}
