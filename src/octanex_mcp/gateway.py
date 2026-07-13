@@ -61,6 +61,7 @@ from octanex_mcp.scene import swap_geometry
 from octanex_mcp.scheduler import DispatchLoop
 from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
+from octanex_mcp import hermes_config
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
@@ -332,6 +333,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/config":
             self._send_json({"render_host": render_host(), "workspace": str(Workspace().root)})
             return
+        if path == "/config/models":
+            # Hermes Agent harness model options for the agentic interaction. The
+            # harness (not this gateway) performs intent -> scene, so the canvas
+            # selector reflects and sets the harness's authoritative model.
+            self._send_json(hermes_config.list_models())
+            return
         if path == "/status":
             self._send_json(read_status())
             return
@@ -421,6 +428,21 @@ class Handler(BaseHTTPRequestHandler):
             _canvas_scene.clear()
             _canvas_scene.update(patched)
             self._send_json({"ok": True, "scene": _canvas_scene})
+            return
+        if path == "/config/models":
+            # Set the Hermes Agent harness model that powers the agentic
+            # interaction (intent -> scene). Surgical edit to ~/.hermes/config.yaml;
+            # the harness reads it on next interpretation. Validate against known ids.
+            model_id = payload.get("model")
+            if not isinstance(model_id, str) or not model_id:
+                self._send_json({"ok": False, "error": "model must be a non-empty string"}, code=400)
+                return
+            try:
+                result = hermes_config.set_current_model(model_id)
+            except ValueError as exc:
+                self._send_json({"ok": False, "error": str(exc)}, code=422)
+                return
+            self._send_json({"ok": True, **result})
             return
         if path == "/remote/render":
             self._send_json(run_remote_bridge_and_pull(), code=200)

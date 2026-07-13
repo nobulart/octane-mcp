@@ -247,8 +247,42 @@ body.mode-final #viewmodes { display: none; }
 
 .hidden { display: none !important; }
 
+/* --- Agent model selector (lower-right) --- */
+#model-selector {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-size: 12px;
+}
+#model-selector label { color: var(--muted); letter-spacing: 0.02em; }
+#model-select {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  max-width: 280px;
+  cursor: pointer;
+  outline: none;
+}
+#model-select:focus { border-color: var(--accent); }
+#model-select option { background: #14181f; color: var(--text); }
+
 /* --- Focus mode (~) --- */
 body.focus #cmdbar,
 body.focus #status,
 body.focus #palette,
-body.focus #inspector { display: none !important; }
+body.focus #inspector,
+body.focus #model-selector { display: none !important; }

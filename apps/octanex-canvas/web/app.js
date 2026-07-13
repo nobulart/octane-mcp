@@ -34,6 +34,7 @@ const dom = {
   inspectorSelection: document.getElementById("inspector-selection"),
   inspectorFixes: document.getElementById("inspector-fixes"),
   camDist: document.getElementById("cam-dist"),
+  modelSelect: document.getElementById("model-select"),
 };
 
 const state = {
@@ -434,6 +435,78 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
+// Agent model selector (lower-right) — routes the Hermes harness model that
+// powers the agentic intent -> scene interaction. Reads the live model list
+// from the gateway (sourced from ~/.hermes/config.yaml) and writes the choice
+// back so the harness uses it on the next interpretation.
+// ---------------------------------------------------------------------------
+async function loadModels() {
+  try {
+    const res = await getJSON("/config/models");
+    const sel = dom.modelSelect;
+    if (!sel) return;
+    sel.innerHTML = "";
+    // Group options by provider via <optgroup> so the harness choices read clearly.
+    const byProvider = new Map();
+    (res.options || []).forEach((m) => {
+      const key = m.provider || "default";
+      byProvider.set(key, (byProvider.get(key) || []).concat(m));
+    });
+    for (const [provider, models] of byProvider) {
+      const group = document.createElement("optgroup");
+      group.label = provider;
+      models.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        const caps = m.capabilities || {};
+        const tags = [
+          m.context_length ? `${(m.context_length / 1024) | 0}k` : null,
+          caps.vision ? "vision" : null,
+          caps.thinking ? "think" : null,
+        ].filter(Boolean).join(" · ");
+        opt.textContent = m.id + (tags ? `  (${tags})` : "");
+        group.appendChild(opt);
+      });
+      sel.appendChild(group);
+    }
+    // Selection priority: user's persisted choice (across sessions) > Hermes
+    // default from the server. A UI reset clears the persisted choice.
+    const saved = localStorage.getItem("octanex.model");
+    if (saved && res.options.some((o) => o.id === saved)) {
+      sel.value = saved;
+    } else if (res.current) {
+      sel.value = res.current;
+    }
+  } catch (e) {
+    console.error("loadModels failed", e);
+  }
+}
+
+async function onModelChange() {
+  const id = dom.modelSelect && dom.modelSelect.value;
+  if (!id) return;
+  // Persist the user's choice so it survives reloads (honored over the server
+  // default on next load) until a UI reset clears it.
+  localStorage.setItem("octanex.model", id);
+  try {
+    const res = await postJSON("/config/models", { model: id });
+    if (!res.ok) {
+      console.error("set model failed", res.error);
+      dom.status.className = "state-error";
+      dom.statusText.textContent = `model set failed`;
+    }
+  } catch (e) {
+    console.error("set model failed", e);
+  }
+}
+
+// Reset the model selection to the Hermes default (clears the persisted choice
+// so loadModels falls back to the server's current model on next load).
+function resetModelSelection() {
+  localStorage.removeItem("octanex.model");
+  loadModels();
+}
+
 // Boot
 // ---------------------------------------------------------------------------
 initRenderer();
@@ -443,3 +516,5 @@ setInterval(pollPreview, 750);
 setInterval(pollStatus, 750);
 pollPreview();
 pollStatus();
+loadModels();
+if (dom.modelSelect) dom.modelSelect.addEventListener("change", onModelChange);
