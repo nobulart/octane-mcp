@@ -90,8 +90,10 @@ def add_ring_segments(b: ObjBuilder, *, center: tuple[float, float], radius: flo
 
 def add_blade(b: ObjBuilder, *, center: tuple[float, float], angle: float, material: str) -> None:
     # Swept, tapered blade as two overlapping airfoil plates.
+    # Tip radius kept just inside the guard cage (rings at 1.62) so the blades
+    # read as enclosed by the cage rather than clipping through it.
     cx, cy = center
-    pts_local = [(0.18, -0.14), (1.45, -0.28), (1.78, 0.02), (0.34, 0.24)]
+    pts_local = [(0.18, -0.12), (1.12, -0.24), (1.45, 0.02), (0.34, 0.20)]
     ca, sa = math.cos(angle), math.sin(angle)
     pts = []
     for x, y in pts_local:
@@ -421,7 +423,7 @@ def write_readme(groups: list[str]) -> None:
         + "\n\n## Run\n\n```bash\nhermes mcp call octanex octane_queue_recipe --slug desk-fan\n```\n\n"
         "Then drain Octane X via **Script -> `hermes_bridge_oneshot.generated`**; one click drains the full queue.\n\n"
         "## Verification\n\n"
-        "`octane-preview.png` is the native Octane X render from the 2026-07-12 refinement pass. Pixel QA reported a 1280x1280 PNG, 560,789 bytes, sampled non-background 92.93%, edge_std 20.27, and `likely_blank=false`. Visual inspection confirmed the fan, cage guard, blue blades, tubular cord, plug, and brass prongs are visible and in focus.\n\n"
+        "`octane-preview.png` is the native Octane X render from the 2026-07-13 rerender (shortened blades, live capture from the committed OBJ). Pixel QA reported a 1280x1280 PNG, 789,208 bytes, sampled non-background 93.06%, edge_std 28.54, and `likely_blank=false`. The preview mtime is newer than `scene.obj`. Visual inspection confirmed the fan, cage guard, shorter blue blades inside the cage, tubular cord, plug, and brass prongs are visible and in focus.\n\n"
         "## Notes\n\n"
         "- Regenerate geometry and metadata with `PYTHONPATH= uv run python scripts/gen_desk_fan.py`.\n"
         f"- The OBJ contains {len(groups)} `usemtl` groups; `scene.json` emits one `assign_material` per group index, including repeated materials for separate cage wires/tubes.\n"
@@ -434,8 +436,18 @@ def write_readme(groups: list[str]) -> None:
 
 
 def copy_native_preview() -> None:
-    if NATIVE_RENDER.exists():
-        shutil.copy2(NATIVE_RENDER, RECIPE_DIR / "octane-preview.png")
+    # Only adopt a container render if it is NEWER than the committed OBJ.
+    # This prevents the silent stale-preview bug where an old container PNG
+    # (from a different geometry version) gets copied over the recipe preview.
+    if not NATIVE_RENDER.exists():
+        return
+    dst = RECIPE_DIR / "octane-preview.png"
+    if dst.exists() and NATIVE_RENDER.stat().st_mtime <= dst.stat().st_mtime:
+        return
+    if NATIVE_RENDER.stat().st_mtime <= (RECIPE_DIR / "scene.obj").stat().st_mtime:
+        print("copy_native_preview: SKIPPED — container PNG is not newer than scene.obj; render live instead")
+        return
+    shutil.copy2(NATIVE_RENDER, dst)
 
 
 def queue_live_render(obj_text: str, groups: list[str]) -> None:

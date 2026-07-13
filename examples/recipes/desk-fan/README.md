@@ -29,7 +29,7 @@ Then drain Octane X via **Script -> `hermes_bridge_oneshot.generated`**; one cli
 
 ## Verification
 
-`octane-preview.png` is the native Octane X render from the 2026-07-12 refinement pass. Pixel QA reported a 1280x1280 PNG, 560,789 bytes, sampled non-background 92.93%, edge_std 20.27, and `likely_blank=false`. Visual inspection confirmed the fan, cage guard, blue blades, tubular cord, plug, and brass prongs are visible and in focus.
+`octane-preview.png` is the native Octane X render from the 2026-07-13 rerender (shortened blades, live capture from the committed OBJ). Pixel QA reported a 1280x1280 PNG, 789,208 bytes, sampled non-background 93.06%, edge_std 28.54, and `likely_blank=false`. The preview mtime is newer than `scene.obj`. Visual inspection confirmed the fan, cage guard, shorter blue blades inside the cage, tubular cord, plug, and brass prongs are visible and in focus.
 
 ## Notes
 

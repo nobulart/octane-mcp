@@ -54,11 +54,13 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - Promoted assets into `examples/recipes/desk-fan/` with `scene.obj`, `scene.mtl`, `scene.json`, `README.md`, and native `octane-preview.png`; added deterministic generator `scripts/gen_desk_fan.py`.
 
 ### Signals / evidence
-- Native Octane render saved at `examples/recipes/desk-fan/octane-preview.png` from the 2026-07-12 one-shot bridge refinement pass.
-- Pixel QA for the final native PNG: 1280×1280, 560,789 bytes, sampled non-background 92.93%, edge_std 20.27, blank=false.
-- The final `scene.json` emits one `assign_material` command per `usemtl` group index, including repeated cage/cord groups, plus explicit material creation and camera focus metadata.
+- Native Octane render saved at `examples/recipes/desk-fan/octane-preview.png`. The first 2026-07-12 promotion was a STALE preview: `copy_native_preview()` copied a pre-existing container PNG that was ~23 min OLDER than the committed `scene.obj`. Re-rendered live on 2026-07-13 from the committed OBJ after shortening the blades; the corrected preview (1280×1280, 789,208 bytes) is now NEWER than `scene.obj`.
+- Pixel QA for the 2026-07-13 rerender: 1280×1280, 789,208 bytes, sampled non-background 93.06%, edge_std 28.54, blank=false.
+- The `scene.json` emits one `assign_material` command per `usemtl` group index (82 assigns for 82 groups), including repeated cage/cord groups, plus explicit material creation and camera focus metadata.
 
 ### Follow-ups
+- **Always verify preview freshness before trusting/committing a recipe preview.** Compare `octane-preview.png` mtime against `scene.obj` mtime (and, for generated recipes, against the generator + `scene.json`). A preview OLDER than the OBJ it depicts is a silent promotion bug — the preview was rendered from a different/earlier version of the geometry. Prefer rendering the committed OBJ live (mirror into the container `assets/`, then drain) over copying any pre-existing container PNG.
+- The one-shot drain can save the frame BEFORE `import_geometry` is processed if the queue is not strictly ordered at drain time (symptom: a blank sky PNG while the live viewport still shows the mesh). If the saved PNG is blank/sky but the mesh is visible in Octane, queue a SINGLE `save_preview` with no scene reset and drain again to capture the live scene.
 - If the guard aliases at small sizes, increase torus/wire segment density or slightly thicken `mat_cage` tubes; do not revert to bead-only rings.
 - Keep the cord as tube geometry rather than a rectangular strip.
 - If a future render looks soft, verify the generated bridge honors `focus_distance` before changing geometry.

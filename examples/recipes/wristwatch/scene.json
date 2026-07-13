@@ -331,5 +331,49 @@
     }
   ],
   "native_octane_verified": false,
-  "status": "pending live render"
+  "status": "pending live render",
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/wristwatch/octane-preview.png",
+    "candidate_image": "examples/recipes/wristwatch/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": ["case/dial readability", "strap links", "hand pinning", "material separation", "framing"],
+    "patch_dimensions": ["geometry", "camera", "lighting", "materials", "render_settings"],
+    "required_evidence": [
+      "bridge result metadata for queued commands",
+      "native Octane candidate preview at octane-preview.png",
+      "glm-ocr reference and candidate review notes",
+      "one bounded patch plan per iteration",
+      "final native Octane render bundled as octane-preview.png",
+      "iteration review/patch records under iterations/"
+    ],
+    "stop_conditions": [
+      "candidate content and major silhouettes match the reference or stated recipe intent",
+      "task-critical colors/materials/labels are visually distinguishable",
+      "camera/framing and lighting are close enough for the task",
+      "remaining gaps require bridge schema or native material capability work"
+    ],
+    "baseline_sweep": {
+      "enabled": true,
+      "purpose": "Rapidly compare watch front, three-quarter, strap-emphasis, and top-down variants before fine visual matching.",
+      "camera_or_scene_variants": [
+        {"name": "front", "azimuth_degrees": 0, "elevation_degrees": 12},
+        {"name": "right_three_quarter", "azimuth_degrees": 28, "elevation_degrees": 14},
+        {"name": "strap_emphasis", "azimuth_degrees": 18, "elevation_degrees": 8},
+        {"name": "top_down", "azimuth_degrees": 0, "elevation_degrees": 45}
+      ],
+      "visual_grammar_axes": ["dial_size", "strap_link_readability", "hand_pin_accuracy", "camera_distance", "material_contrast"],
+      "evidence_pattern": "iterations/baseline-<variant>.png plus iterations/baseline-review.json"
+    }
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/wristwatch/octane-preview.png",
+    "iteration_dir": "examples/recipes/wristwatch/iterations",
+    "final_review": "examples/recipes/wristwatch/iterations/final-review.json",
+    "result_metadata_pattern": "workspace/results/<command_id>.json copied or summarized into iterations/",
+    "bundled_assets": ["scene.obj", "scene.mtl", "scene.json", "octane-preview.png"],
+    "status": "pending_native_octane_iteration",
+    "note": "Recipe is contract-complete but not yet rendered natively; native_octane_verified remains false until a live render passes pixel acceptance."
+  }
 }
