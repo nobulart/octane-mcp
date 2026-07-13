@@ -30,6 +30,7 @@ from .scene import add_scene_object, load_scene_manifest, queue_scene_plan, remo
 from .sanity import analyze_scene_graph, analyze_scene_plan
 from .annotation import compute_label_layout, CameraView, draw_label_overlay
 from .visuals import camera_for_bounds, create_avatar_face_obj, create_bar_chart_obj, create_scatter_obj, create_surface_obj, scene_commands_for_asset
+from .pointcloud import PointCloudDependencyError, PointCloudFormatError, point_cloud_to_asset, particle_cloud_scene_commands, supported_point_cloud_formats
 from .geo import geojson_to_obj, geo_asset_to_scene_commands, GeoDependencyError
 from .animation import orbit_manifest, build_animation_commands
 
@@ -42,6 +43,9 @@ except Exception:  # pragma: no cover - exercised when deps are missing
 def _json(data: Dict[str, Any]) -> str:
     return json.dumps(data, indent=2)
 
+
+# Per-agent identity for the scheduler (host:pid, override via OCTANEX_AGENT_ID).
+from .scheduler import agent_id as _agent_id  # noqa: E402
 
 def _build_save_preview_envelope(
     *,
@@ -346,8 +350,136 @@ def build_mcp() -> Any:
         thousands of stale commands that would otherwise re-render on drain.
         This MOVEs queued files into a dated backup dir (never deletes) so the
         operation is recoverable, then returns how many were cleared.
+
+        OPERATOR ESCAPE HATCH ONLY. When the scheduler is in use, prefer
+        ``octane_submit_job`` + ``octane_job_status`` — flushing destroys other
+        agents' pending work instead of queueing it.
         """
         return _json(flush_queue(Workspace(), backup=backup))
+
+    @mcp.tool()
+    def octane_submit_job(
+        commands: list[dict],
+        agent_id: Optional[str] = None,
+        preview_path: Optional[str] = None,
+    ) -> str:
+        """Stage a complete render job (a full scene build) and queue it behind
+        the shared-engine lock so multiple agents can share Octane X safely.
+
+        ``commands`` is a list of command envelopes (each with ``op``/``payload``).
+        They are NOT written into the global ``queue/`` immediately; they are
+        staged under ``jobs/<job_id>/commands`` and promoted onto the engine by
+        the dispatcher (``octane_dispatch_jobs``) under a filesystem lease lock.
+
+        Submission never flushes other agents' work. Use ``octane_job_status``
+        to poll state and output paths, and ``octane_job_queue`` to see waiting
+        jobs. This is additive — the classic ``octane_*`` queue tools still drain
+        the global queue directly for single-agent use.
+        """
+        from .scheduler import JobScheduler
+
+        sched = JobScheduler.from_defaults(agent_id or _agent_id())
+        job_id = sched.submit(commands, agent_id=agent_id or _agent_id(), preview_path=preview_path)
+        position = None
+        for i, j in enumerate(sched.queued_jobs()):
+            if j["job_id"] == job_id:
+                position = i
+                break
+        return _json({
+            "ok": True,
+            "job_id": job_id,
+            "queue_position": position,
+            "status": "queued",
+            "preview_path": preview_path,
+        })
+
+    @mcp.tool()
+    def octane_job_status(job_id: str) -> str:
+        """Poll a submitted job's state: queued -> active -> done/failed.
+
+        Completion is filesystem-observable (``jobs/<id>/done.json``), so it
+        keeps working even if the controlling drain process was killed. Returns
+        the manifest, lock state, and any output paths recorded on completion.
+        """
+        from .scheduler import JobScheduler
+
+        sched = JobScheduler.from_defaults(_agent_id())
+        manifest = sched.get_manifest(job_id)
+        if manifest is None:
+            return _json({"ok": False, "error": f"no such job: {job_id}"})
+        done = None
+        done_path = sched.jobs_dir / job_id / "done.json"
+        if done_path.exists():
+            try:
+                done = json.loads(done_path.read_text(encoding="utf-8"))
+            except Exception:
+                done = None
+        return _json({
+            "ok": True,
+            "manifest": manifest,
+            "done": done,
+            "lock": sched.lock.state(),
+            "is_done": sched.is_done(job_id),
+        })
+
+    @mcp.tool()
+    def octane_job_queue() -> str:
+        """Snapshot of all jobs (queued / active / done / failed) and the
+        current render-lock state. Use it to decide whether to submit or wait.
+        """
+        from .scheduler import JobScheduler
+
+        sched = JobScheduler.from_defaults(_agent_id())
+        return _json({
+            "jobs": sched.list_jobs(),
+            "lock": sched.lock.state(),
+            "global_queue_files": [p.name for p in sched.pending_queue_files()],
+        })
+
+    @mcp.tool()
+    def octane_dispatch_jobs(max_retries: int = 5) -> str:
+        """Promote the oldest queued job onto the engine under the shared lock
+        and acquire the lease. This is the ONLY path that writes to the global
+        ``queue/`` and triggers a drain, so it must be the sole caller — both the
+        MCP tools and any hand-rolled ``osascript octane_drain.applescript`` must
+        go through it, or check ``octane_job_queue().lock`` first.
+
+        Returns the promoted ``job_id`` (now draining), or ``null`` if the engine
+        is busy (a live lease held by another agent) or nothing is queued.
+        """
+        from .scheduler import JobScheduler
+
+        sched = JobScheduler.from_defaults(_agent_id())
+        promoted = sched.dispatch_cycle(max_retries=max_retries)
+        return _json({
+            "promoted_job_id": promoted,
+            "lock": sched.lock.state(),
+            "queued": sched.queued_jobs(),
+        })
+
+    @mcp.tool()
+    def octane_render_job(
+        timeout_seconds: int = 240,
+        max_retries: int = 5,
+    ) -> str:
+        """End-to-end shared-engine render: promote the oldest queued job under
+        the lock, run the one-shot Lua drain, and write ``jobs/<id>/done.json``.
+
+        This is the SINGLE render path that multiple agents should use so the
+        engine is never double-driven. Completion is filesystem-observable, so
+        even if THIS process is SIGTERM'd mid-render the job is resolvable by the
+        next agent (see ``octane_job_status``). On a hard drain failure the job
+        is marked failed and the lock released for retry.
+
+        Returns {promoted_job_id, drain, done, lock}. If the engine is busy
+        (another agent holds a live lease) or nothing is queued, promoted_job_id
+        is null.
+        """
+        from .scheduler import JobScheduler
+
+        sched = JobScheduler.from_defaults(_agent_id())
+        result = sched.dispatch_and_drain(timeout_seconds=timeout_seconds, max_retries=max_retries)
+        return _json(result)
 
     @mcp.tool()
     def octane_ping(message: str = "hello from Hermes") -> str:
@@ -761,6 +893,46 @@ def build_mcp() -> Any:
         commands = scene_commands_for_asset(asset, material_name=material_name, color=[1.0, 0.42, 0.12])
         results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
         return _json({"asset": asset, "queued_commands": results, "status": read_status()})
+
+    @mcp.tool()
+    def octane_visualize_point_cloud(
+        source_path: str,
+        name: str = "visual_particle_cloud",
+        x_column: str = "x",
+        y_column: str = "y",
+        z_column: str = "z",
+        variable: Optional[str] = None,
+        time_index: int = 0,
+        max_points: int = 512,
+        point_size: float = 0.12,
+        primitive: str = "sphere",
+        color: Optional[list[float]] = None,
+    ) -> str:
+        """Queue a normalized particle-cloud render from CSV/TSV/XYZ/PTS/ASCII-PLY/JSON/GeoJSON or NetCDF.
+
+        NetCDF is optional and expects a three-dimensional scalar variable (after an
+        optional time slice). The strongest finite samples become particles, which is
+        a geometry-based volume approximation rather than a physical VDB medium.
+        """
+        try:
+            asset = point_cloud_to_asset(
+                source_path,
+                name=name,
+                columns=(x_column, y_column, z_column),
+                variable=variable,
+                time_index=time_index,
+                max_points=max_points,
+                point_size=point_size,
+                primitive=primitive,
+            )
+        except PointCloudDependencyError as exc:
+            return _json({"error": str(exc), "hint": "uv sync --extra pointcloud", "queued_commands": [], "supported_formats": supported_point_cloud_formats()})
+        except (FileNotFoundError, PointCloudFormatError, ValueError) as exc:
+            return _json({"error": str(exc), "queued_commands": [], "supported_formats": supported_point_cloud_formats()})
+        preview_path = f"renders/{asset['name']}_octane-preview.png"
+        commands = particle_cloud_scene_commands(asset, color=color or [0.08, 0.62, 1.0], preview_path=preview_path)
+        results = [write_command(cmd["op"], cmd["payload"]) for cmd in commands]
+        return _json({"asset": asset, "preview_path": preview_path, "queued_commands": results, "status": read_status(), "supported_formats": supported_point_cloud_formats()})
 
     @mcp.tool()
     def octane_show_avatar(name: str = "hermes_avatar_face") -> str:

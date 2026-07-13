@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.12
+version: 1.9.13
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -327,17 +327,38 @@ sequence:
    X (clears any in-memory scene from a prior run). AppleScript:
    `tell application "System Events" to tell process "Octane X" to click menu
    item "New" of menu 1 of menu bar item "File" of menu bar 1`.
-3. **Flush any stale queue** with `octane_flush_queue()` *before* queueing. It
-   moves stale shared-queue commands into a dated backup; never delete a shared
-   queue with `rm`.
+3. **Flush is an operator escape hatch, NOT a default step.** The filesystem
+   scheduler (`src/octanex_mcp/scheduler.py`) now makes `queue/` strictly the
+   "currently draining" staging for one job at a time. **Do NOT call
+   `octane_flush_queue()` before queueing in the multi-agent/shared-engine case —
+   it moves other agents' pending commands to backup and breaks their jobs.** Only
+   flush to recover from a genuinely wedged/orphaned global queue, and prefer
+   `octane_job_queue()` to inspect first. For shared-engine rendering use the
+   scheduler tools:
+   - `octane_submit_job(commands, preview_path)` — enqueue a complete scene
+     build; never flushes others.
+   - `octane_render_job()` — the SINGLE render path: promotes the oldest queued
+     job under `render.lock`, drains via the lock-aware `octane_drain.applescript`,
+     and writes `jobs/<id>/done.json` so completion survives a SIGTERM'd
+     controller. On hard drain failure the job is marked failed and the lock
+     released for retry.
+   - `octane_job_status(job_id)` / `octane_job_queue()` — poll state + outputs.
+   The `render.lock` lease (default 300s, 30s heartbeat) makes the engine
+   shareable: a second agent calling `octane_render_job()` while another holds a
+   live lease gets `promoted_job_id: null` (busy) instead of double-driving
+   Octane. The hand-rolled `osascript scripts/octane_drain.applescript` is also
+   lock-aware (refuses to drain if another agent holds a live lease).
 4. **Build and queue the complete scene pipeline** (import → material → camera
-   → light → save-preview).
-5. **Process the queue** with one `octane_run_oneshot_bridge` / Script-menu click.
-   One click drains the ENTIRE queue, including `save_preview`.
-6. **Poll** `…/OctaneMCP/queue/` to confirm it reaches zero, then wait for the
-   PNG. Do not re-click while `save_preview` is rendering.
-7. **Return to step 2** for the next scene (reset → flush → build → drain). Do
-   NOT pile scenes into one uncleared session.
+   → light → save-preview). When using the scheduler, queue into a job
+   (`octane_submit_job`) rather than the bare global `queue/`.
+5. **Process the queue** with one `octane_run_oneshot_bridge` / Script-menu click
+   (or `octane_render_job`, which does the dispatch + drain). One click drains
+   the ENTIRE queue, including `save_preview`.
+6. **Poll** `…/OctaneMCP/jobs/<id>/done.json` for a shared-engine job (not just
+   `queue/` for zero) to confirm completion, then wait for the PNG. Do not
+   re-click while `save_preview` is rendering.
+7. **Return to step 2** for the next scene (reset → build → drain). Do NOT pile
+   scenes into one uncleared session.
 
 > **CRITICAL — after the bridge populates the node tree, the Hermes Render
 > Target node MUST be selected and the renderer MUST be explicitly started, or
