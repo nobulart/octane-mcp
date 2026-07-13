@@ -1,67 +1,75 @@
 {
   "slug": "earth-hemisphere",
-  "title": "Cutaway Earth: solid interior + atmospheric sheaths (point cloud)",
+  "title": "Cutaway Earth: glowing core + jittered translucent layers + atmospheric sheaths (point cloud)",
   "category": "Geoscience / planet visualization",
   "purpose": "Dense, to-scale point-cloud cutaway of the Earth's interior layers (PREM) and proportionally sparser atmospheric shells, with WGS84 centrifugal oblateness and differentiated continental/oceanic crust.",
   "camera": {
     "position": [
-      10.5,
-      4.2,
-      13.5
+      16.0,
+      6.4,
+      20.6
     ],
     "target": [
       0.0,
       0.0,
       -1.0
     ],
-    "fov": 32.0,
-    "focus_distance": 20.0
+    "fov": 28.0,
+    "focus_distance": 28.0
   },
   "materials": {
-    "mat_inner_core": {
-      "name": "mat_inner_core",
-      "kind": "metallic",
+    "mat_inner_core_shell": {
+      "name": "mat_inner_core_shell",
+      "kind": "glossy",
       "color": [
         1.0,
         0.88,
         0.4
       ],
-      "roughness": 0.28,
-      "emission": 0.0
+      "roughness": 0.35,
+      "emission": 0.4,
+      "opacity": 0.92,
+      "transmission": 0.06
     },
-    "mat_outer_core": {
-      "name": "mat_outer_core",
-      "kind": "metallic",
+    "mat_outer_core_shell": {
+      "name": "mat_outer_core_shell",
+      "kind": "glossy",
       "color": [
         1.0,
         0.42,
         0.16
       ],
-      "roughness": 0.22,
-      "emission": 0.35
+      "roughness": 0.3,
+      "emission": 0.26,
+      "opacity": 0.5,
+      "transmission": 0.4
     },
-    "mat_lower_mantle": {
-      "name": "mat_lower_mantle",
+    "mat_lower_mantle_shell": {
+      "name": "mat_lower_mantle_shell",
       "kind": "glossy",
       "color": [
-        0.52,
-        0.13,
-        0.07
-      ],
-      "roughness": 0.72
-    },
-    "mat_upper_mantle": {
-      "name": "mat_upper_mantle",
-      "kind": "glossy",
-      "color": [
-        0.72,
-        0.26,
+        0.62,
+        0.2,
         0.1
       ],
-      "roughness": 0.62
+      "roughness": 0.55,
+      "opacity": 0.4,
+      "transmission": 0.55
     },
-    "mat_crust_cont": {
-      "name": "mat_crust_cont",
+    "mat_upper_mantle_shell": {
+      "name": "mat_upper_mantle_shell",
+      "kind": "glossy",
+      "color": [
+        0.78,
+        0.34,
+        0.14
+      ],
+      "roughness": 0.48,
+      "opacity": 0.4,
+      "transmission": 0.55
+    },
+    "mat_crust_cont_shell": {
+      "name": "mat_crust_cont_shell",
       "kind": "glossy",
       "color": [
         0.55,
@@ -70,8 +78,8 @@
       ],
       "roughness": 0.82
     },
-    "mat_crust_ocean": {
-      "name": "mat_crust_ocean",
+    "mat_crust_ocean_shell": {
+      "name": "mat_crust_ocean_shell",
       "kind": "glossy",
       "color": [
         0.16,
@@ -80,57 +88,166 @@
       ],
       "roughness": 0.6
     },
-    "mat_troposphere": {
-      "name": "mat_troposphere",
+    "mat_troposphere_shell": {
+      "name": "mat_troposphere_shell",
       "kind": "specular",
       "color": [
         0.62,
         0.8,
         1.0
       ],
-      "roughness": 0.05,
-      "transmission": 0.85,
+      "roughness": 0.1,
+      "transmission": 0.9,
       "ior": 1.0003,
-      "opacity": 0.42
+      "opacity": 0.32
     },
-    "mat_stratosphere": {
-      "name": "mat_stratosphere",
+    "mat_stratosphere_shell": {
+      "name": "mat_stratosphere_shell",
       "kind": "specular",
       "color": [
         0.42,
         0.62,
         1.0
       ],
-      "roughness": 0.05,
-      "transmission": 0.9,
+      "roughness": 0.1,
+      "transmission": 0.91,
       "ior": 1.0003,
-      "opacity": 0.34
+      "opacity": 0.24
     },
-    "mat_mesosphere": {
-      "name": "mat_mesosphere",
+    "mat_mesosphere_shell": {
+      "name": "mat_mesosphere_shell",
       "kind": "specular",
       "color": [
         0.64,
         0.42,
         1.0
       ],
-      "roughness": 0.05,
-      "transmission": 0.9,
+      "roughness": 0.1,
+      "transmission": 0.91,
       "ior": 1.0003,
-      "opacity": 0.26
+      "opacity": 0.18
     },
-    "mat_thermosphere": {
-      "name": "mat_thermosphere",
+    "mat_thermosphere_shell": {
+      "name": "mat_thermosphere_shell",
       "kind": "specular",
       "color": [
         1.0,
         0.42,
         0.7
       ],
-      "roughness": 0.05,
-      "transmission": 0.95,
+      "roughness": 0.1,
+      "transmission": 0.94,
       "ior": 1.0003,
-      "opacity": 0.16
+      "opacity": 0.12
+    },
+    "mat_inner_core_face": {
+      "name": "mat_inner_core_face",
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.88,
+        0.4
+      ],
+      "roughness": 0.35,
+      "emission": 0.4,
+      "opacity": 0.92,
+      "transmission": 0.06
+    },
+    "mat_outer_core_face": {
+      "name": "mat_outer_core_face",
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.42,
+        0.16
+      ],
+      "roughness": 0.3,
+      "emission": 0.26,
+      "opacity": 0.5,
+      "transmission": 0.4
+    },
+    "mat_lower_mantle_face": {
+      "name": "mat_lower_mantle_face",
+      "kind": "glossy",
+      "color": [
+        0.62,
+        0.2,
+        0.1
+      ],
+      "roughness": 0.55,
+      "opacity": 0.4,
+      "transmission": 0.55
+    },
+    "mat_upper_mantle_face": {
+      "name": "mat_upper_mantle_face",
+      "kind": "glossy",
+      "color": [
+        0.78,
+        0.34,
+        0.14
+      ],
+      "roughness": 0.48,
+      "opacity": 0.4,
+      "transmission": 0.55
+    },
+    "mat_crust_cont_face": {
+      "name": "mat_crust_cont_face",
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.48,
+        0.38
+      ],
+      "roughness": 0.82
+    },
+    "mat_crust_ocean_face": {
+      "name": "mat_crust_ocean_face",
+      "kind": "glossy",
+      "color": [
+        0.16,
+        0.17,
+        0.22
+      ],
+      "roughness": 0.6
+    },
+    "mat_troposphere_face": {
+      "name": "mat_troposphere_face",
+      "kind": "specular",
+      "color": [
+        0.62,
+        0.8,
+        1.0
+      ],
+      "roughness": 0.1,
+      "transmission": 0.9,
+      "ior": 1.0003,
+      "opacity": 0.32
+    },
+    "mat_stratosphere_face": {
+      "name": "mat_stratosphere_face",
+      "kind": "specular",
+      "color": [
+        0.42,
+        0.62,
+        1.0
+      ],
+      "roughness": 0.1,
+      "transmission": 0.91,
+      "ior": 1.0003,
+      "opacity": 0.24
+    },
+    "mat_mesosphere_face": {
+      "name": "mat_mesosphere_face",
+      "kind": "specular",
+      "color": [
+        0.64,
+        0.42,
+        1.0
+      ],
+      "roughness": 0.1,
+      "transmission": 0.91,
+      "ior": 1.0003,
+      "opacity": 0.18
     }
   },
   "commands": [
@@ -145,61 +262,69 @@
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_inner_core",
-        "kind": "metallic",
+        "name": "mat_inner_core_shell",
+        "kind": "glossy",
         "color": [
           1.0,
           0.88,
           0.4
         ],
-        "roughness": 0.28,
-        "emission": 0.0
+        "roughness": 0.35,
+        "emission": 0.4,
+        "opacity": 0.92,
+        "transmission": 0.06
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_outer_core",
-        "kind": "metallic",
+        "name": "mat_outer_core_shell",
+        "kind": "glossy",
         "color": [
           1.0,
           0.42,
           0.16
         ],
-        "roughness": 0.22,
-        "emission": 0.35
+        "roughness": 0.3,
+        "emission": 0.26,
+        "opacity": 0.5,
+        "transmission": 0.4
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_lower_mantle",
+        "name": "mat_lower_mantle_shell",
         "kind": "glossy",
         "color": [
-          0.52,
-          0.13,
-          0.07
-        ],
-        "roughness": 0.72
-      }
-    },
-    {
-      "op": "create_material",
-      "payload": {
-        "name": "mat_upper_mantle",
-        "kind": "glossy",
-        "color": [
-          0.72,
-          0.26,
+          0.62,
+          0.2,
           0.1
         ],
-        "roughness": 0.62
+        "roughness": 0.55,
+        "opacity": 0.4,
+        "transmission": 0.55
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_crust_cont",
+        "name": "mat_upper_mantle_shell",
+        "kind": "glossy",
+        "color": [
+          0.78,
+          0.34,
+          0.14
+        ],
+        "roughness": 0.48,
+        "opacity": 0.4,
+        "transmission": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_crust_cont_shell",
         "kind": "glossy",
         "color": [
           0.55,
@@ -212,7 +337,7 @@
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_crust_ocean",
+        "name": "mat_crust_ocean_shell",
         "kind": "glossy",
         "color": [
           0.16,
@@ -225,72 +350,208 @@
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_troposphere",
+        "name": "mat_troposphere_shell",
         "kind": "specular",
         "color": [
           0.62,
           0.8,
           1.0
         ],
-        "roughness": 0.05,
-        "transmission": 0.85,
+        "roughness": 0.1,
+        "transmission": 0.9,
         "ior": 1.0003,
-        "opacity": 0.42
+        "opacity": 0.32
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_stratosphere",
+        "name": "mat_stratosphere_shell",
         "kind": "specular",
         "color": [
           0.42,
           0.62,
           1.0
         ],
-        "roughness": 0.05,
-        "transmission": 0.9,
+        "roughness": 0.1,
+        "transmission": 0.91,
         "ior": 1.0003,
-        "opacity": 0.34
+        "opacity": 0.24
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_mesosphere",
+        "name": "mat_mesosphere_shell",
         "kind": "specular",
         "color": [
           0.64,
           0.42,
           1.0
         ],
-        "roughness": 0.05,
-        "transmission": 0.9,
+        "roughness": 0.1,
+        "transmission": 0.91,
         "ior": 1.0003,
-        "opacity": 0.26
+        "opacity": 0.18
       }
     },
     {
       "op": "create_material",
       "payload": {
-        "name": "mat_thermosphere",
+        "name": "mat_thermosphere_shell",
         "kind": "specular",
         "color": [
           1.0,
           0.42,
           0.7
         ],
-        "roughness": 0.05,
-        "transmission": 0.95,
+        "roughness": 0.1,
+        "transmission": 0.94,
         "ior": 1.0003,
-        "opacity": 0.16
+        "opacity": 0.12
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_inner_core_face",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.88,
+          0.4
+        ],
+        "roughness": 0.35,
+        "emission": 0.4,
+        "opacity": 0.92,
+        "transmission": 0.06
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_outer_core_face",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.42,
+          0.16
+        ],
+        "roughness": 0.3,
+        "emission": 0.26,
+        "opacity": 0.5,
+        "transmission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_lower_mantle_face",
+        "kind": "glossy",
+        "color": [
+          0.62,
+          0.2,
+          0.1
+        ],
+        "roughness": 0.55,
+        "opacity": 0.4,
+        "transmission": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_upper_mantle_face",
+        "kind": "glossy",
+        "color": [
+          0.78,
+          0.34,
+          0.14
+        ],
+        "roughness": 0.48,
+        "opacity": 0.4,
+        "transmission": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_crust_cont_face",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.48,
+          0.38
+        ],
+        "roughness": 0.82
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_crust_ocean_face",
+        "kind": "glossy",
+        "color": [
+          0.16,
+          0.17,
+          0.22
+        ],
+        "roughness": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_troposphere_face",
+        "kind": "specular",
+        "color": [
+          0.62,
+          0.8,
+          1.0
+        ],
+        "roughness": 0.1,
+        "transmission": 0.9,
+        "ior": 1.0003,
+        "opacity": 0.32
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_stratosphere_face",
+        "kind": "specular",
+        "color": [
+          0.42,
+          0.62,
+          1.0
+        ],
+        "roughness": 0.1,
+        "transmission": 0.91,
+        "ior": 1.0003,
+        "opacity": 0.24
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_mesosphere_face",
+        "kind": "specular",
+        "color": [
+          0.64,
+          0.42,
+          1.0
+        ],
+        "roughness": 0.1,
+        "transmission": 0.91,
+        "ior": 1.0003,
+        "opacity": 0.18
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_inner_core",
+        "material_name": "mat_inner_core_shell",
         "group_index": 1
       }
     },
@@ -298,7 +559,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_outer_core",
+        "material_name": "mat_outer_core_shell",
         "group_index": 2
       }
     },
@@ -306,7 +567,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_lower_mantle",
+        "material_name": "mat_lower_mantle_shell",
         "group_index": 3
       }
     },
@@ -314,7 +575,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_upper_mantle",
+        "material_name": "mat_upper_mantle_shell",
         "group_index": 4
       }
     },
@@ -322,7 +583,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_cont",
+        "material_name": "mat_crust_cont_shell",
         "group_index": 5
       }
     },
@@ -330,7 +591,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_ocean",
+        "material_name": "mat_crust_ocean_shell",
         "group_index": 6
       }
     },
@@ -338,7 +599,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_troposphere",
+        "material_name": "mat_troposphere_shell",
         "group_index": 7
       }
     },
@@ -346,7 +607,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_stratosphere",
+        "material_name": "mat_stratosphere_shell",
         "group_index": 8
       }
     },
@@ -354,7 +615,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_mesosphere",
+        "material_name": "mat_mesosphere_shell",
         "group_index": 9
       }
     },
@@ -362,7 +623,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_thermosphere",
+        "material_name": "mat_thermosphere_shell",
         "group_index": 10
       }
     },
@@ -370,7 +631,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_inner_core",
+        "material_name": "mat_inner_core_face",
         "group_index": 11
       }
     },
@@ -378,7 +639,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_outer_core",
+        "material_name": "mat_outer_core_face",
         "group_index": 12
       }
     },
@@ -386,7 +647,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_lower_mantle",
+        "material_name": "mat_lower_mantle_face",
         "group_index": 13
       }
     },
@@ -394,7 +655,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_upper_mantle",
+        "material_name": "mat_upper_mantle_face",
         "group_index": 14
       }
     },
@@ -402,7 +663,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_cont",
+        "material_name": "mat_crust_cont_face",
         "group_index": 15
       }
     },
@@ -410,7 +671,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_crust_ocean",
+        "material_name": "mat_crust_ocean_face",
         "group_index": 16
       }
     },
@@ -418,7 +679,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_troposphere",
+        "material_name": "mat_troposphere_face",
         "group_index": 17
       }
     },
@@ -426,7 +687,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_stratosphere",
+        "material_name": "mat_stratosphere_face",
         "group_index": 18
       }
     },
@@ -434,7 +695,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "earth_section",
-        "material_name": "mat_mesosphere",
+        "material_name": "mat_mesosphere_face",
         "group_index": 19
       }
     },
@@ -442,17 +703,17 @@
       "op": "set_camera",
       "payload": {
         "position": [
-          10.5,
-          4.2,
-          13.5
+          16.0,
+          6.4,
+          20.6
         ],
         "target": [
           0.0,
           0.0,
           -1.0
         ],
-        "fov": 32.0,
-        "focus_distance": 20.0
+        "fov": 28.0,
+        "focus_distance": 28.0
       }
     },
     {
@@ -464,12 +725,12 @@
     {
       "op": "save_preview",
       "payload": {
-        "path": "examples/recipes/earth-hemisphere/octane-preview.png",
+        "path": "OctaneMCP_staging/earth-hemisphere-jello-v3/octane-preview.png",
         "width": 1280,
         "height": 1280,
-        "samples": 1200,
-        "min_samples": 300,
-        "timeout_seconds": 120
+        "samples": 800,
+        "min_samples": 200,
+        "timeout_seconds": 240
       }
     }
   ],

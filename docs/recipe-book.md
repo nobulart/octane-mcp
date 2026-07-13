@@ -40,6 +40,57 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - If independent cap metal is required, split the cap faces into a third OBJ `usemtl` group and bind it with `group_index=3`; the desk-fan recipe demonstrates this grouped-material path.
 - Increase illumination and material separation for a more photographic commercial-studio finish; geometry and path construction are now the reusable baseline.
 
+## Cutaway Earth point cloud: glowing core + jittered translucent layers
+
+- **Outcome:** success (materials + glow + atmosphere), pitfall (framing reads as disc), pitfall (queue/drain recovery)
+- **Recorded:** 2026-07-13 19:47 UTC
+- **Context:** Built a bounded point-cloud Earth-cutaway recipe (`earth-hemisphere`) from
+  `scripts/gen_earth_hemisphere.py`. Iterated v1→v3 on material fidelity: v2 had a dark
+  hollow inner core and an invisible atmosphere; v3 fixed both. Then hit two operational
+  failures during dispatch that are worth recording so the next agent does not re-live them.
+
+### Steps
+- Generator emits a single OBJ (≈168 MB, gitignored as regenerable) with 19 `usemtl`
+  groups: 7 interior shells + 7 cut-face layers + 4 atmosphere sheaths. One
+  `create_material` + `assign_material` per group, plus `set_camera`/`set_lighting`/
+  `start_render`/`save_preview` (1280×1280, 800 spp).
+- v3 material fixes: inner core `emission 0.40 / opacity 0.92 / transmission 0.06`
+  (solid glowing, kills the void); mantle `opacity 0.40 / transmission 0.55` (jello);
+  atmosphere opacity `0.32→0.24→0.18→0.12`, point radius `0.205` (soft fuzzy shell).
+- Interior particles jittered (`JITTER_INTERIOR=0.018`, scaled by shell thickness) for
+  organic edges; cut-face jitter smaller (`0.010`) so layering stays legible.
+
+### Signals / evidence
+- `dispatch_and_drain` returned `ok: true`, `queue_remaining: 0`, `preview_written: 1`,
+  `waited: 568s`. Native vision confirmed a real 3D Earth cutaway (~70% frame coverage,
+  glowing core, concentric mantle/crust, thin atmosphere).
+- Ad-hoc verification (`hermes-verify-*` temp scripts, deleted after run): 19 unique
+  material groups, valid face indices, v3 emission/opacity/transmission values present in
+  the regenerated OBJ's `scene.json`.
+
+### Follow-ups
+- **Framing pitfall:** at `camera [16.0, 6.4, 20.6]`, `target [0,0,-1]`, the cut plane
+  faces +Z and the camera looks nearly head-on down the cut axis — the render reads as a
+  flat disc/wheel, not a 3D hemisphere. Rotate the cut plane (or camera) ~30–45° off-axis
+  to show the hemisphere bulge + layered cross-section in perspective. Recommended next
+  iteration before this is called a "finished" 3D view.
+- **Queue/drain recovery pitfall (root cause of two failed renders):**
+  1. Legacy `inbox_*.json` files in the container ROOT get drained by the one-shot
+     *instead of* the promoted `queue/` job — the bridge processed a 1-command stale
+     batch and wrote an empty default `octane-preview.png`. **Fix:** move orphan
+     `inbox_*.json` + `queue/_stuck_backup` out of the workspace before draining.
+  2. If a drain proc is SIGTERM'd mid-run (e.g. a chat message arrives and the harness
+     kills the background process), commands already moved to `processing/` are
+     **stranded** — the one-shot only lists `queue/`, so they never re-process and the
+     scene ends up incomplete ("only the render target"). **Fix:** before re-promoting,
+     sweep `queue/` + `processing/` back into the job's `commands/` (source of truth),
+     rebuild the job from the canonical staging `scene.json`, then `_promote` and assert
+     `queue == len(commands)` BEFORE triggering the one-shot. See `scripts/_drain_v3.py`
+     for the working driver pattern.
+  - Run detached (`terminal(background=true)`), not a heredoc in a foreground shell — the
+    filesystem (preview mtime + `done.json`) is the completion signal; do not block on a
+    process that a message can kill.
+
 ## Desk fan with tubular cord and cage guard
 
 - **Outcome:** success

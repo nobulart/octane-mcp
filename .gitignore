@@ -30,6 +30,11 @@ corpus/*/
 # Local Octane/generated runtime artifacts if copied into repo
 OctaneMCP/
 
+# Large generated point-cloud OBJs (regenerable via scripts/gen_earth_hemisphere.py).
+# Track the generator + scene.json/scene.mtl/README instead; regenerate the OBJ locally.
+examples/recipes/earth-hemisphere/scene.obj
+examples/recipes/earth-hemisphere/*.obj
+
 # Local Hermes desktop-app session exports and attachments
 .hermes/
 

@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -50,32 +51,32 @@ GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 
 # name, inner_km, outer_km, color(rgb 0..1), kind, roughness, extra
 SOLID_LAYERS = [
-    ("inner_core",   0.0,     1221.5, (1.00, 0.88, 0.40), "metallic", 0.28, {"emission": 0.0}),
-    ("outer_core",   1221.5,  3480.0, (1.00, 0.42, 0.16), "metallic", 0.22, {"emission": 0.35}),
-    ("lower_mantle", 3480.0,  5701.0, (0.52, 0.13, 0.07), "glossy",   0.72, {}),
-    ("upper_mantle", 5701.0,  6346.0, (0.72, 0.26, 0.10), "glossy",   0.62, {}),
+    ("inner_core",   0.0,     1221.5, (1.00, 0.88, 0.40), "glossy", 0.35, {"emission": 0.40, "opacity": 0.92, "transmission": 0.06}),
+    ("outer_core",   1221.5,  3480.0, (1.00, 0.42, 0.16), "glossy", 0.30, {"emission": 0.26, "opacity": 0.50, "transmission": 0.40}),
+    ("lower_mantle", 3480.0,  5701.0, (0.62, 0.20, 0.10), "glossy", 0.55, {"opacity": 0.40, "transmission": 0.55}),
+    ("upper_mantle", 5701.0,  6346.0, (0.78, 0.34, 0.14), "glossy", 0.48, {"opacity": 0.40, "transmission": 0.55}),
 ]
 # crust handled separately (cont vs ocean)
 CRUST_CONT_COLOR = (0.55, 0.48, 0.38)   # granitic tan
 CRUST_OCEAN_COLOR = (0.16, 0.17, 0.22)  # basaltic dark
 
 ATMOSPHERE = [
-    ("troposphere",  0.0,   12.0,  (0.62, 0.80, 1.00), "specular", 0.05, {"transmission": 0.85, "ior": 1.0003, "opacity": 0.42}),
-    ("stratosphere", 12.0,  50.0,  (0.42, 0.62, 1.00), "specular", 0.05, {"transmission": 0.90, "ior": 1.0003, "opacity": 0.34}),
-    ("mesosphere",   50.0,  85.0,  (0.64, 0.42, 1.00), "specular", 0.05, {"transmission": 0.90, "ior": 1.0003, "opacity": 0.26}),
-    ("thermosphere", 85.0,  600.0, (1.00, 0.42, 0.70), "specular", 0.05, {"transmission": 0.95, "ior": 1.0003, "opacity": 0.16}),
+    ("troposphere",  0.0,   12.0,  (0.62, 0.80, 1.00), "specular", 0.10, {"transmission": 0.90, "ior": 1.0003, "opacity": 0.32}),
+    ("stratosphere", 12.0,  50.0,  (0.42, 0.62, 1.00), "specular", 0.10, {"transmission": 0.91, "ior": 1.0003, "opacity": 0.24}),
+    ("mesosphere",   50.0,  85.0,  (0.64, 0.42, 1.00), "specular", 0.10, {"transmission": 0.91, "ior": 1.0003, "opacity": 0.18}),
+    ("thermosphere", 85.0,  600.0, (1.00, 0.42, 0.70), "specular", 0.10, {"transmission": 0.94, "ior": 1.0003, "opacity": 0.12}),
 ]
 
 # Base point counts at DENSITY=1. The section face is deliberately denser than
 # the shell (2x) so the layered cut reads clearly; the atmosphere is sparser.
 SHELL_COUNTS = {
     "inner_core": 40000, "outer_core": 100000, "lower_mantle": 140000,
-    "upper_mantle": 90000, "crust_cont": 25_000_000, "crust_ocean": 25_000_000,
+    "upper_mantle": 90000, "crust_cont": 800000, "crust_ocean": 800000,
     "troposphere": 22000, "stratosphere": 18000, "mesosphere": 14000, "thermosphere": 18000,
 }
 FACE_COUNTS = {
     "inner_core": 80000, "outer_core": 200000, "lower_mantle": 280000,
-    "upper_mantle": 180000, "crust_cont": 60_000_000, "crust_ocean": 60_000_000,
+    "upper_mantle": 180000, "crust_cont": 1200000, "crust_ocean": 1200000,
     "troposphere": 40000, "stratosphere": 32000, "mesosphere": 26000, "thermosphere": 32000,
 }
 # Crust is emitted as a dense colour bitmap (per user): high surface density
@@ -83,8 +84,10 @@ FACE_COUNTS = {
 CRUST_SHELL_DENSITY = 2.0
 CRUST_FACE_DENSITY = 2.0
 ATMOSPHERE_DENSITY = 0.5  # atmosphere is proportionally less dense than solid
-POINT_RADIUS_SOLID = 0.030
-POINT_RADIUS_ATMO = 0.045
+POINT_RADIUS_SOLID = 0.058
+POINT_RADIUS_ATMO = 0.205  # soft fuzzy atmospheric shells (low opacity)
+JITTER_INTERIOR = 0.018  # edge-localized particle jitter for a naturally perturbed interior
+JITTER_FACE = 0.010      # smaller jitter on the flat cut face so the layering stays legible
 
 
 # --------------------------------------------------------------------------
@@ -106,14 +109,22 @@ def hemisphere_directions(count: int, phase: float = 0.0):
         yield (horizontal * math.cos(angle), horizontal * math.sin(angle), z)
 
 
-def radial_point_cloud(lower_km: float, upper_km: float, radial_levels: int, directions: int, phase: float) -> list:
+def radial_point_cloud(lower_km: float, upper_km: float, radial_levels: int, directions: int, phase: float, jitter: float = 0.0) -> list:
     out = []
     inner3, outer3 = (lower_km / KM) ** 3, (upper_km / KM) ** 3
     for r_i in range(radial_levels):
         frac = (r_i + 0.5) / radial_levels
         radius = (inner3 + frac * (outer3 - inner3)) ** (1.0 / 3.0)
         for dx, dy, dz in hemisphere_directions(directions, phase=phase + r_i * 0.37):
-            out.append(oblate((dx, dy, dz), radius))
+            px, py, pz = oblate((dx, dy, dz), radius)
+            if jitter > 0.0:
+                # jitter scaled by the local layer thickness so particles stay inside the shell
+                span = (outer3 ** (1.0 / 3.0) - inner3 ** (1.0 / 3.0)) * (KM / 1000.0) * 0.35
+                j = jitter * span
+                px += random.uniform(-j, j)
+                py += random.uniform(-j, j)
+                pz += random.uniform(-j, j)
+            out.append((px, py, pz))
     return out
 
 
@@ -167,19 +178,29 @@ def crust_class(lon: float, lat: float) -> str:
 # --------------------------------------------------------------------------
 # OBJ writing
 # --------------------------------------------------------------------------
-def write_octahedron(lines: list[str], point: tuple[float, float, float], pr: float, base: list[int]) -> None:
+def write_sphere(lines: list[str], point: tuple[float, float, float], pr: float, base: list[int], segments: int = 4) -> None:
     x, y, z = point
-    verts = [
-        (x + pr, y, z), (x - pr, y, z), (x, y + pr, z), (x, y - pr, z),
-        (x, y, z + pr), (x, y, z - pr),
-    ]
+    r = max(pr, 1e-4)
+    # three perpendicular rings (XY, YZ, XZ) sampled at `segments` steps each
+    ring: list[tuple[float, float, float]] = []
+    for s in range(segments):
+        a = math.tau * s / segments
+        ca, sa = math.cos(a), math.sin(a)
+        ring.append((x + r * ca, y + r * sa, z))
+        ring.append((x, y + r * ca, z + r * sa))
+        ring.append((x + r * ca, y, z + r * sa))
     start = base[0]
-    for vx, vy, vz in verts:
+    for vx, vy, vz in ring:
         lines.append(f"v {vx:.5f} {vy:.5f} {vz:.5f}")
-    base[0] += 6
-    faces = ((0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4), (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5))
-    for f in faces:
-        lines.append("f " + " ".join(str(start + i) for i in f))
+    base[0] += len(ring)
+    n = segments * 3
+    for s in range(segments):
+        ns = (s + 1) % segments
+        A, B, C = start + 3 * s, start + 3 * s + 1, start + 3 * s + 2
+        D, E, F = start + 3 * ns, start + 3 * ns + 1, start + 3 * ns + 2
+        tris = ((A, B, E), (A, E, D), (B, C, F), (B, F, E), (C, A, D), (C, D, F))
+        for t in tris:
+            lines.append(f"f {t[0]} {t[1]} {t[2]}")
 
 
 def main() -> None:
@@ -188,8 +209,8 @@ def main() -> None:
     ap.add_argument(
         "--density",
         type=float,
-        default=0.001,
-        help="global point-density multiplier; keep default commit-safe, raise for production renders",
+        default=0.05,
+        help="global point-density multiplier; 0.05 is a bounded live-render preset",
     )
     args = ap.parse_args()
     d = args.density
@@ -198,11 +219,12 @@ def main() -> None:
 
     groups: dict[str, list[tuple[float, float, float]]] = defaultdict(list)
 
-    # --- solid shell layers ---
+    # --- solid shell layers (jitter the interior so it reads like translucent
+    #     jello rather than a rigid lattice) ---
     for name, lo, hi, _c, _k, _r, _e in SOLID_LAYERS:
         radial_levels = max(4, int(8 * d))
         directions = max(2000, int(SHELL_COUNTS[name] * d))
-        groups[name].extend(radial_point_cloud(lo, hi, radial_levels, directions, phase=hash(name) % 100))
+        groups[name].extend(radial_point_cloud(lo, hi, radial_levels, directions, phase=hash(name) % 100, jitter=JITTER_INTERIOR))
 
     # --- crust (surface shell, differentiated) — dense colour bitmap ---
     crust_shell = max(4000, int(SHELL_COUNTS["crust_cont"] * d * CRUST_SHELL_DENSITY))
@@ -248,19 +270,29 @@ def main() -> None:
     # --- material + group ordering (shell then face) ---
     solid_names = [n for n, *_ in SOLID_LAYERS] + ["crust_cont", "crust_ocean"]
     atmo_names = [n for n, *_ in ATMOSPHERE]
-    ordered = [("mat_" + n, n) for n in solid_names] + [("mat_" + n, n) for n in atmo_names]
-    face_ordered = [("mat_" + n, "face_" + n) for n in solid_names] + [("mat_" + n, "face_" + n) for n in atmo_names]
+    # Every OBJ material group has a unique label.  Reusing a label for both a
+    # shell and a cut face makes the Octane importer's material-pin diagnostics
+    # ambiguous and was the root cause of prior colour-collapse experiments.
+    ordered = [(f"mat_{n}_shell", n) for n in solid_names] + [(f"mat_{n}_shell", n) for n in atmo_names]
+    face_ordered = [(f"mat_{n}_face", "face_" + n) for n in solid_names] + [(f"mat_{n}_face", "face_" + n) for n in atmo_names]
 
     colors = {}
     for name, lo, hi, col, kind, rough, extra in SOLID_LAYERS:
-        colors["mat_" + name] = (col, kind, rough, extra)
-    colors["mat_crust_cont"] = (CRUST_CONT_COLOR, "glossy", 0.82, {})
-    colors["mat_crust_ocean"] = (CRUST_OCEAN_COLOR, "glossy", 0.60, {})
+        colors[name] = (col, kind, rough, extra)
+    colors["crust_cont"] = (CRUST_CONT_COLOR, "glossy", 0.82, {})
+    colors["crust_ocean"] = (CRUST_OCEAN_COLOR, "glossy", 0.60, {})
     for name, lo, hi, col, kind, rough, extra in ATMOSPHERE:
-        colors["mat_" + name] = (col, kind, rough, extra)
+        colors[name] = (col, kind, rough, extra)
+
+    group_specs = {
+        material: colors[base]
+        for material, group in ordered + face_ordered
+        for base in [group.removeprefix("face_")]
+        if groups.get(group)
+    }
 
     # --- write OBJ ---
-    lines = ["# Generated by octanex-mcp gen_earth_hemisphere.py", "o earth_section"]
+    lines = ["# Generated by octanex-mcp gen_earth_hemisphere.py", "mtllib scene.mtl", "o earth_section"]
     base = [1]
     mat_lines = []
     group_index = {}
@@ -274,7 +306,7 @@ def main() -> None:
         group_index[mat] = idx
         pr = POINT_RADIUS_ATMO if mat.startswith("mat_trop") or mat.startswith("mat_strat") or mat.startswith("mat_meso") or mat.startswith("mat_therm") else POINT_RADIUS_SOLID
         for p in pts:
-            write_octahedron(lines, p, pr, base)
+            write_sphere(lines, p, pr, base)
         idx += 1
 
     obj_path = out / "scene.obj"
@@ -282,15 +314,14 @@ def main() -> None:
 
     # --- scene.mtl (reference; Octane uses explicit create_material commands) ---
     mtl_lines = ["# reference materials (Octane assigns via scene.json commands)"]
-    for mat in colors:
-        col = colors[mat][0]
+    for mat, (col, _kind, _rough, _extra) in group_specs.items():
         mtl_lines.append(f"newmtl {mat}")
         mtl_lines.append(f"Kd {col[0]:.3f} {col[1]:.3f} {col[2]:.3f}")
     (out / "scene.mtl").write_text("\n".join(mtl_lines) + "\n", encoding="utf-8")
 
     # --- materials manifest for scene.json ---
     materials = {}
-    for mat, (col, kind, rough, extra) in colors.items():
+    for mat, (col, kind, rough, extra) in group_specs.items():
         payload = {"name": mat, "kind": kind, "color": list(col), "roughness": rough}
         payload.update(extra)
         materials[mat] = payload
@@ -312,14 +343,14 @@ def main() -> None:
         "op": "set_camera", "payload": {
             # Oblique ~50 deg off-axis view of the hemisphere (azimuth 50, elevation 18),
             # pulled back to frame the full cutaway including the atmospheric sheaths.
-            "position": [10.5, 4.2, 13.5], "target": [0.0, 0.0, -1.0], "fov": 32.0, "focus_distance": 20.0,
+            "position": [16.0, 6.4, 20.6], "target": [0.0, 0.0, -1.0], "fov": 28.0, "focus_distance": 28.0,
         },
     })
     commands.append({"op": "set_lighting", "payload": {"preset": "soft_studio"}})
     commands.append({
         "op": "save_preview", "payload": {
             "path": str(out / "octane-preview.png"), "width": 1280, "height": 1280,
-            "samples": 1200, "min_samples": 300, "timeout_seconds": 120,
+            "samples": 800, "min_samples": 200, "timeout_seconds": 240,
         },
     })
 
@@ -328,7 +359,7 @@ def main() -> None:
         "title": "Cutaway Earth: solid interior + atmospheric sheaths (point cloud)",
         "category": "Geoscience / planet visualization",
         "purpose": "Dense, to-scale point-cloud cutaway of the Earth's interior layers (PREM) and proportionally sparser atmospheric shells, with WGS84 centrifugal oblateness and differentiated continental/oceanic crust.",
-        "camera": {"position": [10.5, 4.2, 13.5], "target": [0.0, 0.0, -1.0], "fov": 32.0, "focus_distance": 20.0},
+        "camera": {"position": [16.0, 6.4, 20.6], "target": [0.0, 0.0, -1.0], "fov": 28.0, "focus_distance": 28.0},
         "materials": materials,
         "commands": commands,
         "acceptance": [
