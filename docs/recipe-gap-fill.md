@@ -131,3 +131,25 @@ Concrete, existing source files (verified present):
 **Lib status (2026-07-13):** only numpy present. gdal works in homebrew python
 (used for the EGM2008 recipe). Still MISSING: geopandas, shapely, netCDF4,
 xarray, rasterio, scipy, trimesh, pyvista. These gate steps 2 and 5.
+
+## 8. Feasibility notes (asked 2026-07-13)
+
+**Q: Volumetric renders?** Two real paths exist in Octane X:
+1. **Instanced primitives (feasible now).** `ScatteronSurface.md` supports
+   Distribution on Particles / Surface / Hair; each instance can be a small sphere
+   with its own material (emissive glow, or Specular+low-opacity for translucency).
+   Per-instance colour is gated by the texture/vertex-colour block (L60) — so a
+   uniform emissive colour per cloud works; per-point colour needs the texture fix.
+   Build: `octane_visualize_particles` + a sphere instancer.
+2. **Native volume media (needs a new op).** `material-pins.md` §9: Absorption /
+   Scattering / RandomWalk / Standard Volume (VDB) media attach to a Null or
+   Specular material's Medium pin. Requires a `create_medium` + VDB-ingest op not
+   yet in the bridge. Higher effort, true fog/smoke.
+
+**Q: Image textures on surfaces?** **Currently BLOCKED** on this build.
+`recipe-book.md` L60: `NT_TEX_RGB` / `NT_TEX_GRADIENT` / `NT_TEX_OSL` colour nodes
+**cannot be set** (pin + attribute both fail); `NT_TEX_VERTEXCOLOR` absent.
+`material-pins.md` §11.5 says texture-map inputs "accept an `image_path` ... once
+those ops exist." So no image/albedo/bump/normal map is currently wireable. The
+only working colour path is solid material diffuse. Unblocking requires a
+texture-node creation op + verifying the live `NT_*` constants exist on this build.

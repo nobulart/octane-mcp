@@ -1,8 +1,17 @@
 # EGM2008 Geoid Heightfield — 3DXM / ECDO Geo Grammar
 
-A 3D relief of Earth's **geoid undulation** (EGM2008), rendered as a single-material heightfield in OctaneX. First recipe in the geo/earth-data grammar (`docs/recipe-gap-fill.md`).
+A 3D relief of Earth's **geoid undulation** derived from **EGM2008** (the Earth
+Gravitational Model 2008), rendered as a single-material heightfield in OctaneX.
+First recipe in the geo/earth-data grammar (`docs/recipe-gap-fill.md`).
 
-- **Source:** `~/ECDO/GIS/us_nga_egm2008_1.tif` — the real EGM2008 geoid model (float32, global, -107…+85.8 m undulation). *Not* the colour-shaded `EGM2008.tif` (that one is an RGB render, useless for displacement).
+EGM2008 is a **spherical harmonic Earth gravity model** (degree/order 2159) published
+by NGA. The file used here (`us_nga_egm2008_1.tif`) stores the **geoid undulation**
+(N) — the height of the quasi-geoid above the WGS84 ellipsoid — a direct gravity-field
+product of the model. Units: metres.
+
+- **Source:** `~/ECDO/GIS/us_nga_egm2008_1.tif` — the real EGM2008 geoid-undulation grid
+  (float32, global, -107…+85.8 m). *Not* the colour-shaded `EGM2008.tif` (that one is an
+  RGB render, useless for displacement).
 - **Mesh:** `scripts/gen_geo_displacement.py` → 256×256 grid, 65,536 verts / 130,050 faces; z normalized from the geoid range × vscale 0.6.
 - **Material:** earthy `[0.55, 0.42, 0.30]`, glossy, single colour (vertex colours / texture-colour are ignored by the importer — see `docs/recipe-book.md` L60, so no height-colormap yet).
 - **Camera:** oblique, rot_x 25° / rot_z 30° (lower angle than TPMS so relief reads).
