@@ -871,6 +871,72 @@ PYTHONPATH= uv run python -m compileall src
 
 ---
 
+# Work package 15 — Renderer-agnostic backend abstraction
+
+## Goal
+Decouple the existing scene-graph command DSL from Octane X so Octane becomes one
+of N render backends behind a common interface. This retires the single-renderer
+coupling (and the macOS AppleScript/TCC fragility that WP10–WP14 cannot fix from
+inside the Octane bridge) and opens realtime/shareable channels (WebGL) plus open
+photoreal / quality tiers (Blender, Mitsuba) without rewriting octanex-mcp.
+
+Research basis: `docs/visualization-backends-research.md` (candidate survey +
+recommendation).
+
+## Files to inspect first
+- `src/octanex_mcp/server.py` (command dispatch)
+- `src/octanex_mcp/models.py` / `src/octanex_mcp/schema.py` (command DSL)
+- `octane_lua/hermes_bridge_oneshot_v2.lua` (current Octane handler)
+- `apps/octanex-canvas/` (WKWebView host — today a PNG viewer, not a renderer)
+- `docs/visualization-backends-research.md`
+
+## Current state
+- Pipeline: generator → OBJ → MCP command queue → Octane Lua bridge → Octane X →
+  PNG preview → Hermes vision review.
+- `apps/octanex-canvas` is a *thin display client* for Octane's PNG; it does not
+  itself render.
+- Octane is reached only via UI-scripted AppleScript (TCC on the agent-runtime
+  python) — the project's largest fragility source.
+
+## Tasks
+1. Define a `Backend` protocol in `src/octanex_mcp/backends/` with `build(scene)`,
+   `render(preview)`, `save_png()` returning the same artifacts the Octane path
+   does, so `octane_review_preview` / vision review stay unchanged.
+2. Refactor the current Octane handling into `OctaneBackend` (first impl) — no
+   behavior change; existing tools keep working.
+3. Implement `WebGLBackend` (Phase 1, highest leverage): emit a self-contained
+   three.js bundle / scene JSON from the DSL; the Agentic Canvas hosts it live and
+   snapshots to PNG for Hermes review. Covers Data/Math grammars immediately.
+4. Implement `GeoBackend` (Phase 2) targeting CesiumJS/deck.gl inside the same
+   canvas, fed by the existing `shapely`/`geopandas`/`pyproj` generators.
+5. Implement `BlenderBackend` (Phase 3) as an open photoreal option via `bpy` /
+   BlenderMCP; isolate it behind a process boundary so GPL `bpy` never enters the
+   BSL core package.
+6. Implement `QualityBackend` (Phase 4) via Mitsuba 3 / OSPRay for research-grade
+   reproducible renders where Octane is undesirable.
+7. Fold Open3D/PyVista/trimesh into the generator layer as backend-agnostic
+   geometry sources (already partially present via the `science` extra).
+
+## Acceptance criteria
+- Existing Octane tools/recipes behave identically after the refactor (no
+  regression in the offline suite).
+- `Backend` interface is covered by tests with an in-memory fake backend.
+- `WebGLBackend` renders a Data/Math scene live in the canvas and produces a PNG
+  snapshot comparable to the Octane preview for the same DSL input.
+- Blender/Mitsuba integrations import no copyleft code into the core package;
+  license boundaries are explicit.
+- The pixel/structure-before-vision verification rule holds for every backend.
+
+## Suggested verification
+```bash
+PYTHONPATH= uv run python -m unittest discover -s tests
+PYTHONPATH= uv run python -m compileall src
+PYTHONPATH= uv run octanex-mcp doctor --json
+```
+Plus a live WebGL canvas smoke test (render + snapshot) once Phase 1 lands.
+
+---
+
 # Cross-cutting guardrails
 
 These apply to every work package:
@@ -998,6 +1064,20 @@ Stop when a harvested, pixel-filtered Wikimedia Commons reference writes a
 corpus manifest that carries an automatically derived acceptance spec —
 pure-Python and offline-testable (no bridge/Octane changes, no GPU), the same
 profile as PR 1/PR 7.
+
+---
+
+## PR 15 — Renderer-agnostic backend abstraction
+
+Focus:
+- `src/octanex_mcp/backends/` package + `Backend` protocol
+- `OctaneBackend` refactor of current handling (no behavior change)
+- `WebGLBackend` (three.js in Agentic Canvas) as Phase-1 implementation
+- tests with an in-memory fake backend
+
+Stop when the DSL dispatches to a backend interface, Octane remains the first
+implementation with identical behavior, and a WebGL channel renders a live
+Data/Math scene to PNG inside the existing canvas.
 
 ---
 
@@ -1132,10 +1212,29 @@ the active gaps are precise rather than broad.
   queued, rendering, or failed. *First step:* status pill + capability panel backed
   by `/mcp/call` for `octane_capabilities` and `octane_bridge_process_status`.
 
+**L — Renderer-agnostic backend abstraction (MEDIUM effort / HIGH strategic fit).**
+Decouple the existing scene-graph command DSL from Octane X so Octane becomes one
+of N render backends. Research report: `docs/visualization-backends-research.md`.
+Surveyed Blender+Eevee Next (open photoreal, bpy/MCP, GPL — isolate behind a
+process boundary), WebGL/three.js (realtime+shareable, MIT — upgrade the
+Agentic Canvas from PNG viewer to live renderer), Godot 4 (MIT, interactive
+scenes), Open3D/PyVista (generator-layer geometry sources), CesiumJS/deck.gl
+(Geo grammar), and Mitsuba 3/OSPRay (open path-traced quality tier). *First
+step:* extract a `Backend` interface behind the DSL with `OctaneBackend` as the
+first implementation; then ship `WebGLBackend` (three.js in the canvas) as the
+highest-leverage Phase-1 win.
+
 **Recommended next move (2026-07-12):** do **A2 first** to keep the recipe library
 honest, then **I** because capability-backed dispatch prevents whole classes of
 future bridge regressions. Run **J** alongside any live render work; use **K** as
 the next user-facing integration slice once the status/capability API is stable.
+
+**Recommended next move (2026-07-13):** keep **A2 / I / J** as the live-closure and
+bridge-hardening spine, and add **L** as the next architecture investment — it
+retires the single-renderer coupling (and the AppleScript/TCC fragility) that
+WP10–WP14 cannot fix from inside the Octane bridge. Phase-1 `WebGLBackend` is the
+one addition that pays back across the Data/Math/Geo grammars; do it before
+adding further backends.
 
 ---
 
