@@ -45,7 +45,7 @@ README_PATH = RECIPE_DIR / "README.md"
 NATIVE_RENDER = Path.home() / "Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/wristwatch_octane-preview.png"
 
 # Two-tone sport watch: steel + gold accents, blue dial, white markers,
-# polished silver hands, red second hand, gold arabic numerals. 7 materials.
+# polished silver hands, red second hand, gold arabic numerals. 8 materials.
 MATERIALS: dict[str, dict] = {
     "mat_steel":   {"kind": "metallic", "color": [0.80, 0.82, 0.86], "roughness": 0.12},
     "mat_gold":    {"kind": "metallic", "color": [0.88, 0.71, 0.36], "roughness": 0.10},
@@ -460,9 +460,10 @@ def write_readme(groups: list[str]):
         "# Analog Wristwatch with Linked Metal Strap (two-tone)\n\n"
         "![Native Octane X render](octane-preview.png)\n\n"
         "A two-tone analog wristwatch: brushed-steel case, gold bezel and crown, deep-blue glossy dial "
-        "with gold arabic numerals and white radial hour markers, polished silver hour/minute hands "
+        "with gold arabic numerals near the outer edge and a ring of small white spherical hour markers "
+        "set flush into the dial face just inside the bezel, polished silver hour/minute hands "
         "pinned at the dial center, a red second hand with counterweight, and a linked steel/gold "
-        "bracelet curving away from the face (reads as wrapping). Rendered on a reflective ground plane "
+        "bracelet curving away from the face (reads as wrapping). Rendered on a dark matte ground plane "
         "with soft-studio lighting at 1500 samples for a photoreal metal look.\n\n"
         "## Material groups\n\n"
         "| order | material | kind | color |\n| --- | --- | --- | --- |\n" + "\n".join(rows) + "\n\n"

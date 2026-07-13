@@ -2,7 +2,7 @@
 
 ![Native Octane X render](octane-preview.png)
 
-A two-tone analog wristwatch: brushed-steel case, gold bezel and crown, deep-blue glossy dial with gold arabic numerals and white radial hour markers, polished silver hour/minute hands pinned at the dial center, a red second hand with counterweight, and a linked steel/gold bracelet curving away from the face (reads as wrapping). Rendered on a reflective ground plane with soft-studio lighting at 1500 samples for a photoreal metal look.
+A two-tone analog wristwatch: brushed-steel case, gold bezel and crown, deep-blue glossy dial with gold arabic numerals near the outer edge and a ring of small white spherical hour markers set flush into the dial face just inside the bezel, polished silver hour/minute hands pinned at the dial center, a red second hand with counterweight, and a linked steel/gold bracelet curving away from the face (reads as wrapping). Rendered on a dark matte ground plane with soft-studio lighting at 1500 samples for a photoreal metal look.
 
 ## Material groups
 
