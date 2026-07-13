@@ -36,7 +36,7 @@ The library now spans photoreal product props, space scenes, data/math visuals, 
 
 | Ancient temple | Bowl of fruit | Photoreal vase studio |
 | --- | --- | --- |
-| [![Ancient temple](examples/recipes/ancient-temple/octane-preview.png)](examples/recipes/ancient-temple/) | [![Bowl of fruit](examples/recipes/bowl-of-fruit/octane-preview.png)](examples/recipes/bowl-of-fruit/) | [![Photoreal vase studio](examples/recipes/photoreal-vase-studio/photoreal-preview.png)](examples/recipes/photoreal-vase-studio/) |
+| [![Ancient temple](examples/recipes/ancient-temple/octane-preview.png)](examples/recipes/ancient-temple/) | [![Bowl of fruit](examples/recipes/bowl-of-fruit/octane-preview.png)](examples/recipes/bowl-of-fruit/) | [![Photoreal vase studio](examples/recipes/photoreal-vase-studio/octane-preview.png)](examples/recipes/photoreal-vase-studio/) |
 | Columned structure with proper lighting and bounds-aware framing. | Generated fruit cluster on a reflective surface. | Multi-vase photoreal studio with soft lighting. |
 
 | Photoreal Earth | Saturn and moons | Data bars |
