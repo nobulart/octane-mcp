@@ -1,21 +1,21 @@
-# OctaneX MCP — Work In Progress
-
-Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-12** against
-HEAD `296e7f9`.
-
-## Current state (evidence, 2026-07-12)
-
-| Area | State |
-|------|-------|
-| Repo | `main` = `296e7f9` (`feat(recipes): add bowl-of-fruit still-life recipe`), tracking `origin/main`; tree clean before this docs review. |
-| Tests | **357 ran / 0 failures / 3 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. Benchmark subset: **14 ran / 0 failures / 1 skipped** via `tests.test_benchmarks -v`. `compileall src` clean. |
-| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X running (`pid 78834`); persistent bridge `status=processed`, `render_stage=ready`, `processed_count=1`, `failed_count=0`, last event `set_camera camera connected`. |
-| Recipe library | **26 recipe dirs** via `_recipe_dirs` (post-`ancient-temple` merge). **24** declare `native_octane_verified=true`; **25** have `octane-preview.png`; **1** lacks a preview (`earth-moon-space`). A2 closed 2026-07-12: `birthday-cake` promoted (pixel-QA `filter_reference.ok` + `evaluate_acceptance.passed` + vision confirm → `native_octane_verified=true`); `helicoid-spiral` preview REJECTED by pixel-QA (blank flat field, no visible subject) → stays `false`, status corrected to `native_render_rejected_blank`; `earth-moon-space` stays `false` (no preview PNG — live-render gap). Honest remaining flag gap: **1** (`earth-moon-space`). |
-| Core mechanics | Broad and green: schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. |
-| Unscaffolded / open | Recipe verification reconciliation, WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory. |
-
-**Bottom line:** the bridge is live and the offline suite is solid. The active risk is no longer "does the queue work?"; it is stale verification metadata, duplicated Lua handler knowledge, and not yet making bridge capabilities/status visible enough for smaller agents to operate safely.
+1|# OctaneX MCP — Work In Progress
+2|
+3|Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
+4|brainstorm, kept as a fast-glance status doc. Last updated **2026-07-13** against
+5|HEAD `196185c`.
+6|
+7|## Current state (evidence, 2026-07-13)
+8|
+9|| Area | State |
+10||------|-------|
+11|| Repo | `main` = `196185c` (`feat(geo): EGM2008 geoid heightfield recipe + gen_geo_displacement/queue_geo_surface tooling`), tracking `origin/main`; **12 commits ahead** of the docs' claimed `296e7f9`. Tree: clean (one untracked `docs/visualization-backends-research.md`). |
+12|| Tests | **381 ran / 1 failure / 3 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. Benchmark subset: **14 ran / 0 failures / 1 skipped** (via `tests.test_benchmarks -v`). `compileall src` clean. The 1 failure is the **pre-existing** `test_lua_bridge_parity::test_scene_handler_semantics_match_between_one_shot_and_persistent_bridges` (`wait_for_render_ready` body drift between one-shot and persistent templates). **+24 new tests** (WP7 pre-render sanity adoption). |
+13|| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X running; persistent bridge `status=processed`, `render_stage=ready`, `samples_done=1200`, `samples_target=1200`, `last_preview_path=.../renders/egm2008_octane-preview.png`, `last_event=save_preview preview saved`. |
+14|| Recipe library | **27 recipe dirs** via `_recipe_dirs`. **26** declare `native_octane_verified=true`; **25** carry `octane-preview.png`. **1** unverified: `earth-moon-space` (no preview PNG — live render gap, not metadata). `helicoid-spiral` stays `false` (REJECTED by pixel-QA, blank flat field; has `.png` file but the flag remains false). |
+15|| Core mechanics | Broad and green: schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks (24 new tests for the report dataclasses, engine checks, manifest/graph analysis, and round-trips), recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. |
+16|| Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory. |
+17|
+18|**Bottom line:** the bridge is live and the offline suite is solid (381 green, 1 pre-existing failure). The docs' status snapshot has drifted 12 commits behind HEAD; fresh evidence is refreshed below. The active risk is no longer "does the queue work?"; it is WP12 single-source Lua handler generation and WP13 registry-backed material/light reporting closing the bridge-hardening loop.
 
 ## Ranked backlog / next steps
 
@@ -33,6 +33,9 @@ Do **A2 first** to keep the recipe library honest, then **I** because capability
 
 ## Done recently
 
+- `d7a2c1f` — pre-render sanity adoption: tests for `SanityReport`/`SanityIssue` dataclasses, `analyze_scene_plan`/graph engine checks, manifest graph analysis, and JSON round-trips (24 tests).
+- `196185c` — EGM2008 geoid heightfield recipe + `gen_geo_displacement`/`queue_geo_surface` tooling.
+- `80f3fdf` — gallery: embed preview images in all 7 TPMS READMEs + recipe-book entries; reconcile index.
 - `296e7f9` — bowl-of-fruit still-life recipe with native preview asset.
 - `617014e` — pre-render node-graph sanity gate: live scene harvest analysis, offline manifest/framing checks, `octane_scene_sanity`, `octane_check_scene_plan`, 22 tests.
 - `be8b0eb` / `0a4d1ae` / `9a29048` — birthday-cake recipe and realism lessons, including persistent-bridge silent-exit and single-source queue-pipeline notes.
