@@ -1,19 +1,25 @@
-// OctaneX Agentic Canvas — thin-client web bundle.
+// OctaneX Agentic Canvas — thin-client web bundle (ES module).
 //
-// Talks to the local HTTP gateway (octanex_mcp.gateway) over:
-//   POST /mcp/call {tool, args}   -> tool dispatch (same functions the MCP server wraps)
-//   GET  /status                  -> bridge status.json
-//   GET  /preview[?progressive=1] -> latest render PNG
-//   POST /intent {text}           -> record a free-text intent for the agent loop
+// Pipeline (post WebGL phase):
+//   POST /canvas/build {intent|scene} -> WebGLBackend emits canvas.scene.v1
+//   GET  /canvas/scene                -> current canvas.scene.v1
+//   POST /mcp/call {tool, args}       -> tool dispatch (same functions the MCP server wraps)
+//   GET  /status                      -> bridge status.json
+//   GET  /preview[?progressive=1]     -> latest Octane render PNG (quality tier)
+//   POST /intent {text}               -> record a free-text intent for the agent loop
 //
-// Everything funnels through submitIntent() so voice (D1) or drag-drop (D2)
-// can later drop text/reference payloads into the identical path.
+// Everything funnels through submitIntent() so voice / drag-drop can later drop
+// payloads into the identical path.
+
+import { CanvasRenderer } from "./canvas/renderer.js";
 
 const GW = ""; // same origin (served from the gateway itself)
 
 const dom = {
   preview: document.getElementById("preview"),
   placeholder: document.getElementById("placeholder"),
+  webgl: document.getElementById("webgl-canvas"),
+  viewmodes: document.getElementById("viewmodes"),
   cmd: document.getElementById("cmd"),
   cmdbar: document.getElementById("cmdbar"),
   status: document.getElementById("status"),
@@ -34,6 +40,9 @@ const state = {
   paletteItems: [],
   paletteActive: 0,
   continuityLoaded: false,
+  currentScene: null,
+  viewMode: "live",
+  renderer: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,6 +57,15 @@ async function callTool(tool, args = {}) {
   return r.json();
 }
 
+async function postJSON(path, body) {
+  const r = await fetch(`${GW}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return r.json();
+}
+
 async function getJSON(path) {
   const r = await fetch(`${GW}${path}`, { cache: "no-store" });
   if (!r.ok) throw new Error(`${path} -> ${r.status}`);
@@ -55,19 +73,63 @@ async function getJSON(path) {
 }
 
 // ---------------------------------------------------------------------------
-// Preview polling (A2)
+// Live WebGL scene (Phase 2)
+// ---------------------------------------------------------------------------
+function initRenderer() {
+  state.renderer = new CanvasRenderer(dom.webgl);
+  state.renderer.onPick = (id, meta) => {
+    // Expose selection to the inspector path (Phase 5 will bind edits).
+    state.selectedId = id;
+    console.debug("picked", id, meta);
+  };
+  state.renderer.start();
+}
+
+async function buildScene(intent, plan) {
+  dom.status.className = "state-queued";
+  dom.statusText.textContent = "building…";
+  try {
+    const res = await postJSON("/canvas/build", plan ? { scene: plan } : { intent });
+    if (!res.ok) {
+      dom.status.className = "state-error";
+      dom.statusText.textContent = "build failed";
+      console.error(res.error);
+      return;
+    }
+    const scene = res.scene;
+    state.currentScene = scene;
+    if (state.renderer) state.renderer.setScene(scene);
+    dom.placeholder.style.display = "none";
+    // Honest status: show the interpreted intent the planner heard.
+    const heard = scene.intent ? `live · ${scene.intent}`.slice(0, 80) : "live preview";
+    dom.status.className = "state-ready";
+    dom.statusText.textContent = heard;
+    if (scene.scene_id) localStorage.setItem("octanex.lastSceneId", scene.scene_id);
+  } catch (e) {
+    dom.status.className = "state-error";
+    dom.statusText.textContent = "gateway unreachable";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Preview polling (Octane quality tier)
 // ---------------------------------------------------------------------------
 async function pollPreview() {
+  if (state.viewMode === "live") {
+    // In live-only mode the WebGL canvas owns the screen; don't cover it.
+    dom.preview.classList.remove("visible");
+    return;
+  }
   const url = `${GW}/preview?ts=${Date.now()}`;
   try {
     const r = await fetch(url, { cache: "no-store" });
     if (r.ok) {
       dom.preview.src = url;
       dom.preview.classList.add("visible");
+      dom.preview.classList.toggle("final-mode", state.viewMode === "final");
       dom.placeholder.style.display = "none";
     } else {
       dom.preview.classList.remove("visible");
-      dom.placeholder.style.display = "";
     }
   } catch (_) {
     /* gateway down — leave last frame */
@@ -75,7 +137,7 @@ async function pollPreview() {
 }
 
 // ---------------------------------------------------------------------------
-// Status pill + truthful stage mapping (A4, C3)
+// Status pill + truthful stage mapping
 // ---------------------------------------------------------------------------
 const STAGE_LABEL = {
   queued: ["queued", "state-queued"],
@@ -93,17 +155,24 @@ async function pollStatus() {
     const stage = s.render_stage || (s.status === "failed" ? "error" : (s.status || "idle"));
     const [label, cls] = STAGE_LABEL[stage] || ["idle", "state-idle"];
     let text = label;
-    if ((stage === "rendering") && s.samples_done && s.samples_target) {
+    if (stage === "rendering" && s.samples_done && s.samples_target) {
       const pct = Math.round((s.samples_done / s.samples_target) * 100);
       text = `rendering ${pct}%`;
     } else if (s.last_event) {
       text = `${label} · ${s.last_event}`.slice(0, 80);
     }
+    // Once a live WebGL scene exists, the canvas owns the status text (it shows
+    // the interpreted intent). Only let Octane status through when it is actively
+    // doing something (rendering / queued / error) — never when idle/ready, which
+    // would clobber the useful "live · <intent>" label with Octane's own state.
+    const octaneActive = ["queued", "processing", "rendering", "review", "error"].includes(stage);
+    if (state.currentScene && !octaneActive) {
+      return;
+    }
     dom.status.className = cls;
     dom.statusText.textContent = text;
   } catch (_) {
-    // Gateway/bridge unreachable: if no update for 15s, show stalled.
-    if (state.lastStatusAt && Date.now() - state.lastStatusAt > 15000) {
+    if (state.lastStatusAt && Date.now() - state.lastStatusAt > 15000 && !state.currentScene) {
       dom.status.className = "state-error";
       dom.statusText.textContent = "stalled";
     }
@@ -111,13 +180,14 @@ async function pollStatus() {
 }
 
 // ---------------------------------------------------------------------------
-// Intent boundary (A3, A6) — single entry point for all input
+// Intent boundary — single entry point for all input
 // ---------------------------------------------------------------------------
 async function submitIntent(text) {
   const t = (text || "").trim();
   if (!t) return;
-  dom.status.className = "state-queued";
-  dom.statusText.textContent = "queued";
+  // The canvas build is synchronous-ish: show a live WebGL scene immediately,
+  // independent of Octane. The intent is still logged for the agent loop.
+  await buildScene(t);
   try {
     await fetch(`${GW}/intent`, {
       method: "POST",
@@ -140,7 +210,7 @@ dom.cmd.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Continuity (C4)
+// Continuity
 // ---------------------------------------------------------------------------
 function restoreContinuity() {
   if (state.continuityLoaded) return;
@@ -156,7 +226,7 @@ function restoreContinuity() {
 }
 
 // ---------------------------------------------------------------------------
-// ⌘K command palette (B1)
+// ⌘K command palette
 // ---------------------------------------------------------------------------
 async function openPalette() {
   dom.palette.classList.remove("hidden");
@@ -175,9 +245,7 @@ async function refreshPalette(filter) {
         ? recipes.map((r) => ({ slug: r.slug || r.name, label: r.title || r.slug || r.name, meta: r.tier || r.group || "recipe" }))
         : [];
       if (state.paletteItems.length === 0) {
-        state.paletteItems = [
-          { slug: "t1_glossy_cube", label: "Glossy cube (tier 1)", meta: "recipe" },
-        ];
+        state.paletteItems = [{ slug: "t1_glossy_cube", label: "Glossy cube (tier 1)", meta: "recipe" }];
       }
     } catch (_) {
       state.paletteItems = [{ slug: "t1_glossy_cube", label: "Glossy cube (fallback)", meta: "recipe" }];
@@ -189,10 +257,7 @@ async function refreshPalette(filter) {
   );
   state.paletteActive = 0;
   dom.paletteList.innerHTML = items
-    .map(
-      (i, n) =>
-        `<li data-slug="${i.slug}" class="${n === 0 ? "active" : ""}"><span>${i.label}</span><span class="meta">${i.meta}</span></li>`
-    )
+    .map((i, n) => `<li data-slug="${i.slug}" class="${n === 0 ? "active" : ""}"><span>${i.label}</span><span class="meta">${i.meta}</span></li>`)
     .join("");
   dom.paletteList.querySelectorAll("li").forEach((li) => {
     li.addEventListener("click", () => queueRecipe(li.dataset.slug));
@@ -206,6 +271,7 @@ async function queueRecipe(slug) {
   const res = await callTool("octane_queue_recipe", { slug });
   if (res.ok) {
     await callTool("octane_save_preview", { samples: 64, timeout_seconds: 12 });
+    setViewMode("final");
   }
 }
 
@@ -231,7 +297,7 @@ dom.paletteInput.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// ⌘I inspector (B2)
+// ⌘I inspector (preview review; live-object editing lands in Phase 5)
 // ---------------------------------------------------------------------------
 async function openInspector() {
   dom.inspector.classList.remove("hidden");
@@ -260,7 +326,6 @@ async function refreshReview() {
 
 async function applyFix(action) {
   if (!action) return;
-  // Simplified: nudge camera distance, then re-render + re-review.
   const dist = parseFloat(dom.camDist.value);
   const pos = [0, 0, dist];
   await callTool("octane_set_camera", { position: pos, target: [0, 0, 0.5], fov: 45 });
@@ -271,6 +336,23 @@ async function applyFix(action) {
 
 dom.camDist.addEventListener("change", () => applyFix());
 dom.inspectorClose.addEventListener("click", () => dom.inspector.classList.add("hidden"));
+
+// ---------------------------------------------------------------------------
+// View modes: live (WebGL) / final (Octane PNG) / split
+// ---------------------------------------------------------------------------
+function setViewMode(mode) {
+  state.viewMode = mode;
+  document.body.classList.remove("mode-live", "mode-final", "mode-split");
+  document.body.classList.add(`mode-${mode}`);
+  dom.viewmodes.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  pollPreview();
+}
+
+if (dom.viewmodes) {
+  dom.viewmodes.querySelectorAll("button").forEach((b) =>
+    b.addEventListener("click", () => setViewMode(b.dataset.mode))
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Global shortcuts (⌘K, ⌘I, ~)
@@ -295,7 +377,9 @@ document.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+initRenderer();
 restoreContinuity();
+setViewMode("live");
 setInterval(pollPreview, 750);
 setInterval(pollStatus, 750);
 pollPreview();

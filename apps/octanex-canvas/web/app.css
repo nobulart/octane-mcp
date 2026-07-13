@@ -32,20 +32,72 @@ html, body {
     radial-gradient(120% 120% at 50% 0%, #14181f 0%, #0b0d10 70%);
 }
 #preview {
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   opacity: 0;
   transition: opacity 220ms ease;
+  pointer-events: none;
 }
 #preview.visible { opacity: 1; }
+#preview.final-mode { pointer-events: auto; }
+
+/* WebGL live layer */
+#webgl-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* Split mode: WebGL on the left, Octane PNG on the right */
+body.mode-split #webgl-canvas { width: 50%; }
+body.mode-split #preview { width: 50%; left: 50%; }
+
 #placeholder {
   position: absolute;
   color: var(--muted);
   font-size: 13px;
   letter-spacing: 0.02em;
   opacity: 0.7;
+  pointer-events: none;
+  z-index: 5;
 }
+
+/* View-mode toggle (bottom-left of viewport) */
+#viewmodes {
+  position: fixed;
+  left: 16px;
+  bottom: 18px;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+#viewmodes button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+#viewmodes button.active { background: rgba(78, 161, 255, 0.18); color: var(--text); }
+
+/* When in Final-only mode, hide the live WebGL canvas */
+body.mode-final #webgl-canvas { display: none; }
+body.mode-final #viewmodes { display: none; }
 
 /* --- Command bar --- */
 #cmdbar {

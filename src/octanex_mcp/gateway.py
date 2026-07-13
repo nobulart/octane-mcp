@@ -59,9 +59,17 @@ from octanex_mcp.server import _build_save_preview_envelope
 from octanex_mcp.animation import orbit_manifest, build_animation_commands
 from octanex_mcp.scene import swap_geometry
 from octanex_mcp.scheduler import DispatchLoop
+from octanex_mcp.canvas_scene import plan_scene
+from octanex_mcp.backends import WebGLBackend, build_scene
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
+
+# In-memory current canvas scene (canvas.scene.v1). The browser hydrates this
+# and the agent loop edits it server-side; we do not persist scene state to disk
+# in this phase (that lands with /canvas/scene POST + history in Phase 3).
+_canvas_scene: Dict[str, Any] = {}
+_canvas_backend = WebGLBackend()
 
 
 # --------------------------------------------------------------------------- #
@@ -336,6 +344,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send_bytes(p.read_bytes(), _CONTENT_TYPES["png"])
             return
+        if path == "/canvas/scene":
+            if not _canvas_scene:
+                self._send_json({"ok": False, "error": "no scene built yet"}, code=404)
+                return
+            self._send_json({"ok": True, "scene": _canvas_scene})
+            return
         self._serve_static(path)
 
     # --- POST -------------------------------------------------------------- #
@@ -366,6 +380,22 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass
             self._send_json({"ok": True, "queued": True, "text": text})
+            return
+        if path == "/canvas/build":
+            # Accept either an explicit scene plan or a free-text intent. The
+            # deterministic planner (no LLM yet) always yields a valid
+            # canvas.scene.v1, so the WebGL viewport can render without Octane.
+            plan = payload.get("scene")
+            if plan is None:
+                plan = plan_scene(payload.get("intent") or payload.get("text") or "")
+            try:
+                scene = build_scene(_canvas_backend, plan)
+            except ValueError as exc:
+                self._send_json({"ok": False, "error": str(exc)}, code=422)
+                return
+            _canvas_scene.clear()
+            _canvas_scene.update(scene)
+            self._send_json({"ok": True, "scene": _canvas_scene, "schema_version": scene.get("schema_version")})
             return
         if path == "/remote/render":
             self._send_json(run_remote_bridge_and_pull(), code=200)

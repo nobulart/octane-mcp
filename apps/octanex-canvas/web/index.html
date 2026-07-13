@@ -9,8 +9,17 @@
 <body>
   <!-- Full-bleed viewport: the render owns the screen -->
   <div id="viewport">
+    <!-- WebGL live layer (three.js) — primary canvas tier -->
+    <canvas id="webgl-canvas"></canvas>
+    <!-- Octane final-render overlay (optional quality tier) -->
     <img id="preview" alt="Octane render preview" />
     <div id="placeholder">no frame yet — type an intent or open ⌘K</div>
+    <!-- View-mode toggle: Live (WebGL) / Final (Octane PNG) / Split -->
+    <div id="viewmodes">
+      <button data-mode="live" class="active">Live</button>
+      <button data-mode="final">Final</button>
+      <button data-mode="split">Split</button>
+    </div>
   </div>
 
   <!-- Command bar (⌘↵ submits) -->
@@ -18,7 +27,7 @@
     <input id="cmd" type="text" placeholder="describe a scene, or ⌘K for recipes…" autocomplete="off" spellcheck="false" />
   </div>
 
-  <!-- Status pill (truthful live state from status.json) -->
+  <!-- Status pill (truthful live state from status.json + interpreted intent) -->
   <div id="status" class="state-idle">
     <span id="status-dot"></span>
     <span id="status-text">idle</span>
@@ -42,6 +51,6 @@
     </section>
   </aside>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
