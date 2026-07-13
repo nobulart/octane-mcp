@@ -28,3 +28,13 @@ newmtl mat_second
 Kd 0.8200 0.0700 0.0700
 Ks 0.2000 0.2000 0.2000
 Ns 40
+
+newmtl mat_numeral
+Kd 0.9600 0.8000 0.4200
+Ks 0.2000 0.2000 0.2000
+Ns 40
+
+newmtl mat_ground
+Kd 0.0200 0.0200 0.0300
+Ks 0.2000 0.2000 0.2000
+Ns 40

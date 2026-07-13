@@ -27,7 +27,7 @@
         0.82,
         0.86
       ],
-      "roughness": 0.25
+      "roughness": 0.12
     },
     "mat_gold": {
       "name": "mat_gold",
@@ -37,7 +37,7 @@
         0.71,
         0.36
       ],
-      "roughness": 0.22
+      "roughness": 0.1
     },
     "mat_dial": {
       "name": "mat_dial",
@@ -78,6 +78,26 @@
         0.07
       ],
       "roughness": 0.3
+    },
+    "mat_numeral": {
+      "name": "mat_numeral",
+      "kind": "glossy",
+      "color": [
+        0.96,
+        0.8,
+        0.42
+      ],
+      "roughness": 0.22
+    },
+    "mat_ground": {
+      "name": "mat_ground",
+      "kind": "glossy",
+      "color": [
+        0.02,
+        0.02,
+        0.03
+      ],
+      "roughness": 0.9
     }
   },
   "commands": [
@@ -99,7 +119,7 @@
           0.82,
           0.86
         ],
-        "roughness": 0.25
+        "roughness": 0.12
       }
     },
     {
@@ -112,7 +132,7 @@
           0.71,
           0.36
         ],
-        "roughness": 0.22
+        "roughness": 0.1
       }
     },
     {
@@ -144,6 +164,19 @@
     {
       "op": "create_material",
       "payload": {
+        "name": "mat_numeral",
+        "kind": "glossy",
+        "color": [
+          0.96,
+          0.8,
+          0.42
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
         "name": "mat_hand",
         "kind": "metallic",
         "color": [
@@ -165,6 +198,19 @@
           0.07
         ],
         "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_ground",
+        "kind": "glossy",
+        "color": [
+          0.02,
+          0.02,
+          0.03
+        ],
+        "roughness": 0.9
       }
     },
     {
@@ -203,7 +249,7 @@
       "op": "assign_material",
       "payload": {
         "object_name": "wristwatch",
-        "material_name": "mat_hand",
+        "material_name": "mat_numeral",
         "group_index": 5
       }
     },
@@ -211,8 +257,24 @@
       "op": "assign_material",
       "payload": {
         "object_name": "wristwatch",
-        "material_name": "mat_second",
+        "material_name": "mat_hand",
         "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_second",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_ground",
+        "group_index": 8
       }
     },
     {
@@ -244,9 +306,9 @@
         "path": "examples/recipes/wristwatch/octane-preview.png",
         "width": 1280,
         "height": 1280,
-        "samples": 96,
-        "min_samples": 24,
-        "timeout_seconds": 45
+        "samples": 1500,
+        "min_samples": 400,
+        "timeout_seconds": 90
       }
     }
   ],

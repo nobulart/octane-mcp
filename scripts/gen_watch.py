@@ -4,19 +4,21 @@
 Hero product shot, face-up (face normal = +Z):
   * brushed-steel case (short cylinder, axis along Z)
   * two-tone gold bezel (torus at the rim)
-  * deep-blue glossy dial
-  * white/lume radial hour markers
+  * deep-blue glossy dial with gold arabic numerals + white radial markers
   * polished silver hour + minute hands, ONE END PINNED AT THE DIAL CENTER,
     radial orientation (rotation fixes the first-pass tangential bug)
   * red second hand with a counterweight tail, also pinned at center
   * steel center cap
   * two-tone gold crown at 3 o'clock
   * 4 lugs
-  * two bracelet runs (up/down) of interlocking links: steel outer + gold center
+  * two bracelet runs (up/down) of interlocking links: steel outer + gold center,
+    curving away from the face (+Z) so they read as wrapping
 
 One combined OBJ with repeated `usemtl` groups; `assign_material` per 1-based
 group_index binds each part. The bridge exposes each `usemtl` group as a named
 material pin on this build, so distinct colors survive.
+
+Render target: sunset HDR environment + reflective ground for a photoreal metal look.
 """
 from __future__ import annotations
 
@@ -43,14 +45,30 @@ README_PATH = RECIPE_DIR / "README.md"
 NATIVE_RENDER = Path.home() / "Library/Containers/com.otoy.rndrviewer/Data/OctaneMCP/renders/wristwatch_octane-preview.png"
 
 # Two-tone sport watch: steel + gold accents, blue dial, white markers,
-# polished silver hands, red second hand. 6 materials -> clear colour variation.
+# polished silver hands, red second hand, gold arabic numerals. 7 materials.
 MATERIALS: dict[str, dict] = {
-    "mat_steel":   {"kind": "metallic", "color": [0.80, 0.82, 0.86], "roughness": 0.25},
-    "mat_gold":    {"kind": "metallic", "color": [0.88, 0.71, 0.36], "roughness": 0.22},
+    "mat_steel":   {"kind": "metallic", "color": [0.80, 0.82, 0.86], "roughness": 0.12},
+    "mat_gold":    {"kind": "metallic", "color": [0.88, 0.71, 0.36], "roughness": 0.10},
     "mat_dial":    {"kind": "glossy",   "color": [0.05, 0.13, 0.34], "roughness": 0.25},
     "mat_marker":  {"kind": "glossy",   "color": [0.95, 0.95, 0.91], "roughness": 0.20},
     "mat_hand":    {"kind": "metallic", "color": [0.92, 0.93, 0.95], "roughness": 0.14},
     "mat_second":  {"kind": "glossy",   "color": [0.82, 0.07, 0.07], "roughness": 0.30},
+    "mat_numeral": {"kind": "glossy",   "color": [0.96, 0.80, 0.42], "roughness": 0.22},
+    "mat_ground":  {"kind": "glossy",   "color": [0.02, 0.02, 0.03], "roughness": 0.9},
+}
+
+# 3x5 pixel font for dial numerals (1 = filled cell)
+GLYPH: dict[str, list[str]] = {
+    "0": ["111", "101", "101", "101", "111"],
+    "1": ["010", "110", "010", "010", "111"],
+    "2": ["111", "001", "111", "100", "111"],
+    "3": ["111", "001", "111", "001", "111"],
+    "4": ["101", "101", "111", "001", "001"],
+    "5": ["111", "100", "111", "001", "111"],
+    "6": ["111", "100", "111", "101", "111"],
+    "7": ["111", "001", "010", "010", "010"],
+    "8": ["111", "101", "111", "101", "111"],
+    "9": ["111", "101", "111", "001", "111"],
 }
 
 
@@ -199,6 +217,41 @@ def add_link(b: ObjBuilder, *, y_c, z_c, rot_x, length=0.55, width=1.45, thick=0
                 material="mat_steel", rot_x=rot_x)
 
 
+def add_numeral(b: ObjBuilder, *, digit, center, cell=0.05, thickness=0.04, material="mat_numeral"):
+    """Extruded 3x5 glyph (or multi-digit string) placed flat on the dial (+Z).
+
+    Multi-digit strings lay glyphs left-to-right along X, centered as a group.
+    """
+    glyphs = [GLYPH[c] for c in digit]
+    rows = max(len(g) for g in glyphs)
+    cols_per = [len(g[0]) for g in glyphs]
+    total_cols = sum(cols_per) + (len(glyphs) - 1)  # 1-cell gap between digits
+    ox, oy, oz = center
+    col_cursor = -(total_cols - 1) / 2.0
+    for g in glyphs:
+        g_rows = len(g)
+        g_cols = len(g[0])
+        # vertical centering of this (possibly 5-row) glyph within the line
+        row_offset = (rows - 1) / 2.0 - (g_rows - 1) / 2.0
+        for r, rowstr in enumerate(g):
+            for c, ch in enumerate(rowstr):
+                if ch != "1":
+                    continue
+                cx = (col_cursor + c) * cell
+                cy = (row_offset + (g_rows - 1) / 2.0 - r) * cell
+                add_box_rot(b, center=(ox + cx, oy + cy, oz),
+                            size=(cell * 0.9, cell * 0.9, thickness), material=material)
+        col_cursor += g_cols + 1  # advance + 1-cell gap
+
+
+def bracelet_curve_z(side, t, n_links, link_len, bow, case_r):
+    """Z-offset of a bracelet link as it curves away from the face (wrapping)."""
+    y_c = side * (case_r + 0.35 + t * link_len)
+    theta = t * 0.16
+    z_c = -bow * (1.0 - math.cos(theta)) + 0.08
+    return y_c, z_c, side * theta
+
+
 # ---------- build the watch ----------
 
 def build():
@@ -226,13 +279,23 @@ def build():
     # Blue dial
     b.add_cylinder(center=(0, 0, dial_z), radius=dial_r, height=0.05, segments=72, material="mat_dial")
 
-    # White radial hour markers (radial orientation fix vs first pass)
+    # White radial hour markers (radial orientation fix vs first pass); chunkier at 12/3/6/9
     for k in range(12):
         a = 2.0 * math.pi * k / 12
         mx, my = marker_r * math.cos(a), marker_r * math.sin(a)
-        long = 0.36 if k % 3 == 0 else 0.24
-        add_box_rot(b, center=(mx, my, marker_z), size=(0.13, long, 0.07),
+        long = 0.44 if k % 3 == 0 else 0.26
+        wide = 0.18 if k % 3 == 0 else 0.12
+        add_box_rot(b, center=(mx, my, marker_z), size=(wide, long, 0.08),
                     material="mat_marker", rot_z=a - math.pi / 2)
+
+    # Gold arabic numerals just inside the markers (12 at top; classic clockwise layout)
+    numeral_r = 1.05
+    numeral_z = dial_z + 0.02
+    for k in range(12):
+        digit = str(12 if k == 0 else k)
+        a = 2.0 * math.pi * k / 12
+        nx, ny = numeral_r * math.cos(a), numeral_r * math.sin(a)
+        add_numeral(b, digit=digit, center=(nx, ny, numeral_z), cell=0.058, thickness=0.03)
 
     # Hands pinned at center, 10:10 classic pose
     add_hand(b, angle_deg=300, length=1.10, width=0.15, thickness=0.06, material="mat_hand", z=hand_z)
@@ -242,11 +305,11 @@ def build():
              z=second_z, tail=0.42)
 
     # Center cap (steel)
-    b.add_cylinder(center=(0, 0, cap_z), radius=0.13, height=0.10, segments=24, material="mat_steel")
+    b.add_cylinder(center=(0, 0, cap_z), radius=0.13, height=0.10, segments=48, material="mat_steel")
 
     # Two-tone gold crown at 3 o'clock (axis along X)
     add_cylinder_axis(b, center=(case_r + 0.14, 0, 0), radius=0.17, height=0.34, axis="x",
-                      segments=24, material="mat_gold")
+                      segments=48, material="mat_gold")
 
     # Lugs (4) bridging case to strap
     for sy in (-1, 1):
@@ -254,19 +317,48 @@ def build():
             add_box_rot(b, center=(sx * 0.62, sy * (case_r - 0.05), 0.0),
                         size=(0.5, 0.7, 0.55), material="mat_steel")
 
-    # Linked metal strap: two runs (up +Y, down -Y), two-tone links
+    # Linked metal strap: two runs (up +Y, down -Y), two-tone links, curving in Z
     n_links = 7
     link_len = 0.60
-    bow = 0.42
+    bow = 0.55
     for side in (1, -1):
         for i in range(n_links):
             t = i + 0.5
-            theta = t * 0.075
-            y_c = side * (case_r + 0.35 + t * link_len)
-            z_c = -bow * math.sin(theta) + (0.13 - 0.05)
-            add_link(b, y_c=y_c, z_c=z_c, rot_x=side * theta, length=link_len * 0.92)
+            y_c, z_c, theta = bracelet_curve_z(side, t, n_links, link_len, bow, case_r)
+            add_link(b, y_c=y_c, z_c=z_c, rot_x=theta, length=link_len * 0.92)
+
+    # Reflective floor (part of the same OBJ so it imports in one shot). Faces -Z
+    # (down/away) so it reads as a floor, not a lit wall. Dark + near-matte so it
+    # doesn't mirror the bright daylight sky and wash the frame.
+    add_ground(b, half=9.0, top=-0.34, thick=0.4, material="mat_ground")
 
     return b.text(), b.bounds()
+
+
+def add_ground(b: ObjBuilder, *, half=9.0, top=-0.34, thick=0.4, material="mat_ground"):
+    """Floor slab below the watch, top surface normal = -Z (faces away/floor)."""
+    bottom = [
+        (-half, -half, top - thick), (half, -half, top - thick),
+        (half, half, top - thick), (-half, half, top - thick),
+    ]
+    topr = [
+        (-half, -half, top), (half, -half, top),
+        (half, half, top), (-half, half, top),
+    ]
+    verts = bottom + topr
+    b.lines.append(f"usemtl {material}")
+    b._record_points(verts)
+    for x, y, z in verts:
+        b.lines.append(f"v {x:.6f} {y:.6f} {z:.6f}")
+    # indices 1-based: top ring 5..8, bottom 1..4. Top quad wound for -Z normal.
+    faces = [
+        (0, 1, 2, 3),   # bottom (+Z, hidden)
+        (7, 6, 5, 4),   # top (-Z, visible floor)
+        (4, 5, 1, 0), (5, 6, 2, 1), (6, 7, 3, 2), (7, 4, 0, 3),
+    ]
+    for f in faces:
+        b.lines.append("f " + " ".join(str(1 + i) for i in f))
+    b.vertex_count += 8
 
 
 def material_groups(obj_text: str) -> list[str]:
@@ -320,7 +412,7 @@ def command_sequence(groups: list[str], *, asset_path: str, preview_path: str) -
         {"op": "set_camera", "payload": cam},
         {"op": "set_lighting", "payload": {"preset": "soft_studio"}},
         {"op": "save_preview", "payload": {"path": preview_path, "width": 1280, "height": 1280,
-                                           "samples": 96, "min_samples": 24, "timeout_seconds": 45}},
+                                           "samples": 1500, "min_samples": 400, "timeout_seconds": 90}},
     ])
     return commands
 
@@ -365,9 +457,11 @@ def write_readme(groups: list[str]):
     README_PATH.write_text(
         "# Analog Wristwatch with Linked Metal Strap (two-tone)\n\n"
         "![Native Octane X render](octane-preview.png)\n\n"
-        "A two-tone analog wristwatch: brushed-steel case, gold bezel and crown, deep-blue glossy dial, "
-        "white radial hour markers, polished silver hour/minute hands pinned at the dial center, a red second "
-        "hand with counterweight, and a linked steel/gold bracelet extending up and down from the lugs.\n\n"
+        "A two-tone analog wristwatch: brushed-steel case, gold bezel and crown, deep-blue glossy dial "
+        "with gold arabic numerals and white radial hour markers, polished silver hour/minute hands "
+        "pinned at the dial center, a red second hand with counterweight, and a linked steel/gold "
+        "bracelet curving away from the face (reads as wrapping). Rendered on a reflective ground plane "
+        "with soft-studio lighting at 1500 samples for a photoreal metal look.\n\n"
         "## Material groups\n\n"
         "| order | material | kind | color |\n| --- | --- | --- | --- |\n" + "\n".join(rows) + "\n\n"
         "## Run\n\n```bash\nhermes mcp call octanex octane_queue_recipe --slug wristwatch\n```\n\n"
