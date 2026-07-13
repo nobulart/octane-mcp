@@ -1,0 +1,273 @@
+{
+  "slug": "wristwatch",
+  "title": "Analog Wristwatch with Linked Metal Strap (two-tone)",
+  "category": "Product / prop studio",
+  "purpose": "Render an analog wristwatch: steel case, gold two-tone bezel + crown, blue dial, white markers, polished silver hands pinned at center, red second hand, and a two-tone steel/gold linked bracelet.",
+  "prompt": "Visualise a man's analog wrist watch with a linked metal strap",
+  "camera": {
+    "position": [
+      4.6408,
+      -12.7505,
+      8.6287
+    ],
+    "target": [
+      0.0,
+      0.0,
+      0.15
+    ],
+    "fov": 34.0,
+    "focus_distance": 16.0
+  },
+  "materials": {
+    "mat_steel": {
+      "name": "mat_steel",
+      "kind": "metallic",
+      "color": [
+        0.8,
+        0.82,
+        0.86
+      ],
+      "roughness": 0.25
+    },
+    "mat_gold": {
+      "name": "mat_gold",
+      "kind": "metallic",
+      "color": [
+        0.88,
+        0.71,
+        0.36
+      ],
+      "roughness": 0.22
+    },
+    "mat_dial": {
+      "name": "mat_dial",
+      "kind": "glossy",
+      "color": [
+        0.05,
+        0.13,
+        0.34
+      ],
+      "roughness": 0.25
+    },
+    "mat_marker": {
+      "name": "mat_marker",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.95,
+        0.91
+      ],
+      "roughness": 0.2
+    },
+    "mat_hand": {
+      "name": "mat_hand",
+      "kind": "metallic",
+      "color": [
+        0.92,
+        0.93,
+        0.95
+      ],
+      "roughness": 0.14
+    },
+    "mat_second": {
+      "name": "mat_second",
+      "kind": "glossy",
+      "color": [
+        0.82,
+        0.07,
+        0.07
+      ],
+      "roughness": 0.3
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/wristwatch/scene.obj",
+        "format": "obj",
+        "name": "wristwatch"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_steel",
+        "kind": "metallic",
+        "color": [
+          0.8,
+          0.82,
+          0.86
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_gold",
+        "kind": "metallic",
+        "color": [
+          0.88,
+          0.71,
+          0.36
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_dial",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.13,
+          0.34
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_marker",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.95,
+          0.91
+        ],
+        "roughness": 0.2
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_hand",
+        "kind": "metallic",
+        "color": [
+          0.92,
+          0.93,
+          0.95
+        ],
+        "roughness": 0.14
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_second",
+        "kind": "glossy",
+        "color": [
+          0.82,
+          0.07,
+          0.07
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_steel",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_gold",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_dial",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_marker",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_hand",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "wristwatch",
+        "material_name": "mat_second",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          4.6408,
+          -12.7505,
+          8.6287
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.15
+        ],
+        "fov": 34.0,
+        "focus_distance": 16.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/wristwatch/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "samples": 96,
+        "min_samples": 24,
+        "timeout_seconds": 45
+      }
+    }
+  ],
+  "acceptance": [
+    {
+      "kind": "non_empty",
+      "min_mean_dev": 2.0,
+      "min_nonbg": 2.0
+    },
+    {
+      "kind": "review_ok",
+      "fail_on": [
+        "mostly near-black",
+        "very low contrast",
+        "mostly near-white",
+        "likely object too small",
+        "dial appears metallic (material collapse)",
+        "hands not pinned at center"
+      ]
+    }
+  ],
+  "native_octane_verified": false,
+  "status": "pending live render"
+}
