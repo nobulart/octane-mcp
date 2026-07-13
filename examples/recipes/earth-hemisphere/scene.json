@@ -899,6 +899,6 @@
       ]
     }
   ],
-  "native_octane_verified": false,
-  "status": "pending live render"
+  "native_octane_verified": true,
+  "status": "native_render_verified"
 }
