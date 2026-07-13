@@ -36,6 +36,11 @@ const dom = {
   camDist: document.getElementById("cam-dist"),
   modelSelect: document.getElementById("model-select"),
   voxToggle: document.getElementById("vox-toggle"),
+  response: document.getElementById("response"),
+  logToggle: document.getElementById("log-toggle"),
+  transcript: document.getElementById("transcript"),
+  transcriptBody: document.getElementById("transcript-body"),
+  transcriptClose: document.getElementById("transcript-close"),
 };
 
 const state = {
@@ -49,6 +54,7 @@ const state = {
   renderer: null,
   vox: false,
   contract: "",
+  recipePreview: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -174,6 +180,7 @@ async function buildScene(intent, plan) {
     }
     const scene = res.scene;
     state.currentScene = scene;
+    state.recipePreview = false;
     if (state.renderer) state.renderer.setScene(scene);
     dom.placeholder.style.display = "none";
     // Honest status: show the interpreted intent the planner heard.
@@ -191,6 +198,9 @@ async function buildScene(intent, plan) {
 // Preview polling (Octane quality tier)
 // ---------------------------------------------------------------------------
 async function pollPreview() {
+  // When a recipe preview is pinned (instant-load), don't let the Octane
+  // /preview poller clobber it with a (missing) Octane frame.
+  if (state.recipePreview) return;
   if (state.viewMode === "live") {
     // In live-only mode the WebGL canvas owns the screen; don't cover it.
     dom.preview.classList.remove("visible");
@@ -265,9 +275,12 @@ async function pollStatus() {
 async function submitIntent(text) {
   const t = (text || "").trim();
   if (!t) return;
-  // The canvas build is synchronous-ish: show a live WebGL scene immediately,
-  // independent of Octane. The intent is still logged for the agent loop.
+  // Build the live WebGL scene immediately (independent of Octane), then
+  // route the query to the selected Hermes model via the gateway, which
+  // forwards it through the local Hermes proxy. The reply renders
+  // in the response line.
   await buildScene(t);
+  const model = (dom.modelSelect && dom.modelSelect.value) || "";
   try {
     await fetch(`${GW}/intent`, {
       method: "POST",
@@ -279,6 +292,34 @@ async function submitIntent(text) {
     dom.status.className = "state-error";
     dom.statusText.textContent = "dispatch failed";
   }
+  // Agentic model query (routed through the Hermes API / proxy).
+  showResponse("…", model);
+  try {
+    const res = await postJSON("/canvas/chat", { text: t, model, voice: !!state.vox });
+    if (!res.ok) {
+      showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
+      return;
+    }
+    showResponse(res.reply || "(empty)", res.model);
+    appendTranscript("user", t, null);
+    appendTranscript("model", res.reply || "(empty)", res.model);
+  } catch (e) {
+    showResponse("model error — is `hermes proxy` running?", model, true);
+  }
+}
+
+function showResponse(text, model, isError) {
+  if (!dom.response) return;
+  dom.response.className = isError ? "" : "";
+  dom.response.innerHTML = model
+    ? `<span class="resp-model">${model}</span>${escapeHtml(text)}`
+    : escapeHtml(text);
+  dom.response.classList.remove("hidden");
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 dom.cmd.addEventListener("keydown", (e) => {
@@ -337,24 +378,51 @@ async function refreshPalette(filter) {
   );
   state.paletteActive = 0;
   dom.paletteList.innerHTML = items
-    .map((i, n) => `<li data-slug="${i.slug}" class="${n === 0 ? "active" : ""}"><span>${i.label}</span><span class="meta">${i.meta}</span></li>`)
+    .map((i, n) => `<li data-slug="${i.slug}" data-label="${i.label}" class="${n === 0 ? "active" : ""}"><span>${i.label}</span><span class="meta">${i.meta}</span></li>`)
     .join("");
   dom.paletteList.querySelectorAll("li").forEach((li) => {
     li.addEventListener("click", () => queueRecipe(li.dataset.slug));
   });
 }
 
-async function queueRecipe(slug) {
+async function queueRecipe(slug, label) {
   dom.palette.classList.add("hidden");
-  dom.status.className = "state-queued";
-  dom.statusText.textContent = `queued ${slug}`;
-  const res = await callTool("octane_queue_recipe", { slug });
-  if (res.ok) {
-    await callTool("octane_save_preview", { samples: 64, timeout_seconds: 12 });
-    setViewMode("final");
+  // Recipes are pre-existing scenes: fetch the recipe and show its bundled
+  // preview raster in the canvas instantly (the recipe's real rendered
+  // scene) rather than re-planning or queueing a slow Octane render. Quality
+  // re-render stays on "Send to Octane".
+  dom.status.className = "state-live";
+  dom.statusText.textContent = `loading ${slug}…`;
+  try {
+    const res = await getJSON(`/canvas/recipe/${encodeURIComponent(slug)}`);
+    if (!res.ok) {
+      dom.status.className = "state-error";
+      dom.statusText.textContent = `recipe "${slug}" not found`;
+      return;
+    }
+    // Show the recipe's actual preview image immediately in Final view.
+    if (res.preview_url && dom.preview) {
+      state.recipePreview = true;
+      dom.preview.src = res.preview_url + `?t=${Date.now()}`;
+      dom.preview.classList.add("visible");
+      dom.preview.classList.add("final-mode");
+      if (dom.placeholder) dom.placeholder.style.display = "none";
+      setViewMode("final");
+    } else {
+      await buildScene(null, res.scene);
+      setViewMode("live");
+    }
+    appendTranscript("user", `(recipe) ${label || slug}`, null);
+    appendTranscript("model", `Loaded pre-built scene "${res.title || slug}" into the canvas.`, "recipe");
+  } catch (e) {
+    dom.status.className = "state-error";
+    dom.statusText.textContent = "recipe load failed";
   }
 }
 
+dom.paletteList.querySelectorAll("li").forEach((li) => {
+  li.addEventListener("click", () => queueRecipe(li.dataset.slug, li.dataset.label));
+});
 dom.paletteInput.addEventListener("input", (e) => refreshPalette(e.target.value));
 dom.paletteInput.addEventListener("keydown", (e) => {
   const items = dom.paletteList.querySelectorAll("li");
@@ -367,7 +435,7 @@ dom.paletteInput.addEventListener("keydown", (e) => {
   } else if (e.key === "Enter") {
     e.preventDefault();
     const sel = items[state.paletteActive];
-    if (sel) queueRecipe(sel.dataset.slug);
+    if (sel) queueRecipe(sel.dataset.slug, sel.dataset.label);
     return;
   } else if (e.key === "Escape") {
     dom.palette.classList.add("hidden");
@@ -426,6 +494,8 @@ dom.inspectorClose.addEventListener("click", () => dom.inspector.classList.add("
 // ---------------------------------------------------------------------------
 function setViewMode(mode) {
   state.viewMode = mode;
+  // Leaving Final/Split back to Live releases any pinned recipe preview.
+  if (mode === "live") state.recipePreview = false;
   document.body.classList.remove("mode-live", "mode-final", "mode-split");
   document.body.classList.add(`mode-${mode}`);
   dom.viewmodes.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
@@ -583,6 +653,50 @@ async function onVoxToggle() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Agent transcript (LOG toggle, right of the chat entry). Each query -> model
+// reply is appended as a turn and persisted locally so the conversation
+// survives reloads. The overlay is a semi-transparent modal the user can
+// show/hide at will.
+// ---------------------------------------------------------------------------
+const TRANSCRIPT_KEY = "octanex.transcript";
+
+function loadTranscript() {
+  try {
+    const raw = localStorage.getItem(TRANSCRIPT_KEY);
+    state.transcript = raw ? JSON.parse(raw) : [];
+  } catch (_) {
+    state.transcript = [];
+  }
+  renderTranscript();
+}
+
+function renderTranscript() {
+  if (!dom.transcriptBody) return;
+  dom.transcriptBody.innerHTML = (state.transcript || [])
+    .map((t) => {
+      const who = t.role === "model" ? `model · ${t.model || ""}` : "you";
+      return `<div class="turn ${t.role}"><div class="who">${who}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
+    })
+    .join("");
+  dom.transcriptBody.scrollTop = dom.transcriptBody.scrollHeight;
+}
+
+function appendTranscript(role, text, model) {
+  if (!state.transcript) state.transcript = [];
+  state.transcript.push({ role, text, model: model || null });
+  // Keep the log bounded but useful across a session.
+  if (state.transcript.length > 200) state.transcript = state.transcript.slice(-200);
+  localStorage.setItem(TRANSCRIPT_KEY, JSON.stringify(state.transcript));
+  renderTranscript();
+}
+
+function toggleLog() {
+  if (!dom.transcript || !dom.logToggle) return;
+  const open = dom.transcript.classList.toggle("hidden") === false;
+  dom.logToggle.setAttribute("aria-pressed", open ? "true" : "false");
+}
+
 // Boot
 // ---------------------------------------------------------------------------
 initRenderer();
@@ -596,3 +710,9 @@ loadModels();
 if (dom.modelSelect) dom.modelSelect.addEventListener("change", onModelChange);
 loadVox();
 if (dom.voxToggle) dom.voxToggle.addEventListener("click", onVoxToggle);
+loadTranscript();
+if (dom.logToggle) dom.logToggle.addEventListener("click", toggleLog);
+if (dom.transcriptClose) dom.transcriptClose.addEventListener("click", () => {
+  dom.transcript.classList.add("hidden");
+  dom.logToggle.setAttribute("aria-pressed", "false");
+});

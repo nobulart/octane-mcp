@@ -26,6 +26,7 @@ import os
 import subprocess
 import threading
 import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -62,10 +63,62 @@ from octanex_mcp.bridge_control import octane_process_status, reset_octane_scene
 from octanex_mcp.scheduler import DispatchLoop
 from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
+from octanex_mcp.recipes import load_recipe, RECIPES_ROOT
 from octanex_mcp import hermes_config
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
 WEB_DIR = Path(os.environ.get("OCTANEX_GATEWAY_WEB_DIR", str(WEB_DIR_DEFAULT)))
+
+# Hermes API surface for agentic chat. The canvas routes model queries
+# through the local Hermes proxy (OpenAI-compatible) rather than any
+# single provider directly — the proxy attaches the user's real credentials
+# and knows every upstream (Nous Portal, local Ollama, ...).
+HERMES_PROXY_URL = os.environ.get(
+    "HERMES_PROXY_URL", "http://127.0.0.1:8645/v1/chat/completions"
+)
+
+# Local OpenAI-compatible LLM endpoint (Ollama). The canvas routes
+# locally-served models here; cloud/Nous models go through HERMES_PROXY_URL.
+LOCAL_LLM_URL = os.environ.get(
+    "LOCAL_LLM_URL", "http://localhost:11434/v1/chat/completions"
+)
+
+# Providers whose models run locally (route to LOCAL_LLM_URL, not the proxy).
+_LOCAL_PROVIDERS = {"local-ollama", "inferencer"}
+
+
+def _chat_upstream(model_id: str) -> str:
+    """Pick the OpenAI-compatible upstream for a model id.
+
+    Local providers (Ollama / inferencer) hit LOCAL_LLM_URL directly;
+    everything else (Nous Portal, cloud) goes through the Hermes proxy,
+    which attaches the user's real credentials.
+    """
+    try:
+        opts = hermes_config.list_models().get("options", [])
+    except Exception:  # noqa: BLE001 - never block chat on a config hiccup
+        opts = []
+    for o in opts:
+        if o.get("id") == model_id:
+            return LOCAL_LLM_URL if o.get("provider") in _LOCAL_PROVIDERS else HERMES_PROXY_URL
+    # Unknown id: assume a local tag if it isn't a namespaced cloud id.
+    return LOCAL_LLM_URL if "/" not in model_id else HERMES_PROXY_URL
+
+
+def _chat_completion(upstream: str, body: Dict[str, Any]) -> str:
+    # Local LLMs (esp. large MLX models) can take a minute+ to first token;
+    # give the upstream generous headroom so a slow model degrades to a
+    # readable timeout rather than a false "unavailable" 502.
+    req = urllib.request.Request(
+        upstream,
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer x"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=180) as r:
+        data = json.loads(r.read())
+    return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
 
 # In-memory current canvas scene (canvas.scene.v1). The browser hydrates this
 # and the agent loop edits it server-side; we do not persist scene state to disk
@@ -391,6 +444,45 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send_json({"ok": True, "scene": _canvas_scene})
             return
+        if path.startswith("/canvas/recipe/"):
+            # Instant-load a pre-existing recipe scene into the WebGL canvas.
+            # Returns the recipe's metadata + raw scene.json (Octane recipe
+            # format) and a preview_url pointing at the recipe's bundled
+            # preview raster, which the browser shows instantly (the recipe's
+            # real rendered scene) without re-planning or queueing Octane.
+            slug = path[len("/canvas/recipe/"):].strip("/")
+            if not slug:
+                self._send_json({"ok": False, "error": "recipe slug required"}, code=400)
+                return
+            try:
+                recipe = load_recipe(slug)
+            except ValueError as exc:
+                self._send_json({"ok": False, "error": str(exc)}, code=404)
+                return
+            preview = recipe.get("preview_path")
+            preview_url = f"/recipe-preview/{slug}" if preview else None
+            self._send_json({
+                "ok": True,
+                "slug": recipe.get("slug"),
+                "title": recipe.get("title"),
+                "scene": recipe.get("raw", {}),
+                "preview_url": preview_url,
+            })
+            return
+        if path.startswith("/recipe-preview/"):
+            # Serve a recipe's bundled preview raster (instant-load target).
+            slug = path[len("/recipe-preview/"):].strip("/")
+            candidates = [
+                RECIPES_ROOT / slug / "preview.png",
+                RECIPES_ROOT / slug / "octane-preview.png",
+                RECIPES_ROOT / slug / "photoreal-preview.png",
+            ]
+            for cand in candidates:
+                if cand.exists() and cand.is_file():
+                    self._send_bytes(cand.read_bytes(), "image/png")
+                    return
+            self._send_json({"ok": False, "error": "preview not found"}, code=404)
+            return
         self._serve_static(path)
 
     # --- POST -------------------------------------------------------------- #
@@ -507,6 +599,38 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"ok": False, "error": str(exc)}, code=422)
                 return
             self._send_json({"ok": True, **result})
+            return
+        if path == "/canvas/chat":
+            # Agentic query -> the selected Hermes model. The model is routed
+            # to the right OpenAI-compatible upstream: locally-served models
+            # (Ollama / inferencer) hit LOCAL_LLM_URL; cloud/Nous models go
+            # through the Hermes proxy, which attaches the user's real
+            # credentials. When VOX is on, a terse, speech-shaped system hint
+            # is prepended.
+            text = (payload.get("text") or "").strip()
+            model = payload.get("model") or ""
+            voice = bool(payload.get("voice", False))
+            if not text:
+                self._send_json({"ok": False, "error": "text required"}, code=400)
+                return
+            if not model:
+                model = (hermes_config.list_models().get("current") or "")
+            messages = []
+            if voice:
+                messages.append({"role": "system", "content": hermes_config.VOX_CONTRACT})
+            messages.append({"role": "user", "content": text})
+            body = {"model": model, "messages": messages, "stream": False}
+            upstream = _chat_upstream(model)
+            try:
+                content = _chat_completion(upstream, body)
+            except Exception as exc:  # noqa: BLE001 - upstream may be down
+                label = "local LLM" if upstream == LOCAL_LLM_URL else "hermes proxy"
+                self._send_json(
+                    {"ok": False, "error": f"{label} unavailable: {exc}"},
+                    code=502,
+                )
+                return
+            self._send_json({"ok": True, "model": model, "reply": content})
             return
         if path == "/config/vox":
             # Enable/disable VOX voice-conversation mode. The canvas writes the

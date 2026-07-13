@@ -130,6 +130,27 @@ body.mode-final #webgl-canvas { display: none; }
 #cmd:focus { border-color: var(--accent); }
 #cmd::placeholder { color: var(--muted); }
 
+/* --- Model/agent reply line (under the command bar) --- */
+#response {
+  position: fixed;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  width: min(640px, 80vw);
+  z-index: 19;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+#response .resp-model { color: var(--accent); font-size: 11px; letter-spacing: 0.04em; display: block; margin-bottom: 4px; }
+#response.hidden { display: none !important; }
+
 /* --- Status pill --- */
 #status {
   position: fixed;
@@ -287,8 +308,9 @@ body.mode-final #webgl-canvas { display: none; }
 #model-select:focus { border-color: var(--accent); }
 #model-select option { background: #14181f; color: var(--text); }
 
-/* --- VOX voice-mode toggle (left of the chat-bar input) --- */
-#vox-toggle {
+/* --- VOX / LOG toggles (left/right of the chat-bar input) --- */
+#vox-toggle,
+#log-toggle {
   flex: 0 0 auto;
   padding: 9px 13px;
   border-radius: 10px;
@@ -303,12 +325,11 @@ body.mode-final #webgl-canvas { display: none; }
   outline: none;
   transition: color .15s, border-color .15s, background .15s;
 }
-#vox-toggle:hover { color: var(--text); border-color: var(--accent); }
-#vox-toggle[aria-pressed="true"] {
-  color: #0b0d10;
-  background: var(--accent);
-  border-color: var(--accent);
-}
+#vox-toggle:hover,
+#log-toggle:hover { color: var(--text); border-color: var(--accent); }
+/* VOX active = blue (matches accent); LOG active = green. Inactive = muted. */
+#vox-toggle[aria-pressed="true"] { color: #0b0d10; background: var(--accent); border-color: var(--accent); }
+#log-toggle[aria-pressed="true"] { color: #0b0d10; background: var(--green); border-color: var(--green); }
 
 /* --- Focus mode (~) --- */
 body.focus #cmdbar,
@@ -316,4 +337,48 @@ body.focus #status,
 body.focus #palette,
 body.focus #inspector,
 body.focus #model-selector,
-body.focus #vox-toggle { display: none !important; }
+body.focus #vox-toggle,
+body.focus #log-toggle { display: none !important; }
+
+/* --- Agent transcript overlay (toggled by LOG) --- */
+#transcript {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: min(420px, 42vw);
+  max-height: 70vh;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: rgba(11, 13, 16, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  color: var(--text);
+  overflow: hidden;
+}
+#transcript.hidden { display: none !important; }
+#transcript header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+#transcript header button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+#transcript-body { padding: 10px 14px; overflow-y: auto; font-size: 13px; line-height: 1.5; }
+#transcript-body .turn { margin-bottom: 12px; }
+#transcript-body .turn .who { font-size: 10px; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; margin-bottom: 3px; }
+#transcript-body .turn.model .who { color: var(--green); }
+#transcript-body .turn .body { white-space: pre-wrap; }
