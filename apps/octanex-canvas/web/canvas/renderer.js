@@ -44,6 +44,12 @@ export class CanvasRenderer {
     this._bindControls();
     this._resize();
     window.addEventListener("resize", () => this._resize());
+    // The canvas element resizes (e.g. entering Split view) without a window
+    // resize firing; observe it so aspect + crop stay correct in any pane.
+    if (typeof ResizeObserver !== "undefined") {
+      this._ro = new ResizeObserver(() => this._resize());
+      this._ro.observe(this.canvas);
+    }
   }
 
   // ---- public API -------------------------------------------------------- //
@@ -53,7 +59,11 @@ export class CanvasRenderer {
     this._currentScene = sceneJson || {};
     this._applyEnvironment(this._currentScene.environment || {});
     this._buildObjects(this._currentScene.objects || []);
-    this._applyCamera(this._currentScene.camera || {});
+    // Frame the loaded model: center it and crop-zoom so it fills ~75% of the
+    // view on its LARGER dimension (overflow is clipped, never squished — this
+    // keeps aspect correct in the narrow split-view pane). Runs on every load
+    // (recipe or fresh build) so a model is never off-screen or tiny.
+    this._fitCameraToScene(0.75);
     return this;
   }
 
@@ -117,6 +127,10 @@ export class CanvasRenderer {
       transparent: (mat.opacity ?? 1.0) < 1.0,
       opacity: mat.opacity ?? 1.0,
       wireframe: !!mat.wireframe,
+      // Recipe/import OBJs often lack normals and use mixed winding, so
+      // computeVertexNormals can flip some faces. DoubleSide guarantees no
+      // black inverted faces regardless of winding order.
+      side: THREE.DoubleSide,
     });
     if (mat.emissive) {
       m.emissive = new THREE.Color(mat.emissive);
@@ -209,13 +223,34 @@ export class CanvasRenderer {
     }
   }
 
-  _applyCamera(cam) {
-    const pos = cam.position || [4, 3, 4];
-    this.target.fromArray(cam.target || [0, 0, 0]);
-    const offset = new THREE.Vector3().fromArray(pos).sub(this.target);
-    this.spherical.setFromVector3(offset);
-    this.camera.fov = cam.fov || 45;
-    this.camera.updateProjectionMatrix();
+  // Frame the whole scene: recenter on its bounding-box center and pull the
+  // camera back so the model's LARGER dimension fills `fill` of the frame.
+  // We crop (let the rest overflow) rather than fit-to-both-axes, so aspect
+  // is never distorted in a narrow pane. Geometry-only bounds (cheap, no
+  // matrix world walk) are enough since we build meshes at local origin.
+  _fitCameraToScene(fill = 0.75) {
+    const box = new THREE.Box3();
+    let any = false;
+    for (const o of this.objectNodes.values()) {
+      const g = o.node.geometry;
+      if (!g) continue;
+      g.computeBoundingBox();
+      if (g.boundingBox) { box.union(g.boundingBox); any = true; }
+    }
+    if (!any) return;
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const radius = 0.5 * Math.max(size.x, size.y, size.z) || 1;
+    // Distance so `radius` spans `fill` of the view on the limiting axis.
+    const vFov = (this.camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * this.camera.aspect);
+    const fitFov = Math.min(vFov, hFov); // crop on the tighter axis
+    const dist = (radius / Math.sin(fitFov / 2)) / Math.max(0.05, fill);
+    this.target.copy(center);
+    // Keep current orbit direction; just set radius to frame the model.
+    const dir = new THREE.Vector3().setFromSpherical(this.spherical);
+    if (dir.lengthSq() < 1e-6) dir.set(1, 0.8, 1).normalize();
+    this.spherical.radius = dist;
     this._syncCamera();
   }
 
@@ -304,11 +339,14 @@ export class CanvasRenderer {
   }
 
   _resize() {
-    const w = this.canvas.clientWidth || this.canvas.parentElement.clientWidth || window.innerWidth;
-    const h = this.canvas.clientHeight || this.canvas.parentElement.clientHeight || window.innerHeight;
+    const w = this.canvas.clientWidth || this.canvas.parentElement?.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || this.canvas.parentElement?.clientHeight || window.innerHeight;
+    if (!w || !h) return; // layout not settled yet (e.g. mid split-transition)
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / Math.max(1, h);
+    this.camera.aspect = w / h; // buffer matches element box -> no squish
     this.camera.updateProjectionMatrix();
+    // Re-crop to the new aspect so the model still fills the frame.
+    this._fitCameraToScene(0.75);
   }
 
   _disposeScene() {
