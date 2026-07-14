@@ -1018,10 +1018,11 @@ local function handle_assign_material(cmd)
             append_log("MESH_PINS(" .. tostring(pc) .. "): " .. table.concat(parts, " | "))
         end
     end)
-    local connected = connect_material_to_mesh_pins(mesh, mat, group_index, cmd.material_name)
+    local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
     if connected then
-        append_log("post-material wired material=" .. tostring(cmd.material_name) .. " (render restart deferred to save_preview)")
-        return true, "assigned material " .. tostring(cmd.material_name)
+        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
+        append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
+        return true, "assigned material " .. tostring(cmd.material_name) .. (group_index and (" to group #" .. tostring(group_index)) or "")
     end
     return true, "material exists; no known material pin accepted on mesh"
 end

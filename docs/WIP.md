@@ -1,17 +1,17 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-13** against
-HEAD `4f9b9ab`.
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-14** against
+HEAD `4de64d1`.
 
 ## Current state (evidence, 2026-07-13)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `4f9b9ab` (`feat(earth-hemisphere): v4.1 smooth spheres + LLSVP/plume + off-axis Hermes Camera`), tracking `origin/main`; tree contains this sweep's code/docs fixes plus new `docs/3DXM/` math-grammar reference material. |
-| Tests | **408 ran / 0 failures / 10 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. Benchmark subset: **14 ran / 0 failures / 1 skipped**. `compileall src` clean. This sweep fixed the Pillow-missing source check, stale recipe-contract counts, and one-shot/persistent `wait_for_render_ready` parity drift. |
-| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=800`, `samples_target=800`, `last_event=save_preview preview saved .../renders/octane-preview.png`. Stdio MCP boot probe returned **64 tools** and found `octane_find_grammar`. |
-| Recipe library | **30 recipe dirs** via `_recipe_dirs`. **25** declare `native_octane_verified=true`; **29** carry `octane-preview.png`. **5** currently have `native_octane_verified=false`: `earth-moon-space`, `headphones-studio`, `helicoid-spiral`, `photoreal-vase-studio`, `wristwatch`. Only `earth-moon-space` is missing a preview PNG. Offline recipe contract is **29/30 OK**; `earth-moon-space` is the remaining contract failure. |
+| Repo | `main` = `4de64d1` (`fix(canvas): remove duplicate setViewMode def in app.js`), tracking `origin/main`; tree contains this sweep's two regression fixes (recipe-count drift + oneshot/persistent `handle_assign_material` divergent body). |
+| Tests | **492 ran / 0 failures / 10 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. `compileall src` clean. Fixed two regressions: recipe contract total (31→32) and oneshot↔persistent `handle_assign_material` parity drift (now unified with `request_render_restart` + group-index suffix). |
+| Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=64`, `samples_target=64`, `last_event=save_preview preview saved .../renders/octane-preview.png`. Bridge module `hermes_bridge_oneshot_v2.lua` in one-shot mode. |
+| Recipe library | **32 recipe dirs**. **31** pass offline contract; **1** fails (`earth-moon-space`). `native_octane_verified` counts pending live sweep. Offline contract: **31/32 OK**; `earth-moon-space` is the remaining contract failure. |
 | Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
 | Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. |
 | Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
@@ -50,6 +50,13 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 
 ## Done recently
 
+- Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).
+- Today — fix(lua): oneshot↔persistent `handle_assign_material` parity (added `request_render_restart` + group-index suffix in oneshot).
+- `4de64d1` — canvas: remove duplicate setViewMode def in app.js.
+- `642fa21` — canvas: break app.js<->agent.js import cycle (setViewMode).
+- `310b2e4` — canvas: split app.js into state.js + agent.js + app.js (shell).
+- `f476ba2` — canvas: inline JS bundle into index.html (removes separate app.js fetch).
+- `b04b495` — canvas: HTTP/1.1 + Connection: close to defeat fetch-hooking extension truncation.
 - `4f9b9ab` — earth-hemisphere v4.1 smooth spheres + LLSVP/plume + off-axis Hermes Camera.
 - `3db043e` — README points vase preview at native render.
 - `6fcd43a` / `737e8e3` — earth-hemisphere v3 jello cutaway recipe + drain/queue recovery docs.

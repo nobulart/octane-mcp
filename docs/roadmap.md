@@ -52,18 +52,18 @@ The current bridge works, but much of its Octane API knowledge is empirical: fal
 - A handler change is made once and propagated/generated into both bridge modes.
 - Native module/no-GUI paths are not promoted until backed by measured local execution and documented failure modes.
 
-## Status snapshot (2026-07-13 — sweep review, HEAD `4f9b9ab`)
+## Status snapshot (2026-07-14 — hourly steward, HEAD `4de64d1`)
 
-Live-checked 2026-07-13 from `main` at `4f9b9ab` (`feat(earth-hemisphere): v4.1 smooth spheres + LLSVP/plume + off-axis Hermes Camera`). Fresh evidence replaces the stale `196185c` snapshot.
+Live-checked 2026-07-14 from `main` at `4de64d1` (`fix(canvas): remove duplicate setViewMode def in app.js`). Fresh evidence replaces the stale `4f9b9ab` snapshot.
 
-- **Repo:** `main` = `4f9b9ab`, tracking `origin/main`. Recent: earth-hemisphere v4.1/v3 recipes and docs, shared-engine dispatch loop, pointcloud merge/native vase render, shared-engine render lock, recipe-gallery README refreshes, and renderer-backend research.
-- **Tests:** `PYTHONPATH= uv run python -m unittest discover -s tests` ran **408 tests / 0 failures / 10 skipped**. `PYTHONPATH= uv run python -m unittest tests.test_benchmarks -v` ran **14 tests / 0 failures / 1 skipped** (`live_tier1_tier2` skips without `OCTANEX_LIVE=1`). `compileall src` passed. This sweep fixed the three grounded issues found at the start: Pillow-missing source check order, stale recipe-contract expectations after recipe growth, and one-shot/persistent `wait_for_render_ready` parity drift.
-- **Doctor / bridge:** `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=800`, `samples_target=800`, `last_event=save_preview preview saved .../renders/octane-preview.png`. The stdio MCP boot probe returned **64 tools** and found `octane_find_grammar`.
-- **Recipe library ground truth:** `_recipe_dirs(examples/recipes)` reports **30 recipe dirs**. **25** declare `native_octane_verified=true`; **29** carry `octane-preview.png`. **5** currently have `native_octane_verified=false`: `earth-moon-space`, `headphones-studio`, `helicoid-spiral`, `photoreal-vase-studio`, `wristwatch`. Only `earth-moon-space` is missing a preview PNG. Offline recipe contract is **29/30 OK**; `earth-moon-space` is the remaining contract failure.
+- **Repo:** `main` = `4de64d1`, tracking `origin/main`. Recent: canvas JS fixes (app.js split, bundle inline, fetch-hooking fix), plus this steward's regression repairs.
+- **Tests:** `PYTHONPATH= uv run python -m unittest discover -s tests` ran **492 tests / 0 failures / 10 skipped**. `compileall src` passed. Fixed two regressions: recipe-count drift (claim 31/31, reality 32/31 → contract_ok 30→31) and oneshot↔persistent `handle_assign_material` divergence (oneshot lacked `request_render_restart` call + group-index suffix in persistent; merged by patching oneshot to match).
+- **Doctor / bridge:** `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=64`, `samples_target=64`, `last_event=save_preview preview saved .../renders/octane-preview.png`. `hermes_bridge_oneshot_v2.lua` in one-shot mode.
+- **Recipe library ground truth:** `_recipe_dirs(examples/recipes)` reports **32 recipe dirs**. **31** pass offline contract; **1** fails (`earth-moon-space`). Native verification counts pending live sweep. Offline contract is **31/32 OK**.
 - **Benchmarks vs recipes:** benchmark coverage remains separate from recipe-library closure. The offline benchmark suite is green; no live benchmark claim.
-- **Current capability direction:** WP10/WP11 landed via practice: `octane_api_corpus_export`, `octane_capabilities`, `octane_probe_types`, live scene harvest, pre-render sanity gates all exposed. WP12 single-source Lua handler generation and WP13 registry-backed material/light compatibility remain the highest-leverage bridge-hardening work. `docs/3DXM/` is now staged as a math-surface grammar reference for the gallery/parametric-mesher path.
+- **Current capability direction:** WP10/WP11 landed via practice; `octane_api_corpus_export`, `octane_capabilities`, `octane_probe_types`, live scene harvest, pre-render sanity gates all exposed. WP12 single-source Lua handler generation and WP13 registry-backed material/light compatibility remain the highest-leverage bridge-hardening work. One-shot and persistent `handle_assign_material` now use the same handler body pattern.
 
-**Maturity read:** the project is a working visual workbench with 30 recipe dirs, a live bridge, and broad test coverage. The active risk is no longer queue viability; it is rapid-growth drift in tests/docs/verification flags plus the open WP12/WP13 bridge-hardening loop and the 3DXM parametric/Weierstrass meshing gap.
+**Maturity read:** the project is a working visual workbench with 32 recipe dirs, a live bridge, and broad test coverage (492 tests, green). Active risk has shifted from queue/launch to test-document drift — 32 recipe dirs have outgrown the static counts (31→32), and 2 of the 492 regression-failing tests were due to that drift plus the one-shot/persistent handler divergence.
 
 **Shipped (previously listed under Priority A — do not redo):**
 

@@ -54,11 +54,11 @@ class TestRecipeContractOffline(TestCase):
     def test_verify_recipe_library_dry_run_counts(self):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
-        self.assertEqual(report["total"], 31)
-        # 30/31 recipe dirs ship a real reference preview and pass the offline
+        self.assertEqual(report["total"], 32)
+        # 31/32 recipe dirs ship a real reference preview and pass the offline
         # contract. `earth-moon-space` is the remaining intentional exception
         # until it receives a checked-in native preview.
-        self.assertEqual(report["contract_ok"], 30, report)
+        self.assertEqual(report["contract_ok"], 31, report)
         self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, ["earth-moon-space"], report)
