@@ -40,20 +40,38 @@ NATIVE_RENDER = (
 SEG = 72  # radial resolution of the lathe / rings
 
 # --- materials ---------------------------------------------------------------
+# DESIGN: dark BLACK coffee (near-black glossy brew) with a few clear RAINBOW
+# bubbles floating on the surface. No froth cap (it read as latte/cream and hid
+# the black); the brew disc itself shows as the near-black surface. Bubbles are a
+# single clear-glassy glossy material whose RAINBOW hue is carried per-vertex
+# (the OBJ importer collapses distinct mat_bubble_N names into one pin, so the
+# only way to get 7 different hues is per-vertex colour on one mat_bubble).
 MATERIALS: dict[str, dict] = {
     # designer ceramic cup: warm off-white, lightly glazed
     "mat_cup":      {"kind": "glossy",   "color": [0.93, 0.90, 0.83], "roughness": 0.20},
-    # the frothy dark brew: espresso brown, a touch of gloss for the crema sheen
-    "mat_brew":     {"kind": "glossy",   "color": [0.15, 0.07, 0.04], "roughness": 0.30},
-    # crema / froth cap: warm pale tan
-    "mat_froth":    {"kind": "glossy",   "color": [0.80, 0.66, 0.47], "roughness": 0.45},
-    # tiny foam bubbles: near white
-    "mat_bubble":   {"kind": "glossy",   "color": [0.96, 0.93, 0.86], "roughness": 0.35},
+    # the DARK BLACK brew: near-black, a touch of gloss for the meniscus sheen
+    "mat_brew":     {"kind": "glossy",   "color": [0.020, 0.018, 0.015], "roughness": 0.16},
+    # clear rainbow bubble: glossy glassy bead; hue comes from per-vertex colour
+    "mat_bubble":   {"kind": "glossy",   "color": [0.9, 0.9, 0.9],
+                     "roughness": 0.04, "specular": 1.0},
     # saucer: same ceramic family, slightly cooler
     "mat_saucer":   {"kind": "glossy",   "color": [0.88, 0.85, 0.80], "roughness": 0.24},
     # dark table / contact shadow pad
     "mat_table":    {"kind": "diffuse",  "color": [0.06, 0.05, 0.05], "roughness": 0.92},
 }
+
+# A handful of prismatic tints for the rainbow bubbles (linear 0..1 RGB).
+# Each bubble gets one as its PER-VERTEX colour, layered over mat_bubble's
+# glassy gloss so the beads read as bright rainbow specks on the black coffee.
+RAINBOW = [
+    [1.00, 0.25, 0.30],   # red
+    [1.00, 0.55, 0.10],   # orange
+    [0.95, 0.90, 0.20],   # yellow
+    [0.25, 0.95, 0.40],   # green
+    [0.20, 0.70, 1.00],   # blue
+    [0.55, 0.35, 1.00],   # indigo
+    [0.95, 0.35, 0.90],   # violet
+]
 
 # cup vertical profile (outer wall), bottom -> top: (radius, y)
 RO = 0.86
@@ -272,15 +290,16 @@ def bubble_layout(n, brew_r, froth_y, seed=7):
     import random
     rng = random.Random(seed)
     bubbles = []
-    for _ in range(n):
+    for i in range(n):
         # pick a point in the disc via sqrt for uniform area
-        r = brew_r * 0.92 * math.sqrt(rng.random())
+        r = brew_r * 0.88 * math.sqrt(rng.random())
         th = rng.uniform(0, 2 * math.pi)
         x = r * math.cos(th)
         z = r * math.sin(th)
-        rad = rng.uniform(0.012, 0.040)
-        y = froth_y + rng.uniform(-0.005, 0.030)
-        bubbles.append((x, y, z, rad))
+        rad = rng.uniform(0.018, 0.045)
+        # float just at/above the dark surface so they read as specks on black coffee
+        y = froth_y + rng.uniform(-0.004, 0.012)
+        bubbles.append((x, y, z, rad, i % len(RAINBOW)))
     return bubbles
 
 
@@ -294,10 +313,10 @@ def bubble_layout(n, brew_r, froth_y, seed=7):
 # --------------------------------------------------------------------------
 def build():
     from collections import OrderedDict
-    acc = OrderedDict()  # material -> list of (verts, faces)
+    acc = OrderedDict()  # material -> list of (verts, faces, tint_or_None)
 
-    def add(mat, verts, faces):
-        acc.setdefault(mat, []).append((verts, faces))
+    def add(mat, verts, faces, tint=None):
+        acc.setdefault(mat, []).append((verts, faces, tint))
 
     # table (dark, large, top at y = -0.02)
     add("mat_table", *disc(0.0, -0.02, 0.0, 6.0, axis="xz", seg=72))
@@ -317,12 +336,8 @@ def build():
     add("mat_cup", *ring_with_hole(0.0, YT, 0.0, RI * 0.93, RO * 0.93, seg=SEG))
 
     # brew: a flat dark liquid surface (disc, +Y normal) at the fill line.
-    # NOTE: a closed `puck` is backface-culled from the top-down camera, so the
-    # cavity reads as empty; a flat upward-facing disc (same primitive the table
-    # uses, which renders correctly from above) shows the brew surface.
+    # No froth cap -- a pale disc read as latte/cream and hid the black brew.
     add("mat_brew", *disc(0.0, BREW_Y, 0.0, RI * 0.90, axis="xz", seg=SEG))
-    # froth cap: a pale disc just above the brew
-    add("mat_froth", *disc(0.0, FROTH_Y, 0.0, RI * 0.90, axis="xz", seg=SEG))
 
     # handle: swept tube on +x side
     hy0, hy1 = 0.45, 1.20
@@ -338,12 +353,15 @@ def build():
         arc.append((x, y, 0.0))
     add("mat_cup", *tube(arc, 0.085, seg=18))
 
-    # bubbles scattered on the froth (these all share mat_bubble -> one group)
-    for (x, y, z, r) in bubble_layout(22, RI * 0.90, FROTH_Y):
-        add("mat_bubble", *sphere((x, y, z), r))
+    # a few clear RAINBOW bubbles on the dark surface. They all share the single
+    # `mat_bubble` pin (Octane collapses mat_bubble_N into one), so the 7 hues
+    # are carried as PER-VERTEX colours -> bright rainbow beads on black coffee.
+    for (x, y, z, r, tint) in bubble_layout(7, RI * 0.90, BREW_Y):
+        add("mat_bubble", *sphere((x, y, z), r), tint)
 
-    # flatten to ordered (material, verts, faces) list -- one contiguous block each
-    groups = [(mat, verts, faces) for mat, parts in acc.items() for (verts, faces) in parts]
+    # flatten to ordered (material, verts, faces, tint) list
+    groups = [(mat, verts, faces, tint)
+              for mat, parts in acc.items() for (verts, faces, tint) in parts]
     return groups
 
 
@@ -355,20 +373,20 @@ def write_obj(groups):
     # (A single shared `o` across all groups rendered BLANK for an equivalent
     # cup mesh, so per-group o/g is required.)
     #
-    # COLOUR: Octane's `assign_material` bridge path is unreliable in this build
-    # (mesh pins collapse to 1, materials fall back to white -- see the
-    # brew_test, where a dark disc rendered white). We therefore bake the
-    # material colour directly into the OBJ as PER-VERTEX COLOURS
+    # COLOUR: bake the material colour directly into the OBJ as PER-VERTEX COLOURS
     # (`v x y z r g b`), which Octane's OBJ importer reads and applies even when
-    # the material binding fails. This is the reliable colour path here.
+    # the material binding fails. RAINBOW bubbles carry their hue per-vertex
+    # (the single `mat_bubble` pin can't carry 7 distinct material names).
     lines = ["mtllib scene.mtl", "# designer coffee cup (Y-up, single combined OBJ)"]
     vertex_count = 0
-    for idx, (mat, verts, faces) in enumerate(groups, 1):
+    for idx, (mat, verts, faces, tint) in enumerate(groups, 1):
         gname = f"group_{idx}_{mat}"
         lines.append(f"o {gname}")
         lines.append(f"usemtl {mat}")
         lines.append(f"g {gname}")
-        r, g, b = MATERIALS[mat]["color"]
+        # rainbow bubbles use their per-vertex tint; everything else its material colour
+        rgb = RAINBOW[tint] if (tint is not None) else MATERIALS[mat]["color"]
+        r, g, b = rgb
         # Octane vertex colour is 0..1 linear RGB
         lines.extend(f"v {x:.5f} {y:.5f} {z:.5f} {r:.4f} {g:.4f} {b:.4f}" for x, y, z in verts)
         for face in faces:
@@ -449,7 +467,7 @@ def write_mtl():
         r, g, b = m["color"]
         ks = 0.6 if m["kind"] == "metallic" else 0.2
         lines.extend([f"newmtl {name}", f"Kd {r:.4f} {g:.4f} {b:.4f}",
-                      f"Ks {ks:.4f} {ks:.4f} {ks:.4f}", f"Ns {90 if m['kind']=='metallic' else 40}", ""])
+                     f"Ks {ks:.4f} {ks:.4f} {ks:.4f}", f"Ns {90 if m['kind']=='metallic' else 40}", ""])
     MTL_PATH.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -457,10 +475,10 @@ def write_scene(groups_full):
     unique = list(dict.fromkeys(groups_full))
     scene = {
         "slug": SLUG,
-        "title": "Designer Coffee Cup with Frothy Dark Brew",
+        "title": "Designer Coffee Cup with Dark Black Brew and Rainbow Bubbles",
         "category": "Product / prop studio",
-        "purpose": "Render an elegant designer coffee cup (warm off-white glazed ceramic, hollow lathed body, swept-tube handle, wide saucer) holding a dark espresso brew capped with a pale frothy crema and scattered foam bubbles, on a dark table.",
-        "prompt": "Visualise an elegant designer coffee cup, with some frothy dark brew therein.",
+        "purpose": "Render an elegant designer coffee cup (warm off-white glazed ceramic, hollow lathed body, swept-tube handle, wide saucer) holding a near-black glossy coffee, studded with a few clear iridescent rainbow bubbles, on a dark table.",
+        "prompt": "Visualise an elegant designer coffee cup with dark black coffee and a few rainbow clear bubbles floating on the surface.",
         "camera": hero_camera(),
         "materials": {name: {"name": name, **m} for name, m in MATERIALS.items()},
         "commands": command_sequence(
@@ -486,12 +504,12 @@ def write_readme(groups):
     rows = [f"| {i} | `{n}` | {MATERIALS[n]['kind']} | `{MATERIALS[n]['color']}` |"
             for i, n in enumerate(unique, 1)]
     README_PATH.write_text(
-        "# Designer Coffee Cup with Frothy Dark Brew\n\n"
+        "# Designer Coffee Cup with Dark Black Brew and Rainbow Bubbles\n\n"
         "![Native Octane X render](octane-preview.png)\n\n"
         "An elegant designer coffee cup in warm off-white glazed ceramic: a hollow surface-of-"
         "revolution body with a swept-tube handle, standing on a wide matching saucer on a dark "
-        "table. Inside, a dark espresso brew is capped by a pale frothy crema studded with small "
-        "foam bubbles. Rendered with soft-studio lighting.\n\n"
+        "table. Inside, a near-black glossy coffee is studded with a few clear iridescent "
+        "rainbow bubbles. Rendered with soft-studio lighting.\n\n"
         "## Geometry convention\n\n"
         "Authored **Y-up** (Octane native). The cup body is a true hollow lathe (outer wall + "
         "reversed-winding inner wall + rim annulus) so the interior and brew are visible from the "
