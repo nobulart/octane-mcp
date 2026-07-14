@@ -658,15 +658,14 @@ export async function renderToOctane() {
     dom.statusText.textContent = "build a scene first";
     return;
   }
-  // 1) Inherit the live Three.js camera so Octane renders the user's viewpoint.
+  // 1) Inherit the live Three.js camera so Octane renders the user's viewpoint,
+  //    not the scene's stored default. Hand it to the gateway as a camera
+  //    override (not a separate octane_set_camera call) so it is the LAST
+  //    set_camera in the queue and wins over any embedded scene camera.
+  let camOverride = null;
   if (state.renderer && typeof state.renderer.getCameraState === "function") {
     const cam = state.renderer.getCameraState();
-    if (cam && cam.position && cam.target) {
-      try {
-        await callTool("octane_set_camera", { position: cam.position, target: cam.target, fov: cam.fov || 45 });
-        debugLog("camera-inherit", cam);
-      } catch (_) { debugLog("camera-inherit", "skipped (octane_set_camera unavailable)"); }
-    }
+    if (cam && cam.position && cam.target) camOverride = cam;
   }
   // 2) Hand off the live scene to the Octane pipeline (flush + queue + drain).
   dom.status.className = "state-queued";
@@ -675,7 +674,7 @@ export async function renderToOctane() {
   setOctanePie(0.02);
   state.octaneRendering = true;
   try {
-    const res = await postJSON("/canvas/to-octane", {});
+    const res = await postJSON("/canvas/to-octane", camOverride ? { camera: camOverride } : {});
     if (!res.ok) {
       _stopRenderWatch();
       state.octaneRendering = false;

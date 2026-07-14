@@ -671,6 +671,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"ok": False, "error": "no scene built yet"}, code=404)
                 return
             try:
+                # Camera inheritance: the browser FAB hands the live WebGL
+                # viewport camera as a `camera` override. Stamp it onto the
+                # scene so queue_scene_plan emits THIS camera (the last
+                # set_camera in the queue) instead of the scene's stored
+                # default — otherwise the default overrides the user's view.
+                if isinstance(payload.get("camera"), Mapping):
+                    _canvas_scene["camera"] = dict(payload["camera"])
                 # Canvas uses hex colors (WebGL-friendly subset); the Octane
                 # bridge expects RGB arrays. Convert at the boundary so the
                 # live scene the browser owns stays untouched.
