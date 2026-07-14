@@ -41,6 +41,11 @@ const dom = {
   transcript: document.getElementById("transcript"),
   transcriptBody: document.getElementById("transcript-body"),
   transcriptClose: document.getElementById("transcript-close"),
+  selChip: document.getElementById("sel-chip"),
+  snapToggle: document.getElementById("snap-toggle"),
+  tasks: document.getElementById("tasks"),
+  dotFront: document.getElementById("dot-front"),
+  dotBack: document.getElementById("dot-back"),
 };
 
 const state = {
@@ -54,6 +59,8 @@ const state = {
   renderer: null,
   vox: false,
   contract: "",
+  selectedId: null,
+  activeTask: null, // { controller, el, label, kind }
 };
 
 // ---------------------------------------------------------------------------
@@ -100,6 +107,17 @@ function showSelection(id, meta) {
   state.selectedId = id;
   const o = (state.currentScene && state.currentScene.objects || []).find((x) => x.id === id);
   if (!o) return;
+  // Selection chip in the cmd bar: click to reference @id in the next message.
+  if (dom.selChip) {
+    dom.selChip.textContent = `▣ ${o.label || id}`;
+    dom.selChip.dataset.ref = id;
+    dom.selChip.classList.remove("hidden");
+    dom.selChip.onclick = () => {
+      const cur = dom.cmd.value;
+      dom.cmd.value = cur.includes(`@${id}`) ? cur : `${cur} @${id} `.trimStart();
+      dom.cmd.focus();
+    };
+  }
   const mat = (state.currentScene && state.currentScene.materials || []).find((m) => m.id === o.material);
   const panel = dom.inspectorSelection;
   if (!panel) return;
@@ -169,8 +187,18 @@ async function patchSelection(changes) {
 async function buildScene(intent, plan) {
   dom.status.className = "state-queued";
   dom.statusText.textContent = "building…";
+  if (dom.selChip) dom.selChip.classList.add("hidden");
+  state.selectedId = null;
+  const { promise: buildP } = trackTask(plan ? "load scene" : `build ${intent || ""}`, "build", (signal) =>
+    fetch(`${GW}/canvas/build`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(plan ? { scene: plan } : { intent }),
+      signal,
+    }).then((r) => r.json())
+  );
   try {
-    const res = await postJSON("/canvas/build", plan ? { scene: plan } : { intent });
+    const res = await buildP;
     if (!res.ok) {
       dom.status.className = "state-error";
       dom.statusText.textContent = "build failed";
@@ -187,8 +215,10 @@ async function buildScene(intent, plan) {
     dom.statusText.textContent = heard;
     if (scene.scene_id) localStorage.setItem("octanex.lastSceneId", scene.scene_id);
   } catch (e) {
-    dom.status.className = "state-error";
-    dom.statusText.textContent = "gateway unreachable";
+    if (e && e.name !== "AbortError") {
+      dom.status.className = "state-error";
+      dom.statusText.textContent = "gateway unreachable";
+    }
   }
 }
 
@@ -267,6 +297,68 @@ async function pollStatus() {
 // ---------------------------------------------------------------------------
 // Intent boundary — single entry point for all input
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Active task tray + status dots (frontend / backend activity)
+// ---------------------------------------------------------------------------
+let _frontActive = 0;
+let _backActive = 0;
+
+function setFront(active) {
+  _frontActive += active ? 1 : -1;
+  if (dom.dotFront) dom.dotFront.classList.toggle("active", _frontActive > 0);
+}
+function setBack(active) {
+  _backActive += active ? 1 : -1;
+  if (dom.dotBack) dom.dotBack.classList.toggle("active", _backActive > 0);
+}
+
+// Wrap a fetch in a cancellable task item with a glowing dot + cancel button.
+function trackTask(label, kind, makeFetch) {
+  const el = document.createElement("div");
+  el.className = `task task-${kind}`;
+  el.innerHTML = `<span class="task-dot"></span><span class="task-label">${escapeHtml(label)}</span><button class="task-cancel" title="cancel">✕</button>`;
+  if (dom.tasks) dom.tasks.appendChild(el);
+  const controller = new AbortController();
+  el.querySelector(".task-cancel").addEventListener("click", () => controller.abort());
+  const task = { controller, el, label, kind };
+  state.activeTask = task;
+  const p = makeFetch(controller.signal);
+  setFront(kind === "build");
+  setBack(true);
+  const done = () => {
+    el.classList.add("done");
+    setTimeout(() => el.remove(), 600);
+    if (state.activeTask === task) state.activeTask = null;
+    setFront(kind === "build" ? false : false);
+    setBack(false);
+  };
+  p.then(done, (e) => {
+    if (e && e.name === "AbortError") {
+      el.classList.add("cancelled");
+      el.querySelector(".task-label").textContent = `${label} · cancelled`;
+    }
+    done();
+  });
+  return { controller, promise: p };
+}
+
+// ---------------------------------------------------------------------------
+// Scene context summary (what the agent can see/control right now)
+// ---------------------------------------------------------------------------
+function sceneContext() {
+  const sc = state.currentScene;
+  if (!sc) return null;
+  return {
+    scene_id: sc.scene_id || null,
+    objects: (sc.objects || []).map((o) => ({
+      id: o.id,
+      type: o.type,
+      label: o.label || null,
+      material: o.material || null,
+    })),
+  };
+}
+
 async function submitIntent(text) {
   const raw = (text || "").trim();
   if (!raw) return;
@@ -294,12 +386,24 @@ async function submitIntent(text) {
   if (isBuild) {
     await buildScene(intent);
     appendTranscript("build", `build "${intent}" → ${state.currentScene ? state.currentScene.objects.length : 0} object(s)${state.currentScene && state.currentScene.scene_id ? ` [${state.currentScene.scene_id}]` : ""}`, "octanex-mcp");
-  }
+  const model = (dom.modelSelect && dom.modelSelect.value) || "";
   // Agentic model query (routed through the Hermes API / proxy). The reply
-  // renders in the response line; the turn is logged to the transcript.
+  // renders in the response line; the turn is logged to the transcript. The
+  // agent is prewarmed with the live scene + selected object id (scene-aware),
+  // and the whole turn is cancellable via the task tray.
+  const scene = sceneContext();
+  const selection = state.selectedId || null;
   showResponse("…", model);
+  const { promise: chatP } = trackTask(`agent · ${model || "default"}`, "chat", (signal) =>
+    fetch(`${GW}/canvas/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: raw, model, voice: !!state.vox, scene, selection }),
+      signal,
+    }).then((r) => r.json())
+  );
   try {
-    const res = await postJSON("/canvas/chat", { text: raw, model, voice: !!state.vox });
+    const res = await chatP;
     if (!res.ok) {
       showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
       return;
@@ -308,6 +412,7 @@ async function submitIntent(text) {
     appendTranscript("user", raw, null);
     appendTranscript("model", res.reply || "(empty)", res.model);
   } catch (e) {
+    if (e && e.name === "AbortError") return;
     showResponse("model error — is `hermes proxy` running?", model, true);
   }
 }
@@ -362,17 +467,17 @@ async function openPalette() {
 
 async function refreshPalette(filter) {
   if (state.paletteItems.length === 0) {
+    // Pull the recipe catalog from the gateway directly (no MCP server needed).
     try {
-      const book = await callTool("octane_recipe_book");
-      const idx = await callTool("octane_recipe_index");
-      const recipes = (idx.result && idx.result.recipes) || (book.result && book.result.recipes) || [];
+      const res = await getJSON("/canvas/recipes");
+      const recipes = (res && res.recipes) || [];
       state.paletteItems = Array.isArray(recipes)
         ? recipes.map((r) => ({ slug: r.slug || r.name, label: r.title || r.slug || r.name, meta: r.tier || r.group || "recipe" }))
         : [];
-      if (state.paletteItems.length === 0) {
-        state.paletteItems = [{ slug: "t1_glossy_cube", label: "Glossy cube (tier 1)", meta: "recipe" }];
-      }
     } catch (_) {
+      state.paletteItems = [];
+    }
+    if (state.paletteItems.length === 0) {
       state.paletteItems = [{ slug: "t1_glossy_cube", label: "Glossy cube (fallback)", meta: "recipe" }];
     }
   }
@@ -647,11 +752,40 @@ async function onVoxToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// Agent transcript (LOG toggle, right of the chat entry). Each query -> model
-// reply is appended as a turn and persisted locally so the conversation
-// survives reloads. The overlay is a semi-transparent modal the user can
-// show/hide at will.
+// Screenshot -> agent (viewport vision analysis)
 // ---------------------------------------------------------------------------
+async function snapAndSend() {
+  if (!state.renderer) return;
+  const image = state.renderer.snapshot(); // PNG data URL
+  const model = (dom.modelSelect && dom.modelSelect.value) || "";
+  const scene = sceneContext();
+  const selection = state.selectedId || null;
+  const prompt = dom.cmd.value.trim() || "Analyse this viewport. What geometry, colours, and framing do you see? Flag anything wrong (black faces, clipping, off-centre).";
+  dom.cmd.value = "";
+  showResponse("… analysing screenshot", model);
+  const { promise: snapP } = trackTask("vision · screenshot", "chat", (signal) =>
+    fetch(`${GW}/canvas/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: prompt, model, voice: !!state.vox, scene, selection, image }),
+      signal,
+    }).then((r) => r.json())
+  );
+  try {
+    const res = await snapP;
+    if (!res.ok) {
+      showResponse(`vision failed — ${res.error || "proxy down"}`, model, true);
+      return;
+    }
+    showResponse(res.reply || "(empty)", res.model);
+    appendTranscript("user", `(screenshot) ${prompt}`, null);
+    appendTranscript("model", res.reply || "(empty)", res.model);
+  } catch (e) {
+    if (e && e.name !== "AbortError") showResponse("vision error — is `hermes proxy` running?", model, true);
+  }
+}
+
+
 const TRANSCRIPT_KEY = "octanex.transcript";
 
 function loadTranscript() {
@@ -709,3 +843,4 @@ if (dom.transcriptClose) dom.transcriptClose.addEventListener("click", () => {
   dom.transcript.classList.add("hidden");
   dom.logToggle.setAttribute("aria-pressed", "false");
 });
+if (dom.snapToggle) dom.snapToggle.addEventListener("click", snapAndSend);

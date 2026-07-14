@@ -87,6 +87,44 @@ class ChatRouteTest(unittest.TestCase):
         self.assertEqual(bd["model"], "tencent/hy3:free")
         self.assertEqual(bd["reply"], "Roger. Terse reply.")
 
+    def test_scene_aware_prompt_and_image(self):
+        # The handler must bake the live scene + selection into the system
+        # prompt and, when an image is attached, send a multimodal user message.
+        captured = {}
+
+        def _fake_urlopen(req, timeout=0):
+            captured["body"] = json.loads(req.data.decode())
+            return _FakeResp({"choices": [{"message": {"role": "assistant", "content": "ok"}}]})
+
+        scene = {
+            "scene_id": "desk-fan",
+            "objects": [
+                {"id": "desk-fan_3", "type": "mesh", "label": "blades", "material": "mat_3"},
+                {"id": "desk-fan_1", "type": "mesh", "label": "base", "material": "mat_1"},
+            ],
+            "materials": [{"id": "mat_3", "color": "#2233ff"}, {"id": "mat_1", "color": "#888888"}],
+        }
+        with mock.patch.object(gw.urllib.request, "urlopen", side_effect=_fake_urlopen):
+            st, bd = self._post("/canvas/chat", {
+                "text": "make the blades green",
+                "model": "tencent/hy3:free",
+                "scene": scene,
+                "selection": "desk-fan_3",
+                "image": "data:image/png;base64,AAAA",
+            })
+        self.assertEqual(st, 200)
+        body = captured["body"]
+        sysmsg = body["messages"][0]["content"]
+        self.assertIn("LIVE SCENE under your control", sysmsg)
+        self.assertIn("desk-fan_3", sysmsg)
+        self.assertIn("blades", sysmsg)
+        self.assertIn("SELECTED object id='desk-fan_3'", sysmsg)
+        # Multimodal user content
+        user = body["messages"][-1]["content"]
+        self.assertIsInstance(user, list)
+        self.assertEqual(user[1]["type"], "image_url")
+        self.assertEqual(user[1]["image_url"]["url"], "data:image/png;base64,AAAA")
+
 
 class ChatRoutingTest(unittest.TestCase):
     """_chat_upstream routes local providers to Ollama, others to the proxy."""

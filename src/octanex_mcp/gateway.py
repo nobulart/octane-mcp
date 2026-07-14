@@ -120,6 +120,74 @@ def _chat_completion(upstream: str, body: Dict[str, Any]) -> str:
     return data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
 
+# --------------------------------------------------------------------------- #
+# Agent "DNA" — a condensed SOUL the canvas bakes into every chat turn so the
+# model is prewarmed with the octanex-mcp toolkit and the live scene it owns.
+# Distilled from the project's AGENTS.md / skills: the canvas is a shared
+# visualisation medium; recipes are editable geometry; conversation-first.
+# --------------------------------------------------------------------------- #
+CANVAS_SOUL = """You are the agent inside the OctaneX Agentic Canvas — a local, \
+visualisation-first modelling surface. The user is building 3D scenes you can \
+see and edit.
+
+CORE FACTS (your DNA):
+- The canvas renders canvas.scene.v1: objects with {id, type, label, material, \
+geometry}. Mesh objects carry triangle-list geometry from recipes/imports.
+- Recipes are pre-built scenes (⌘K). Selecting one loads real, pickable, editable \
+meshes — a starting point, not a screenshot. The user can click an object to select it.
+- You can change the live scene via the canvas patch tool: color, opacity, scale, \
+position, rotation, and (for meshes) geometry. Reference objects by their id; the \
+UI may pass you a `selection` (the clicked object id) and a `scene` summary.
+- Conversation-first: plain chat is design discussion; only an explicit \
+visualise/build/render intent commits a build. Never rebuild the scene on a \
+casual question.
+- Be precise and terse. When the user references "the fan blades" / "that ring" / \
+"@id", map it to the actual object id from the scene summary you are given, then \
+state the id you acted on. If a referenced object isn't in the scene, say so.
+- You can be sent a screenshot of the current viewport (image). Analyse it \
+truthfully: report what geometry, colors, and framing you actually see; do not \
+invent detail. If something looks wrong (black faces, clipping, off-center), say so.
+- Keep edits minimal and reversible. Prefer one concrete change per turn."""
+
+
+def _scene_system_prompt(scene: Optional[Mapping[str, Any]], selection: Optional[str]) -> str:
+    """Build the scene-aware system prompt for a chat turn."""
+    parts = [CANVAS_SOUL]
+    if scene:
+        objs = scene.get("objects", []) or []
+        mats = {m.get("id"): m for m in (scene.get("materials", []) or [])}
+        lines = []
+        for o in objs:
+            m = mats.get(o.get("material"))
+            color = (m or {}).get("color", "?")
+            lines.append(f"- {o.get('id')}: type={o.get('type')} label={o.get('label')!r} color={color}")
+        summary = "\n".join(lines) if lines else "(empty scene)"
+        parts.append(
+            f"\nLIVE SCENE under your control (scene_id={scene.get('scene_id')!r}, {len(objs)} object(s)):\n{summary}"
+        )
+        if selection:
+            sel = next((o for o in objs if o.get("id") == selection), None)
+            if sel:
+                parts.append(f"\nThe user currently has SELECTED object id={selection!r} (label={sel.get('label')!r}).")
+            else:
+                parts.append(f"\nThe user referenced selection id={selection!r} but it is not in the live scene.")
+    return "\n".join(parts)
+
+
+def _user_content(text: str, image: Optional[str]) -> Any:
+    """Return an OpenAI-compatible user message content.
+
+    ``image`` is a data URL (``data:image/png;base64,…``); when present we send a
+    multimodal message so the model can analyse the screenshot.
+    """
+    if not image:
+        return text
+    return [
+        {"type": "text", "text": text or "What do you see in this viewport screenshot?"},
+        {"type": "image_url", "image_url": {"url": image}},
+    ]
+
+
 # In-memory current canvas scene (canvas.scene.v1). The browser hydrates this
 # and the agent loop edits it server-side; we do not persist scene state to disk
 # in this phase (that lands with /canvas/scene POST + history in Phase 3).
@@ -444,6 +512,19 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send_json({"ok": True, "scene": _canvas_scene})
             return
+        if path == "/canvas/recipes":
+            # Lightweight recipe catalog for the ⌘K palette — served directly
+            # from the recipe index so the palette works without the MCP server.
+            try:
+                idx = recipe_index()
+                recipes = [
+                    {"slug": r.get("slug") or r.get("name"), "title": r.get("title"), "tier": r.get("tier")}
+                    for r in (idx.get("recipes") if isinstance(idx, Mapping) else idx or [])
+                ]
+            except Exception as exc:  # noqa: BLE001 - never block the palette on a hiccup
+                recipes = []
+            self._send_json({"ok": True, "recipes": recipes})
+            return
         if path.startswith("/canvas/recipe/"):
             # Instant-load a pre-existing recipe scene into the WebGL canvas.
             # The recipe is a pre-built scene whose geometry lives in scene.obj;
@@ -606,20 +687,27 @@ class Handler(BaseHTTPRequestHandler):
             # to the right OpenAI-compatible upstream: locally-served models
             # (Ollama / inferencer) hit LOCAL_LLM_URL; cloud/Nous models go
             # through the Hermes proxy, which attaches the user's real
-            # credentials. When VOX is on, a terse, speech-shaped system hint
-            # is prepended.
+            # credentials. The turn is scene-aware: the UI sends the live
+            # scene summary + the selected object id (if any), and may attach
+            # a viewport screenshot (data URL) for vision analysis.
             text = (payload.get("text") or "").strip()
             model = payload.get("model") or ""
             voice = bool(payload.get("voice", False))
-            if not text:
-                self._send_json({"ok": False, "error": "text required"}, code=400)
+            scene = payload.get("scene") or None
+            selection = payload.get("selection") or None
+            image = payload.get("image") or None
+            if not text and not image:
+                self._send_json({"ok": False, "error": "text or image required"}, code=400)
                 return
             if not model:
                 model = (hermes_config.list_models().get("current") or "")
             messages = []
+            system = _scene_system_prompt(scene, selection)
             if voice:
-                messages.append({"role": "system", "content": hermes_config.VOX_CONTRACT})
-            messages.append({"role": "user", "content": text})
+                system = (system + "\n\n" + hermes_config.VOX_CONTRACT).strip()
+            if system:
+                messages.append({"role": "system", "content": system})
+            messages.append({"role": "user", "content": _user_content(text, image)})
             body = {"model": model, "messages": messages, "stream": False}
             upstream = _chat_upstream(model)
             try:

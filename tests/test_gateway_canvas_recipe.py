@@ -78,6 +78,17 @@ class RecipeRouteTest(unittest.TestCase):
         # PNG magic bytes.
         self.assertEqual(raw[:4], b"\x89PNG")
 
+    def test_recipes_list_route(self):
+        # The ⌘K palette pulls its catalog from /canvas/recipes (no MCP needed).
+        st, raw = self._get("/canvas/recipes")
+        self.assertEqual(st, 200)
+        bd = json.loads(raw)
+        self.assertTrue(bd["ok"])
+        recipes = bd["recipes"]
+        self.assertIsInstance(recipes, list)
+        self.assertTrue(len(recipes) > 0)
+        self.assertIn("slug", recipes[0])
+
 
 if __name__ == "__main__":
     unittest.main()
