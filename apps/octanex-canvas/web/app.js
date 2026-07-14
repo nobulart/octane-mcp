@@ -45,15 +45,6 @@ function restoreContinuity() {
   state.continuityLoaded = true;
 }
 
-// View modes: live (WebGL) / final (Octane PNG) / split
-function setViewMode(mode) {
-  state.viewMode = mode;
-  document.body.classList.remove("mode-live", "mode-final", "mode-split");
-  document.body.classList.add(`mode-${mode}`);
-  dom.viewmodes.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
-  pollPreview();
-}
-
 if (dom.viewmodes) {
   dom.viewmodes.querySelectorAll("button").forEach((b) =>
     b.addEventListener("click", () => setViewMode(b.dataset.mode))
