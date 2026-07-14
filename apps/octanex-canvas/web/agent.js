@@ -528,7 +528,8 @@ function renderTranscript() {
   dom.transcriptBody.innerHTML = ordered
     .map((t) => {
       const who = t.role === "model" ? `model · ${t.model || ""}` : t.role === "build" ? `build · ${t.model || "octanex-mcp"}` : "you";
-      return `<div class="turn ${t.role}"><div class="who">${who}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
+      const ts = t.ts ? `<span class="ts">${new Date(t.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>` : "";
+      return `<div class="turn ${t.role}"><div class="who">${who}${ts}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
     })
     .join("");
   dom.transcriptBody.scrollTop = 0;
@@ -536,7 +537,7 @@ function renderTranscript() {
 
 export function appendTranscript(role, text, model) {
   if (!state.transcript) state.transcript = [];
-  state.transcript.push({ role, text, model: model || null });
+  state.transcript.push({ role, text, model: model || null, ts: new Date().toISOString() });
   if (state.transcript.length > 200) state.transcript = state.transcript.slice(-200);
   localStorage.setItem(TRANSCRIPT_KEY, JSON.stringify(state.transcript));
   renderTranscript();

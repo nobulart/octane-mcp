@@ -407,8 +407,9 @@ body.focus #log-toggle { display: none !important; }
 }
 #transcript-body { padding: 10px 14px; overflow-y: auto; font-size: 13px; line-height: 1.5; }
 #transcript-body .turn { margin-bottom: 12px; }
-#transcript-body .turn .who { font-size: 10px; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; margin-bottom: 3px; }
+#transcript-body .turn .who { font-size: 10px; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; margin-bottom: 3px; display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
 #transcript-body .turn.model .who { color: var(--green); }
+#transcript-body .turn .who .ts { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); text-transform: none; }
 #transcript-body .turn .body { white-space: pre-wrap; }
 
 /* --- Status dots (frontend / backend activity) --- */
