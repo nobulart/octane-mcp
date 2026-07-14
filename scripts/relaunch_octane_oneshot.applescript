@@ -94,6 +94,9 @@ on run argv
           delay 0.5
         else if errNum is -1728 then
           delay 0.5
+        else if errNum is -600 then
+          -- app not yet ready during relaunch race; retry within window
+          delay 0.5
         end if
       end try
     end tell

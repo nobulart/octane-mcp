@@ -766,6 +766,10 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_static(self, path: str) -> None:
         if path in ("", "/"):
             path = "/index.html"
+        # Allow cache-busting version queries (?v=N) without 404-ing: strip the
+        # query so /app.js?v=3 still resolves to the real app.js. A fresh URL
+        # defeats any poisoned HTTP cache that no-store can't purge.
+        path = path.split("?", 1)[0]
         target = (WEB_DIR / path.lstrip("/")).resolve()
         if not str(target).startswith(str(WEB_DIR.resolve())):
             self._send_json({"ok": False, "error": "forbidden"}, code=403)
