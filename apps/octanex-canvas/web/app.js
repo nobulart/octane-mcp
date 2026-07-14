@@ -432,10 +432,11 @@ function escapeHtml(s) {
 }
 
 dom.cmd.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+  // ⌘/Ctrl+Enter submits; plain Enter also submits so the combo is never a
+  // hard dependency (some browsers/IMEs swallow the modified key).
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
     e.preventDefault();
     submitIntent(dom.cmd.value);
-    dom.cmd.value = "";
   }
 });
 
@@ -611,13 +612,14 @@ if (dom.viewmodes) {
 // ---------------------------------------------------------------------------
 document.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
-  if (e.metaKey && k === "k") {
+  const mod = e.metaKey || e.ctrlKey;  // ⌘ on macOS, Ctrl on others / headless
+  if (mod && k === "k") {
     e.preventDefault();
     dom.palette.classList.contains("hidden") ? openPalette() : dom.palette.classList.add("hidden");
-  } else if (e.metaKey && k === "i") {
+  } else if (mod && k === "i") {
     e.preventDefault();
     dom.inspector.classList.contains("hidden") ? openInspector() : dom.inspector.classList.add("hidden");
-  } else if (k === "~" || (e.key === "`" && !e.metaKey)) {
+  } else if (k === "~" || (e.key === "`" && !mod)) {
     e.preventDefault();
     document.body.classList.toggle("focus");
   } else if (e.key === "Escape") {

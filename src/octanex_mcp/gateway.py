@@ -456,10 +456,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_bytes(self, data: bytes, content_type: str, code: int = 200) -> None:
+    def _send_bytes(self, data: bytes, content_type: str, code: int = 200,
+                    extra_headers: Optional[Dict[str, str]] = None) -> None:
         self.send_response(code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
@@ -771,7 +774,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": "not found"}, code=404)
             return
         ctype = _CONTENT_TYPES.get(target.suffix.lstrip("."), "application/octet-stream")
-        self._send_bytes(target.read_bytes(), ctype)
+        # No-cache: the canvas is a live dev bundle; never let the browser
+        # serve a stale app.js/app.css and silently run old key handlers.
+        self._send_bytes(target.read_bytes(), ctype,
+                         extra_headers={"Cache-Control": "no-store"})
 
     def log_message(self, *args: Any) -> None:  # quiet
         return

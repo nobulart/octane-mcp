@@ -32,22 +32,31 @@ class RecipeRouteTest(unittest.TestCase):
         req = urllib.request.Request(self.base + p, method="GET")
         try:
             with urllib.request.urlopen(req, timeout=10) as r:
-                return r.status, r.read()
+                return r.status, r.read(), r.headers
         except urllib.error.HTTPError as e:
-            return e.code, e.read()
+            return e.code, e.read(), e.headers
+
+    def test_static_no_cache(self):
+        # The canvas is a live dev bundle; the gateway must never let the
+        # browser serve a stale app.js (which would silently run old/broken
+        # key handlers). Static assets get Cache-Control: no-store.
+        st, _, headers = self._get("/app.js")
+        self.assertEqual(st, 200)
+        self.assertEqual(headers.get("Cache-Control"), "no-store")
+        self.assertIn("javascript", headers.get("Content-Type", ""))
 
     def test_missing_slug_400(self):
-        st, raw = self._get("/canvas/recipe/")
+        st, raw, _ = self._get("/canvas/recipe/")
         self.assertEqual(st, 400)
 
     def test_unknown_slug_404(self):
-        st, raw = self._get("/canvas/recipe/does-not-exist")
+        st, raw, _ = self._get("/canvas/recipe/does-not-exist")
         self.assertEqual(st, 404)
         self.assertFalse(json.loads(raw)["ok"])
 
     def test_known_slug_returns_scene(self):
         # A recipe that ships with a scene.obj in the repo.
-        st, raw = self._get("/canvas/recipe/physics-orbits")
+        st, raw, _ = self._get("/canvas/recipe/physics-orbits")
         bd = json.loads(raw)
         self.assertEqual(st, 200)
         self.assertTrue(bd["ok"])
@@ -73,14 +82,14 @@ class RecipeRouteTest(unittest.TestCase):
         self.assertEqual(len(scene["materials"]), len({o["material"] for o in scene["objects"]}))
 
     def test_recipe_preview_served(self):
-        st, raw = self._get("/recipe-preview/physics-orbits")
+        st, raw, _ = self._get("/recipe-preview/physics-orbits")
         self.assertEqual(st, 200)
         # PNG magic bytes.
         self.assertEqual(raw[:4], b"\x89PNG")
 
     def test_recipes_list_route(self):
         # The ⌘K palette pulls its catalog from /canvas/recipes (no MCP needed).
-        st, raw = self._get("/canvas/recipes")
+        st, raw, _ = self._get("/canvas/recipes")
         self.assertEqual(st, 200)
         bd = json.loads(raw)
         self.assertTrue(bd["ok"])
