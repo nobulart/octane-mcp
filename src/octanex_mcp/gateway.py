@@ -456,6 +456,17 @@ class Handler(BaseHTTPRequestHandler):
     # (SyntaxError) module load on localhost.
     protocol_version = "HTTP/1.1"
 
+    def handle(self) -> None:
+        # Swallow benign client-disconnect noise. Browsers abort sockets on
+        # tab close / reload / keep-alive expiry, surfacing as
+        # ConnectionResetError / BrokenPipeError while reading the request
+        # line or writing the response. These are not server faults and must
+        # not dump a traceback into the log for every disconnect.
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError):
+            pass
+
     def _send_json(self, obj: Any, code: int = 200) -> None:
         body = json.dumps(_to_jsonable(obj), indent=2).encode("utf-8")
         self.send_response(code)
