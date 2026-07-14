@@ -1438,3 +1438,30 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Equation:** cos x cos y cos z - sin x sin y sin z = 0
 - **Mesh:** single manifold via `scripts/gen_implicit_surface.py diamond schwarz_pd 132 2.5 1`
 - **VLM check:** NO. The image you provided appears to be a stylized or abstract representation rather than a realistic depiction of a diamond's surface. A real diamond would have a more crystalline and faceted appear
+
+## Designer coffee cup with frothy dark brew (generator) - native Octane render
+
+- **Outcome:** success
+- **Recorded:** 2026-07-14 03:10 UTC
+- **Context:** User requested "elegant designer coffee cup, with some frothy dark brew therein". Built a dedicated generator `scripts/gen_coffee_cup.py` that emits a single combined OBJ + per-material MTL + `scene.json` command sequence. The cup is a hollow lathe body (outer wall + reversed-winding inner wall + flat solid base puck + rim annulus), a swept-tube handle, a flat dark brew disc + pale froth disc at the fill line, and 22 scattered bubble spheres, on a wide saucer + dark table.
+
+### Key lessons (this build)
+- **OBJ structure:** one `o NAME` + `usemtl MAT` + `g NAME` PER material group (per-group o/g). A single shared `o` across all groups rendered BLANK.
+- **Colour path:** this build's `assign_material` bridge is unreliable (mesh pins collapse to 1, materials fall back to white — confirmed by an isolated `brew_test` where a dark disc rendered white). Fix: bake the material colour into the OBJ as PER-VERTEX COLOURS (`v x y z r g b`); Octane's OBJ importer reads and applies them even when material binding fails. This is the reliable colour path here.
+- **Geometry bugs caught:** (1) `puck()` had off-by-one vertex indices (referenced vertices beyond the array) -> malformed OBJ -> Octane silently drops the whole mesh (blank render). Always validate `max_face_index <= vertex_count`. (2) Cup base was a cone (radius tapering to 0.001) -> not stable; made the outer wall vertical at full radius RO with a flat base puck.
+- **Camera:** needs ~40-44 deg elevation to look DOWN into the cup; at 18 deg you only see the outside.
+- **Tooling:** `octane_scene_harvest` returns a stale 9-`userdata` reading on first calls (ignore it); trust the actual preview PNG + the bridge `bridge.log`.
+
+### Steps
+- `uv run python scripts/gen_coffee_cup.py --queue` (writes OBJ/MTL/scene.json + flushes queue + queues 42 live commands)
+- Click `hermes_bridge_oneshot.generated` in Octane X Scripts menu (one click drains the whole queue)
+- Preview lands at `OctaneMCP/renders/coffee_cup_octane-preview.png`
+
+### Signals / evidence
+- Pixel gate: final render dev ~135, 224-262 KB, non-empty.
+- VLM QA: dark brew + paler froth + bubbles visible inside; handle, flat base on saucer, dark table all present.
+
+### Follow-ups
+- `assign_material` bridge path should be fixed (or vertex colours made the default) so colour is controllable from the command layer.
+- Could add a thin crema ring / steam wisps for extra realism.
+- The cup body reads cool-white; warm it slightly (color ~[0.93,0.90,0.83]) if a warmer "ceramic" look is wanted.
