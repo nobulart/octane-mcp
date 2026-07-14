@@ -1,43 +1,46 @@
 octanex-mcp — NOTICE
 
-This project is distributed under a two-layer license:
+This repository uses scoped licences. Read LICENSE-SCOPE.md before relying on a
+licence grant:
 
-  * Source code          -> Business Source License 1.1  (see LICENSE)
-  * Data / corpus / docs -> Creative Commons BY-NC-SA 4.0 (see LICENSE-DATA.md)
+  * Core source code                  -> Business Source License 1.1 (LICENSE)
+  * Agentic Canvas product package    -> PolyForm Noncommercial 1.0.0
+                                          (apps/octanex-canvas/LICENSE)
+  * Original knowledge/documentation  -> CC BY-SA 4.0 (LICENSE-KNOWLEDGE.md)
+  * Data/corpus/derived acceptance    -> CC BY-NC-SA 4.0 (LICENSE-DATA.md)
 
-Commercial use of either layer requires a separate paid license from the
+A more specific directory-level notice controls its expressly covered material.
+Commercial use of the Core or Canvas requires a separate agreement from the
 Licensor. See COMMERCIAL-TERMS.md.
 
 ------------------------------------------------------------------------
 THIRD-PARTY / UPSTREAM MATERIAL IN corpus/
 ------------------------------------------------------------------------
 
-The corpus/ directory (WP9 reference harvest) incorporates third-party
-works — primarily images and metadata harvested from Wikimedia Commons —
-each of which carries its OWN upstream Creative Commons license and
-attribution requirement (commonly CC BY, CC BY-SA, CC BY-NC, or CC0).
+The corpus/ directory (WP9 reference harvest) incorporates third-party works —
+primarily images and metadata harvested from Wikimedia Commons — each of which
+carries its OWN upstream Creative Commons licence and attribution requirement
+(commonly CC BY, CC BY-SA, CC BY-NC, or CC0).
 
-The project's CC BY-NC-SA 4.0 data license is the FLOOR applied to the
-compiled corpus and the derived acceptance specifications. It does NOT
-override, replace, or relieve you of the attribution and license terms of
-the upstream works. Where upstream terms are more restrictive (e.g. an
-upstream NC or SA clause), those terms remain in force for that work.
+The project's CC BY-NC-SA 4.0 data licence is the floor applied to the compiled
+corpus and derived acceptance specifications. It does NOT override, replace, or
+relieve users of the attribution and licence terms of upstream works. Where
+upstream terms are more restrictive (for example, an upstream NC or SA clause),
+those terms remain in force for that work.
 
 MAINTAINER OBLIGATIONS:
   * Every file harvested into corpus/ MUST retain its upstream source URL,
-    author/attribution string, and upstream license identifier.
-  * A manifest (e.g. corpus/<slug>/LICENSE or a SOURCES manifest) MUST
+    author/attribution string, and upstream licence identifier.
+  * A manifest (for example, corpus/<slug>/LICENSE or a SOURCES manifest) MUST
     accompany each harvested entry recording these fields.
-  * Do not strip upstream attribution when deriving acceptance specs;
-    the derivative inherits the upstream SA/NC obligations where present.
-
-This NOTICE is provided to satisfy attribution and provenance obligations
-and to prevent accidental license conflicts in redistributed corpora.
+  * Do not strip upstream attribution when deriving acceptance specifications;
+    the derivative inherits upstream SA/NC obligations where present.
 
 ------------------------------------------------------------------------
 TRADEMARKS
 ------------------------------------------------------------------------
 
-"octanex-mcp" and any associated logos are trademarks of the Licensor.
-Neither the BSL nor the CC license grants any right to use these marks.
-See COMMERCIAL-TERMS.md.
+"octanex-mcp", "OctaneX Agentic Canvas", and associated logos are marks of the
+Licensor. No licence in this repository grants permission to use these marks to
+brand a fork, service, or product, or to imply endorsement, without written
+permission. See COMMERCIAL-TERMS.md.

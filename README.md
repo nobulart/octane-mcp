@@ -2,14 +2,28 @@
 
 A local MCP server that lets Hermes Agent use **Octane X as a shared visual canvas** for geometry, data, math, and concept visualization.
 
-## License
+## Licence
 
-This project is distributed under a two-layer license:
+This repository uses a scoped licence structure. Read
+[`LICENSE-SCOPE.md`](LICENSE-SCOPE.md) for the authoritative file and directory
+boundaries.
 
-- **Source code** — [Business Source License 1.1](LICENSE). Free for non-commercial, non-production use, modification, and sharing. Commercial use (including SaaS and resale of outputs) requires a paid license; the code converts to Apache 2.0 on **2030-07-10**.
-- **Data, corpus & docs** — [Creative Commons BY-NC-SA 4.0](LICENSE-DATA.md). Free for non-commercial use and sharing under the same terms.
+- **Core source code** — [Business Source License 1.1](LICENSE). The BSL Core is
+  source-available for non-production use and converts to Apache 2.0 on
+  **2030-07-10**.
+- **Agentic Canvas product** — [PolyForm Noncommercial 1.0.0](apps/octanex-canvas/LICENSE).
+  The Canvas host, UI, WebGL renderer, and original package assets are free for
+  noncommercial use; commercial deployment, SaaS, resale, and redistribution
+  require a separate agreement.
+- **Original knowledge and documentation** — [CC BY-SA 4.0](LICENSE-KNOWLEDGE.md).
+  Methods, research framing, conceptual grammar specifications, and tutorials
+  remain available in a reciprocal knowledge commons.
+- **Data, corpus, and derived acceptance material** — [CC BY-NC-SA 4.0](LICENSE-DATA.md),
+  subject to every upstream asset's own licence and attribution requirements.
 
-Commercial licensing, trademark reservation, and upstream third-party attributions are covered in [COMMERCIAL-TERMS.md](COMMERCIAL-TERMS.md) and [NOTICE](NOTICE).
+Commercial licensing, trademark reservation, and upstream third-party
+attributions are covered in [COMMERCIAL-TERMS.md](COMMERCIAL-TERMS.md) and
+[NOTICE](NOTICE).
 
 ```text
 Hermes MCP tool call -> Python MCP server -> JSON command queue -> Octane Lua bridge -> Octane X viewport/render target
