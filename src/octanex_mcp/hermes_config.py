@@ -102,7 +102,7 @@ def _cloud_catalog_options() -> List[Dict[str, Any]]:
             )
     # 2) Live provider /v1/models caches (copilot, ollama-cloud, ...). Augment
     #    context_length where present; add any not already in the catalog.
-    provider_cache = _load_json(Path(os.path.expanduser("~/.hermes/provider_models_cache.json"))) or {}
+    provider_cache = _load_json(_cache_dir() / "provider_models_cache.json") or {}
     for prov, blk in provider_cache.items():
         for mid in (blk.get("models") or []):
             if not mid:
@@ -119,16 +119,49 @@ def _cloud_catalog_options() -> List[Dict[str, Any]]:
     return list(out.values())
 
 
+def _fetch_proxy_models() -> List[str]:
+    """Best-effort pull live model ids from the Hermes proxy's /v1/models.
+
+    The proxy is the authoritative OpenAI-compatible surface; when it is up we
+    augment the disk-cached catalog with its live list so the canvas reflects
+    exactly what the harness can route to. Returns model-id strings only
+    (no auth/capabilities — the cache already carries those); on any failure
+    returns an empty list so the disk cache remains the fallback.
+    """
+    url = os.environ.get("HERMES_PROXY_URL", "http://127.0.0.1:8645/v1/chat/completions")
+    base = url.split("/v1/", 1)[0] + "/v1/models"
+    import urllib.request
+
+    try:
+        req = urllib.request.Request(base, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except OSError:
+        return []
+    ids: List[str] = []
+    for item in (data.get("data") or []):
+        mid = item.get("id") if isinstance(item, dict) else None
+        if mid:
+            ids.append(mid)
+    return ids
+
+
 def list_models(path: Optional[Path] = None) -> Dict[str, Any]:
     """Return Hermes model options for the canvas selector.
 
     Merges three sources so the selector reflects *every* model the harness can
     route to:
 
-    - local/custom providers from ``config.yaml`` (with capability metadata);
-    - the current ``model.default`` (always included, even if not enumerated);
+    - the live Hermes proxy ``/v1/models`` (authoritative when the proxy is up);
     - cloud models from Hermes's disk caches (curated catalog + live provider
-      caches), tagged ``cloud``.
+      caches), tagged ``cloud`` — this is the dynamic Hermes list and does NOT
+      require PyYAML;
+    - local/custom providers from ``config.yaml`` (only this part needs yaml;
+      if PyYAML is unavailable we skip the config parse but still return every
+      cloud model, so the canvas never shows an empty selector just because the
+      gateway venv lacks a transitive dependency).
+
+    The current ``model.default`` is always included, even if not enumerated.
 
     Shape::
 
@@ -137,41 +170,85 @@ def list_models(path: Optional[Path] = None) -> Dict[str, Any]:
              "capabilities": {...}, "selectable"}, ...]}
     """
     p = path or config_path()
-    if yaml is None or not p.exists():
-        return {"current": None, "options": [], "error": "config unavailable"}
-    data = yaml.safe_load(p.read_text()) or {}
-    current = (data.get("model") or {}).get("default")
-
+    current: Optional[str] = None
     seen: Dict[str, Dict[str, Any]] = {}
-    for section in ("custom_providers", "providers"):
-        for prov in data.get(section) or []:
-            pname = prov.get("name", "unknown")
-            for mid, meta in (prov.get("models") or {}).items():
-                seen.setdefault(
-                    mid,
-                    {
-                        "id": mid,
-                        "provider": pname,
-                        "cloud": False,
-                        "context_length": (meta or {}).get("context_length"),
-                        "capabilities": _capabilities(meta),
-                        "selectable": True,
-                    },
+
+    # --- config.yaml local/custom providers (needs PyYAML) -----------------
+    if yaml is not None and p.exists():
+        try:
+            data = yaml.safe_load(p.read_text()) or {}
+            current = (data.get("model") or {}).get("default")
+            # Hermes config carries provider model lists in two shapes:
+            #   custom_providers: [{name, models: {id: meta}}]   (list)
+            #   providers:         {name: {name, models: {id: meta}}} (dict)
+            # Normalize both into one list of provider dicts.
+            raw_providers: List[Dict[str, Any]] = []
+            for section in ("custom_providers", "providers"):
+                blk = data.get(section)
+                if isinstance(blk, list):
+                    raw_providers.extend(blk)
+                elif isinstance(blk, dict):
+                    raw_providers.extend(blk.values())
+            for prov in raw_providers:
+                if not isinstance(prov, dict):
+                    continue
+                pname = prov.get("name", "unknown")
+                models = prov.get("models") or {}
+                # models is either {id: meta} (dict) or [id, ...] (list).
+                items: List[tuple] = (
+                    list(models.items()) if isinstance(models, dict)
+                    else [(mid, None) for mid in models if isinstance(mid, str)]
                 )
-    # Cloud catalog options (curated + live caches). The canvas routes every
-    # cloud/Nous model through HERMES_PROXY_URL, so as long as that proxy is
-    # reachable the model is usable — don't gate on a per-provider key check
-    # (the proxy owns auth). Mark selectable accordingly.
+                for mid, meta in items:
+                    seen.setdefault(
+                        mid,
+                        {
+                            "id": mid,
+                            "provider": pname,
+                            "cloud": False,
+                            "context_length": (meta or {}).get("context_length"),
+                            "capabilities": _capabilities(meta or {}),
+                            "selectable": True,
+                        },
+                    )
+        except (OSError, ValueError):
+            pass
+    elif not p.exists():
+        # No config on disk — nothing to parse; cloud/cache models still apply.
+        pass
+
+    # --- cloud catalog options (curated + live caches) -------------------
+    # The canvas routes every cloud/Nous model through HERMES_PROXY_URL, so as
+    # long as that proxy is reachable the model is usable — don't gate on a
+    # per-provider key check (the proxy owns auth). Mark selectable accordingly.
     proxy_ok = _hermes_proxy_reachable()
     for opt in _cloud_catalog_options():
         opt = dict(opt)
         opt["selectable"] = bool(proxy_ok)
         seen.setdefault(opt["id"], opt)
+
+    # --- live proxy /v1/models (authoritative when proxy is up) ----------
+    # Any id the live proxy advertises is selectable through it; merge into the
+    # catalog (preferring cache-provided provider/context metadata when present).
+    for mid in _fetch_proxy_models():
+        if mid in seen:
+            seen[mid]["selectable"] = True
+            seen[mid].setdefault("cloud", True)
+        else:
+            seen[mid] = {
+                "id": mid,
+                "provider": "proxy",
+                "cloud": True,
+                "context_length": None,
+                "capabilities": {},
+                "selectable": True,
+            }
+
     # Always include the current default even if it isn't enumerated anywhere.
     if current and current not in seen:
         seen[current] = {
             "id": current,
-            "provider": (data.get("model") or {}).get("provider", "default"),
+            "provider": "default",
             "cloud": False,
             "context_length": None,
             "capabilities": {},

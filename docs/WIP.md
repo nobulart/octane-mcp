@@ -1,17 +1,37 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-14** against
-HEAD `4de64d1`.
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-14**
+against HEAD `be2ad42`.
 
-## Current state (evidence, 2026-07-13)
+## 2026-07-14 fix-log (this steward)
+
+- **Recipe-contract leniency (permanent, no coord push needed):** `earth-hemisphere`'s
+  large `scene.obj` is gitignored (size-limited Mac Studio copy) and rebuilt via
+  committed `scripts/gen_earth_hemisphere.py`. Both `recipes.py:validate_recipe_library`
+  and `benchmarks/verify_recipes.py` now share one `_is_regenerable_recipe`
+  helper (`octanex_mcp/recipes.py`) so a missing-but-regenerable OBJ is accepted
+  (warning, not failure). Offline contract is **31/32 OK** on a clean checkout
+  (only `earth-moon-space` fails — no checked-in preview). Previously the suite
+  was green only where the gitignored OBJ happened to exist locally.
+- **Hermes model-mirror fix (canvas `/config/models`):** root cause was
+  `hermes_config.list_models()` returning `"config unavailable"` whenever PyYAML
+  was absent from the gateway venv (laptop) — empty selector though it worked on
+  Studio. Fix: declared `pyyaml>=6.0` as a core dep; made `list_models()`
+  shape-agnostic (`providers` dict vs `custom_providers` list; `models` dict vs
+  list); and made it **cache/proxy-backed** so the selector mirrors the Hermes
+  cloud/provider caches + live proxy `/v1/models` even without config.yaml.
+  Live endpoint now returns **192 models** (155 local + 37 cloud) with `current`
+  detected. `test_hermes_config` 12/12 green.
+
+## Current state (evidence, 2026-07-14)
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `4de64d1` (`fix(canvas): remove duplicate setViewMode def in app.js`), tracking `origin/main`; tree contains this sweep's two regression fixes (recipe-count drift + oneshot/persistent `handle_assign_material` divergent body). |
-| Tests | **492 ran / 0 failures / 10 skipped** via `PYTHONPATH= uv run python -m unittest discover -s tests`. `compileall src` clean. Fixed two regressions: recipe contract total (31→32) and oneshot↔persistent `handle_assign_material` parity drift (now unified with `request_render_restart` + group-index suffix). |
+| Repo | `main` = `be2ad42` (`feat(canvas): newest-first transcript + dev-mode forensic debug stream`), tracking `origin/main`; tree contains this sweep's two fixes (recipe-contract leniency + Hermes model-mirror). |
+| Tests | **493 ran / 0 failing / 11 skipped** on a clean checkout via `unittest discover -s tests` — green. The previously-failing `test_hermes_config*`/`test_gateway_config*` are resolved (pyyaml now a core dep + `list_models()` shape-agnostic/cache-backed). Recipe + benchmark + Lua-parity suite green; `compileall src` clean. |
 | Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=64`, `samples_target=64`, `last_event=save_preview preview saved .../renders/octane-preview.png`. Bridge module `hermes_bridge_oneshot_v2.lua` in one-shot mode. |
-| Recipe library | **32 recipe dirs**. **31** pass offline contract; **1** fails (`earth-moon-space`). `native_octane_verified` counts pending live sweep. Offline contract: **31/32 OK**; `earth-moon-space` is the remaining contract failure. |
+| Recipe library | **32 recipe dirs**. Offline contract **31/32 OK** — only `earth-moon-space` fails (no checked-in preview). `earth-hemisphere` is intentionally regenerable: its large `scene.obj` is gitignored (size-limited Mac Studio copy) and rebuilt via the committed `scripts/gen_earth_hemisphere.py`, so the offline contract accepts it (warning, not failure). Both `recipes.py:validate_recipe_library` and `benchmarks/verify_recipes.py` use the shared `_is_regenerable_recipe` (`octanex_mcp/recipes.py`) — keep them in sync. `native_octane_verified` counts pending live sweep. |
 | Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
 | Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. |
 | Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |

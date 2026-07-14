@@ -117,10 +117,38 @@ class TestListModels(unittest.TestCase):
         self.assertTrue(q["capabilities"]["thinking"])
         self.assertEqual(q["context_length"], 262144)
 
+    def test_yaml_missing_still_surfaces_cloud_list(self):
+        # Regression: on the laptop the gateway venv has no PyYAML, so
+        # hermes_config.yaml is None. The canvas must NOT return an empty
+        # "config unavailable" error — it should mirror the Hermes cloud
+        # model caches (the dynamic list) regardless of yaml availability.
+        orig = hc.yaml
+        hc.yaml = None
+        try:
+            res = hc.list_models(self.path)
+        finally:
+            hc.yaml = orig
+        ids = [o["id"] for o in res["options"]]
+        self.assertIn("anthropic/claude-fable-5", ids, "cloud catalog surfaced without yaml")
+        self.assertIn("gpt-5.4", ids, "provider cache surfaced without yaml")
+        self.assertNotIn("error", res, "yaml absence is not a fatal error")
+        # The config.yaml local models are skipped (can't parse), but cloud
+        # models are still present — the selector is never empty.
+        self.assertGreater(len(res["options"]), 0)
+
+
     def test_missing_config_is_graceful(self):
+        # No config.yaml on disk: the canvas must still mirror the Hermes
+        # cloud/models caches (the dynamic list) rather than returning an empty
+        # "config unavailable" error. This is exactly the failure mode on the
+        # laptop where the gateway venv lacks PyYAML but the caches exist.
         res = hc.list_models(Path("/nonexistent/hermes_config.yaml"))
-        self.assertEqual(res["options"], [])
-        self.assertIn("error", res)
+        ids = [o["id"] for o in res["options"]]
+        self.assertIn("anthropic/claude-fable-5", ids, "cloud catalog still surfaced")
+        self.assertIn("gpt-5.4", ids, "provider cache still surfaced")
+        # current default is unknown (no config to read) but never fatal.
+        self.assertIsNone(res["current"])
+        self.assertNotIn("error", res, "missing config is not an error")
 
 
 class TestSetCurrentModel(unittest.TestCase):
