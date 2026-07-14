@@ -768,9 +768,44 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json({"ok": False, "error": "unknown route"}, code=404)
 
     # --- static ------------------------------------------------------------ #
+    def _inline_index(self) -> bytes:
+        # Serve a single self-contained HTML document: the renderer + app
+        # bundles are concatenated inline as one <script type="module">, so the
+        # browser parses the JS from the HTML body itself. There is then NO
+        # separate app.js / renderer.js fetch for a fetch-hooking browser
+        # extension to intercept and (truncate) — which was the cause of the
+        # 'Unexpected end of input' SyntaxError on localhost module loads.
+        # Falls back to the plain index.html when the bundle files are absent
+        # (e.g. minimal test fixtures).
+        renderer_path = WEB_DIR / "canvas" / "renderer.js"
+        app_path = WEB_DIR / "app.js"
+        if not (renderer_path.exists() and app_path.exists()):
+            return (WEB_DIR / "index.html").read_bytes()
+        renderer = renderer_path.read_text()
+        app = app_path.read_text()
+        # The app's `import {CanvasRenderer} from "./canvas/renderer.js"` is
+        # redundant once concatenated (renderer is already in scope); drop it.
+        app = app.replace('import { CanvasRenderer } from "./canvas/renderer.js";\n', "")
+        html = (WEB_DIR / "index.html").read_text()
+        # Remove the now-inlined external script + css links; embed JS inline.
+        html = html.replace('<script type="module" src="app.js?v=4"></script>', "")
+        html = html.replace('<link rel="stylesheet" href="app.css?v=4" />',
+                             '<link rel="stylesheet" href="app.css" />')
+        inline = (
+            '<script type="module">\n'
+            f"{renderer}\n{app}\n"
+            "</script>\n"
+        )
+        return html.replace("</body>", inline + "</body>").encode("utf-8")
+
     def _serve_static(self, path: str) -> None:
         if path in ("", "/"):
-            path = "/index.html"
+            # Inline the JS bundle into the HTML so there is no separate
+            # app.js fetch for a fetch-hooking extension to clip.
+            self._send_bytes(self._inline_index(), _CONTENT_TYPES["html"],
+                             extra_headers={"Cache-Control": "no-store",
+                                            "Connection": "close"})
+            return
         # Allow cache-busting version queries (?v=N) without 404-ing: strip the
         # query so /app.js?v=3 still resolves to the real app.js. A fresh URL
         # defeats any poisoned HTTP cache that no-store can't purge.
