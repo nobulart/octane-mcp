@@ -141,6 +141,21 @@ The project deliberately makes geometry and scene intent first-class. A recipe i
 
 This means later agents can inspect the actual assets, requeue them, compare outputs, and update the recipe with evidence rather than guessing from prose.
 
+\subsection{Operating principle: contractual design memory}
+
+The bridge is also a trust layer. A normal chat transcript is too slippery for
+collaborative design: a user may think a decision was locked, an agent may
+summarise a change that did not actually happen, and later turns can inherit a
+false shared memory. OctaneX Canvas treats this as a product problem, not a
+social inconvenience.
+
+Every meaningful model change should therefore become a design-ledger event: the
+instruction or accepted proposal, the affected object or semantic handle, the
+scene revision before and after, and any render or verification record that
+proves the resulting state. Conversation remains useful context, but the
+canonical truth is the scene file, revision record, render task, and verified
+artifact. The Canvas should make design memory inspectable.
+
 \section{Operating principles}
 
 \subsection{Local-first control}
@@ -418,6 +433,7 @@ A mature version of \project{} would satisfy the following criteria:
 \begin{enumerate}[leftmargin=*]
   \item An agent can describe a scene semantically and receive a validated scene manifest before rendering.
   \item The Agentic Canvas preserves a live editable model, an explicit revision/snapshot history, and a separate verified Final render rather than collapsing all work into a PNG.
+  \item Accepted changes produce inspectable design-ledger events, so the user and agent can recover what changed, why, and which revision or render proves it.
   \item The renderer backend is selectable: WebGL for realtime interaction, Octane for photoreal output, a geospatial backend for maps/globes, and optional open renderers for quality alternatives.
   \item Every renderable scene has reproducible assets, command metadata, source revision identity, preview/final files, and review evidence.
   \item Pixel/structure review catches blank, clipped, stale, and misframed outputs automatically.

@@ -283,8 +283,27 @@ Initial shape:
     }
   ],
   "provenance": {
-    "source": "agent"
-  }
+    "source": "agent",
+    "source_instruction_id": "msg_001",
+    "created_at": "2026-07-14T12:00:00Z"
+  },
+  "ledger": [
+    {
+      "event_id": "evt_001",
+      "type": "user_instruction",
+      "summary": "show me orbital decay as a timeline",
+      "actor": "user",
+      "timestamp": "2026-07-14T12:00:00Z"
+    },
+    {
+      "event_id": "evt_002",
+      "type": "scene_build",
+      "summary": "Created earth and orbit path from the instruction.",
+      "actor": "agent",
+      "revision_to": "rev_001",
+      "affected_objects": ["earth", "orbit_path"]
+    }
+  ]
 }
 ```
 
@@ -302,6 +321,10 @@ Initial supported object types:
 | `text_label` | CSS2D / sprite | annotation only |
 
 Keep this schema intentionally smaller than Octane's full command DSL at first.
+The `ledger` field is optional in the first implementation, but any committed
+scene mutation or render handoff should eventually append a compact event. The
+browser may display a short timeline, but Python-owned scene state remains the
+canonical record.
 
 ---
 
@@ -752,7 +775,7 @@ cd apps/octanex-canvas && swift build
 | JS complexity grows without tooling | Start vanilla; migrate to Vite/TypeScript only after renderer modules become hard to maintain. |
 | Geo scope explodes | Treat geo as separate `canvas.geo.v1`; do not force Cesium concepts into generic scene JSON. |
 | Snapshot path gets flaky | First support browser-side `canvas.toDataURL`; later add WKWebView-native snapshot. |
-| Agent misinterpretation | Always show interpreted intent and generated scene summary before/while rendering. |
+| Agent misinterpretation | Distinguish discussion, proposal, accepted mutation, and render. Show interpreted intent before acting when ambiguity matters; record committed changes in the design ledger. |
 | Octane bridge fragility contaminates UI | WebGL path must work fully without Octane; Octane is optional quality tier. |
 
 ---

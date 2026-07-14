@@ -104,6 +104,23 @@ work.
 Minimalism must not hide important state. When a render is queued, running,
 blocked, failed, or complete, the canvas must say so plainly.
 
+### 2.5 Contractual trust and the design ledger
+
+Agentic visual work needs a stronger memory model than chat. OctaneX Canvas
+therefore treats the scene as a contractual object: every accepted change should
+produce an inspectable revision, every final render should link back to the exact
+scene state that produced it, and every agent action should be traceable to a
+user instruction, accepted proposal, explicit tool call, or direct manipulation.
+
+The goal is to prevent design drift and false shared memory. The user and agent
+should not have to remember what happened; they should be able to inspect it.
+The Canvas should make design memory inspectable.
+
+This gives the project a hard rule: no silent mutation. A design may be discussed
+freely, but a canonical scene change must leave a ledger entry that says what
+changed, why, by whom or by which tool, and which revision now carries that
+change.
+
 ---
 
 ## 3. Core user experience
@@ -214,6 +231,34 @@ restart.
 The initial target is revision-level history, not collaborative text-editor
 operational transforms. Do not introduce a complex multi-user merge system
 before there is a demonstrated need.
+
+### 4.3 Design ledger events
+
+The design ledger is the chronological trust record for the model. It is not a
+verbose debug log and should not clutter the default view, but it must be durable
+enough to answer, "what changed, from what, because of which instruction, and
+what evidence proves the resulting state?"
+
+Ledger events should cover at least:
+
+- `user_instruction` — the user's explicit request or direct manipulation;
+- `agent_proposal` — a suggested change that has not yet mutated the scene;
+- `proposal_accepted` / `proposal_rejected` — the user's decision;
+- `scene_build` — creation or replacement of a live scene;
+- `scene_patch` — a bounded change to object, material, camera, annotation, or
+  grammar parameter;
+- `snapshot_created` — immutable render input captured from a revision;
+- `render_task` — queue, bridge, render, save, and verification lifecycle;
+- `verification_result` — structural, pixel, or human/vision review result.
+
+Each event should carry a compact summary, timestamp, actor (`user`, `agent`,
+`system`, or named tool), affected object ids or semantic handles, source and
+target revision ids where applicable, and links to artifacts such as patches,
+snapshots, renders, or review records.
+
+Conversation summaries are context, not authority. The canonical truth is the
+scene file, ledger event, render task record, verified artifact, and any hashes
+or paths needed to reproduce them.
 
 ---
 
@@ -450,8 +495,9 @@ The current implementation should evolve in this order:
 2. **Make render lifecycle first-class.** Introduce snapshot identity, a
    render-task record, truthful stage/progress mapping, cancellation semantics,
    and Final-panel provenance.
-3. **Add durable model continuity.** Persist scene revisions, render references,
-   and a compact event/history trail; support restore and revert.
+3. **Add durable model continuity and ledger trust.** Persist scene revisions,
+   render references, accepted proposals, and compact design-ledger events;
+   support restore, revert, and source-of-truth inspection.
 4. **Formalise grammar packages.** Give selected grammar families parameter
    schemas, validation, fixtures, examples, and render/verification policy.
 5. **Extend the canvas deliberately.** Add geo/Copernicus workflows, richer
@@ -525,7 +571,28 @@ This is especially useful for research visualisation, where an image can make a
 hypothesis look stronger than warranted. Branching encourages comparison with a
 null, alternative interpretation, or less dramatic framing.
 
-### 11.4 Semantic handles above raw mesh ids
+### 11.4 Inspectable design ledger
+
+The ledger should appear as a compact timeline when requested, not as permanent
+chrome. A useful first version can show:
+
+```text
+rev_007 · applied
+Added transparent mantle shell and plume geometry.
+Source: accepted proposal proposal_004
+Render: final_003.png
+Verification: passed
+
+proposal_004 · accepted
+Reduce mantle opacity and add plume columns.
+```
+
+Selecting an entry should reveal the affected object ids, semantic handles,
+patch summary, before/after revision, linked render task, and verification
+record. This is the product answer to the Mandela-effect failure mode in AI
+collaboration: design memory is inspectable rather than reconstructed from chat.
+
+### 11.5 Semantic handles above raw mesh ids
 
 Raw object ids remain necessary, but grammar-backed scenes should expose a thin
 semantic layer: stable named handles such as `earth_surface`, `impact_ring`,
@@ -544,7 +611,7 @@ This gives the user natural referents without hiding implementation detail:
 The resolver must fail honestly when a phrase is ambiguous. It should never use
 semantic convenience to patch an arbitrary nearby mesh.
 
-### 11.5 Preflight review before expensive renders
+### 11.6 Preflight review before expensive renders
 
 Before dispatching a high-quality render, the canvas should be able to run a
 fast, local **render preflight** against the current live scene:
@@ -560,7 +627,7 @@ Preflight should report warnings, not become an unnecessary gate for routine
 work. It exists to prevent avoidable queue time and to make any deliberate
 trade-off visible before a scarce Octane render slot is consumed.
 
-### 11.6 Render queue as a shared, inspectable resource
+### 11.7 Render queue as a shared, inspectable resource
 
 Octane X is a finite, possibly shared render resource. The Final panel should
 therefore grow into a compact render-task view that can show:
@@ -574,7 +641,7 @@ therefore grow into a compact render-task view that can show:
 This prepares the canvas for multi-agent scheduling without turning the normal
 single-user experience into a job-control dashboard.
 
-### 11.7 Evaluation fixtures for each grammar
+### 11.8 Evaluation fixtures for each grammar
 
 A grammar should have both aesthetic examples and behavioural fixtures. For
 example, a trajectory grammar needs fixtures for a valid orbit, an invalid
@@ -596,6 +663,9 @@ This specification does not require:
 - a permanently visible, control-heavy 3D editor interface;
 - automatic cloud upload or social sharing;
 - an unbounded grammar ontology before real grammars have proven useful;
+- a forensic dashboard in the default view; the ledger is durable and
+  inspectable, but it should stay quiet until the user asks for it or trust
+  requires it;
 - multi-user concurrent scene merges before the single user–agent collaboration
   loop is robust.
 
@@ -605,8 +675,9 @@ This specification does not require:
 
 The Canvas should feel like a shared, evolving visual workspace:
 
-> **Discuss freely. Change the live model deliberately. Render an explicit
-> snapshot. Show real progress. Keep the model, final, and provenance connected.**
+> **Discuss freely. Change the live model deliberately. Record every accepted
+> change. Render an explicit snapshot. Show real progress. Keep the model,
+> final, ledger, and provenance connected.**
 
 That is the product contract against which future Canvas UI, gateway, agent,
 visual-grammar, and Octane orchestration changes should be evaluated.
