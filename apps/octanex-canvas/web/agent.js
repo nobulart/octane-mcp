@@ -85,6 +85,78 @@ async function patchSelection(changes) {
   }
 }
 
+// --- NL -> scene edit interpreter ------------------------------------------
+// The model emits `canvas.patch(object_id="...", color="red")` calls in its
+// reply (per CANVAS_SOUL). We parse + execute them against the live scene so
+// "make the roof red" actually recolors the WebGL mesh. The reply is returned
+// with the tool-call noise stripped so the human sees a clean message.
+const COLOR_NAMES = {
+  red: "#ff0000", green: "#008000", blue: "#0000ff", yellow: "#ffff00",
+  white: "#ffffff", black: "#000000", orange: "#ffa500", purple: "#800080",
+  gray: "#808080", grey: "#808080", cyan: "#00ffff", magenta: "#ff00ff",
+  pink: "#ffc0cb", brown: "#8b4513", teal: "#008080", lime: "#00ff00",
+};
+const MAT_KEYS = new Set(["color", "opacity", "metalness", "roughness"]);
+
+function _normalizeColor(v) {
+  if (typeof v !== "string") return v;
+  const low = v.trim().toLowerCase();
+  return COLOR_NAMES[low] || v; // name -> hex, else pass through (#rrggbb)
+}
+
+function _parsePatchArgs(inner) {
+  const out = {};
+  const re = /(\w+)\s*=\s*("([^"]*)"|'([^']*)'|true|false|-?[\d.]+)/g;
+  let m;
+  while ((m = re.exec(inner))) {
+    const k = m[1];
+    let val = m[3] !== undefined ? m[3] : m[4] !== undefined ? m[4] : m[2];
+    if (val === "true") val = true;
+    else if (val === "false") val = false;
+    else if (/^-?[\d.]+$/.test(val)) val = parseFloat(val);
+    out[k] = val;
+  }
+  return out;
+}
+
+async function applyReplyPatches(reply) {
+  const calls = [];
+  const re = /canvas\.patch\(\s*([^)]*)\)/g;
+  let m;
+  while ((m = re.exec(reply))) calls.push(m[1]);
+  if (calls.length === 0) return reply;
+
+  for (const inner of calls) {
+    const args = _parsePatchArgs(inner);
+    const objectId = args.object_id || args.id || state.selectedId;
+    if (!objectId) continue;
+    const changes = {};
+    const mat = {};
+    for (const [k, v] of Object.entries(args)) {
+      if (k === "object_id" || k === "id") continue;
+      if (MAT_KEYS.has(k)) mat[k] = k === "color" ? _normalizeColor(v) : v;
+      else if (k === "scale") changes.scale = Array.isArray(v) ? v : [v, v, v];
+      else changes[k] = v;
+    }
+    if (Object.keys(mat).length) changes.material = mat;
+    try {
+      const res = await postJSON("/canvas/patch", { object_id: objectId, changes });
+      if (res.ok && res.scene) {
+        state.currentScene = res.scene;
+        if (state.renderer) state.renderer.setScene(res.scene);
+        if (objectId === state.selectedId) showSelection(objectId, null);
+        appendTranscript("build", `patch ${objectId}: ${JSON.stringify(changes)}`, "canvas");
+      }
+    } catch (e) {
+      console.error("reply patch failed", e);
+    }
+  }
+
+  let cleaned = reply.replace(/canvas\.patch\(\s*[^)]*\)/g, "").trim();
+  cleaned = cleaned.replace(/tool_code\s*/gi, "").replace(/print\(\s*f?['"`]|['"`]\s*\)/g, "").trim();
+  return cleaned || "(applied scene edit)";
+}
+
 async function buildScene(intent, plan) {
   dom.status.className = "state-queued";
   dom.statusText.textContent = "building…";
@@ -227,9 +299,10 @@ export async function submitIntent(text) {
       showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
       return;
     }
-    showResponse(res.reply || "(empty)", res.model);
+    const cleaned = await applyReplyPatches(res.reply || "(empty)");
+    showResponse(cleaned, res.model);
     appendTranscript("user", raw, null);
-    appendTranscript("model", res.reply || "(empty)", res.model);
+    appendTranscript("model", cleaned, res.model);
   } catch (e) {
     if (e && e.name === "AbortError") return;
     showResponse("model error — is `hermes proxy` running?", model, true);
