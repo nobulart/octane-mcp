@@ -36,11 +36,18 @@ handle_import_geometry
 handle_create_material
 handle_assign_material
 handle_set_camera
+handle_get_camera
 handle_set_lighting
 handle_start_render
 handle_save_preview
 handle_command
 ```
+
+`get_camera` (added 2026-07-14) reads the live "Hermes Camera" node's
+`position` / `target` / `fov` / `up` pins via `getPinValue` and writes the pose
+to `results/get_camera.json`. It is the inverse of `set_camera`: capture a
+user-set viewport angle exactly (instead of eyeballing it from a screenshot)
+so it can be re-applied. Wired into both bridges; parity-guarded.
 
 If you change one of these in either bridge, update the other bridge in the same patch and run:
 

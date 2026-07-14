@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.14
+version: 1.9.15
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -823,7 +823,8 @@ templates (`hermes_bridge_oneshot_v2.lua` and `hermes_bridge_persistent_v1.lua`)
 must keep a large set of handler functions **textually identical**. The parity
 test `tests/test_lua_bridge_parity.py` asserts equality for: `handle_save_preview`,
 `handle_command`, `handle_import_geometry`, `handle_create_material`,
-`handle_assign_material`, `handle_set_camera`, `handle_set_lighting`,
+`handle_assign_material`, `handle_set_camera`, `handle_get_camera`,
+`handle_set_lighting`,
 `handle_start_render`, `wait_for_render_ready`, `render_stat_number`,
 `sleep_seconds`, `ensure_connected_node`, `ensure_render_target_defaults`,
 `latest_imported_geometry_fallback`. The ONLY tolerated difference is the log

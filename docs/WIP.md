@@ -83,3 +83,43 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 - `e4c8b3a` — shared-engine dispatch loop (gateway daemon + CLI + cron tick).
 - `4ae0e65` — pointcloud merge pipeline and native vase render.
 - `c325609` — shared-engine render lock + per-agent job queue.
+
+## 2026-07-14 — get_camera op + render-pipeline defect (this steward)
+
+- **`get_camera` op added (both bridges):** reads the live "Hermes Camera"
+  node's `position`/`target`/`fov`/`up` via `getPinValue`, writes
+  `results/get_camera.json`. Inverse of `set_camera` — captures a user-set
+  viewport angle exactly instead of eyeballing from a screenshot. Added
+  symmetrically to `hermes_bridge_oneshot_v2.lua` + `hermes_bridge_persistent_v1.lua`,
+  parity 7/7 OK, **live-validated** (round-trip returned `position=[18.74,16.21,9.95]
+  target=[2.5,1.4,0.4] fov=42`). Documented in `docs/octane-bridge.md`; skill
+  bumped 1.9.14→1.9.15.
+- **Canvas camera inheritance wired:** `submitIntent` (agent.js) now pushes
+  `state.renderer.getCameraState()` into `octane_set_camera` when a build is
+  queued, so Octane inherits the live Three.js viewport. Static-verified only
+  (shape match + `node --check`); NOT yet exercised in a real browser.
+- **DEFECT FOUND (not fixed this session):** renders come out a flat off-white/
+  grey field (`preview.png` uniform `[218,218,218]`, 1 unique color) even for the
+  previously-good v4 single-OBJ path. Root cause localized to the material binding,
+  not the camera op:
+  - `handle_assign_material` calls `connect_material_to_mesh_pins(mesh, mat,
+    group_index)` **without the `mat_name_hint` 4th arg**, so the name-match
+    branch never fires; it falls to the lone-pin path and `connect_to(mesh,
+    "Material", mat)` returns success but the diagnostic shows `material nil ->
+    pin Material` — the mesh ends up material-less → invisible.
+  - Structural: a single imported OBJ mesh exposes **only ONE `Material` pin**
+    (verified `MESH_PINS(1): #1 name=Material type=7`), so multi-group `usemtl`
+    → multi-color can never work on one node. Per-group mesh splitting also
+    fails because each `import_geometry` call disconnects the previous mesh from
+    the RT (RT holds one mesh).
+  - `set_lighting` is partially broken (film-pin names wrong: `No pin
+    "filmResolution" in NT_FILM_SETTINGS`; still carries a "TEMP INTROSPECTION"
+    block). Without a working env the scene renders unlit.
+  - Both bridges ALSO carry a pre-existing asymmetric `handle_create_material`
+    divergence (oneshot has a "FIX (2026-07-14)" block the persistent lacks) that
+    breaks parity until reconciled. NOT introduced by this session's get_camera
+    work — flag before editing create_material.
+  - **Next fix path:** (1) pass `mat_name_hint = cmd.material_name` at the
+    assign call site; (2) connect by pin INDEX, not just name; (3) split OBJ into
+    one mesh node per material group and connect ALL to the RT without sibling
+    disconnect; (4) repair `set_lighting` env pin names.

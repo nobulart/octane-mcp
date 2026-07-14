@@ -1065,6 +1065,69 @@ local function handle_set_camera(cmd)
     return true, "camera connected"
 end
 
+-- Read the LIVE camera pose so a user-set viewport angle can be captured and
+-- re-applied exactly. Writes the resolved pose to RESULTS/get_camera.json.
+local function read_camera_pin(cam, keys)
+    for _, k in ipairs(keys) do
+        local ok, v = pcall(function() return cam:getPinValue(k) end)
+        if ok and v ~= nil then return v end
+    end
+    return nil
+end
+
+local function handle_get_camera(cmd)
+    local ok, msg = ensure_octane()
+    if not ok then return true, msg end
+    local cam = find_item_by_name("Hermes Camera")
+    if not cam then
+        local rt = get_or_create_render_target()
+        if rt then
+            local okc, cnode = pcall(function() return rt:getConnectedNodes(octane.P_CAMERA or "camera") end)
+            if okc and cnode then cam = cnode end
+        end
+    end
+    if not cam then return false, "no camera node found" end
+    local result = { timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") }
+    local pos = read_camera_pin(cam, { octane.P_POSITION or "pos", "position", "pos" })
+    local tgt = read_camera_pin(cam, { octane.P_TARGET or "target", "target" })
+    local fov = read_camera_pin(cam, { octane.P_FOV or "fov", "fov", "fieldOfView" })
+    local up  = read_camera_pin(cam, { octane.P_UP or "up", "up" })
+    if pos then
+        if type(pos) == "userdata" then
+            pcall(function() result.position = { pos[1], pos[2], pos[3] } end)
+        elseif type(pos) == "table" then
+            result.position = { pos[1], pos[2], pos[3] }
+        end
+    end
+    if tgt then
+        if type(tgt) == "userdata" then
+            pcall(function() result.target = { tgt[1], tgt[2], tgt[3] } end)
+        elseif type(tgt) == "table" then
+            result.target = { tgt[1], tgt[2], tgt[3] }
+        end
+    end
+    if fov ~= nil then
+        if type(fov) == "userdata" then pcall(function() result.fov = fov[1] end)
+        else result.fov = tonumber(fov) end
+    end
+    if up then
+        if type(up) == "userdata" then
+            pcall(function() result.up = { up[1], up[2], up[3] } end)
+        elseif type(up) == "table" then
+            result.up = { up[1], up[2], up[3] }
+        end
+    end
+    local path = RESULTS .. "/get_camera.json"
+    write_file(path, json_encode(result) .. "\n")
+    local summary = string.format("position=%s target=%s fov=%s up=%s",
+        result.position and table.concat(result.position, ",") or "nil",
+        result.target and table.concat(result.target, ",") or "nil",
+        result.fov or "nil",
+        result.up and table.concat(result.up, ",") or "nil")
+    append_log("get_camera " .. summary)
+    return true, "camera pose written: " .. path .. " | " .. summary
+end
+
 local function handle_set_lighting(cmd)
     local ok, msg = ensure_octane()
     if not ok then return true, msg end
@@ -1455,6 +1518,7 @@ local function handle_command(cmd)
     if cmd.op == "create_light" then return handle_create_light(cmd) end
     if cmd.op == "assign_material" then return handle_assign_material(cmd) end
     if cmd.op == "set_camera" then return handle_set_camera(cmd) end
+    if cmd.op == "get_camera" then return handle_get_camera(cmd) end
     if cmd.op == "set_lighting" then return handle_set_lighting(cmd) end
     if cmd.op == "set_object_transform" then return handle_set_object_transform(cmd) end
     if cmd.op == "start_render" then return handle_start_render(cmd) end

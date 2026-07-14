@@ -327,6 +327,25 @@ export async function submitIntent(text) {
   dom.cmd.value = "";
   if (isBuild) {
     await buildScene(intent);
+    // Camera inheritance: the user's live Three.js viewport angle is the source
+    // of truth. Push it to Octane so the render inherits the canvas viewpoint
+    // rather than resetting to a recipe default. The bridge set_camera op reads
+    // position/target/fov; getCameraState() returns exactly that shape.
+    if (state.renderer && typeof state.renderer.getCameraState === "function") {
+      const cam = state.renderer.getCameraState();
+      if (cam && cam.position && cam.target) {
+        try {
+          await callTool("octane_set_camera", {
+            position: cam.position,
+            target: cam.target,
+            fov: cam.fov || 45,
+          });
+          debugLog("camera-inherit", cam);
+        } catch (_) {
+          debugLog("camera-inherit", "skipped (octane_set_camera unavailable)");
+        }
+      }
+    }
     appendTranscript("build", `build "${intent}" → ${state.currentScene ? state.currentScene.objects.length : 0} object(s)${state.currentScene && state.currentScene.scene_id ? ` [${state.currentScene.scene_id}]` : ""}`, "octanex-mcp");
   }
   // Agentic model query (routed through the Hermes API / proxy). The reply
