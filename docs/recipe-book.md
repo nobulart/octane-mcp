@@ -40,6 +40,48 @@ Reusable field notes from real MCP usage. Agents should read this before visual 
 - If independent cap metal is required, split the cap faces into a third OBJ `usemtl` group and bind it with `group_index=3`; the desk-fan recipe demonstrates this grouped-material path.
 - Increase illumination and material separation for a more photographic commercial-studio finish; geometry and path construction are now the reusable baseline.
 
+## Coffee cup: dark black brew + rainbow clear bubbles
+
+- **Outcome:** success (verified by vision 2026-07-14)
+- **Recorded:** 2026-07-14
+- **Context:** Designer coffee cup — hollow lathe body, swept-tube handle, saucer,
+  dark table, near-black glossy brew studded with 7 distinct rainbow bubbles.
+  Iterated from a prior latte/cream version that read wrong (froth disc hid the
+  dark brew; bubbles rendered white).
+
+### Steps
+- Single combined OBJ (`examples/recipes/coffee-cup/scene.obj`), Y-up, one `usemtl`
+  group per material: `mat_table`, `mat_saucer`, `mat_cup`, `mat_brew`, `mat_bubble`.
+- Brew disc `mat_brew` near-black `[0.02, 0.018, 0.015]`; NO froth/crema disc (it
+  reads as latte/cream and hides the black).
+- Bubbles: ONE `mat_bubble` (glossy, light) with 7 spheres, each carrying its hue
+  as a PER-VERTEX colour baked into the OBJ (`v x y z r g b`): red, orange, yellow,
+  green, blue, indigo, violet. The OBJ importer collapses distinct `mat_bubble_N`
+  usemtl names into ONE mesh pin, so per-bubble *material* nodes can't carry 7
+  hues — vertex colour is the reliable path.
+- Generator `scripts/gen_coffee_cup.py` emits OBJ + `scene.json` + README; queue
+  via `octane_queue_recipe --slug coffee-cup` then one oneshot-bridge drain.
+
+### Signals / evidence
+- Native render `examples/recipes/coffee-cup/octane-preview.png` (1280×1280,
+  283,306 bytes). Vision inspection confirmed: near-black brew surface, cream
+  ceramic cup, 7 distinct rainbow bubbles on the surface, no blank/missing parts.
+- `bridge.log` for the run: all 5 material pins bound (`mat_table → mat_table` …
+  `mat_bubble → mat_bubble`), `save_preview preview saved`, `samples_done: 600`.
+
+### Follow-ups
+- **Drain wedge on cold-relaunched Octane** (root cause of earlier blank ~12 KB
+  frames): the oneshot bridge blocks inside `octane.render.start{}` for the render,
+  so any *extra* MCP click is ignored while busy and the queue never fully drains;
+  the PNG write races and produces a blank-white frame. Reliable pattern: exactly
+  ONE bridge click per fresh Octane process, then POLL the disk for
+  `coffee_cup_octane-preview.png` (up to ~120 s) WITHOUT re-clicking. Trust
+  `bridge.log` `save_preview preview saved` + PNG mtime, not `status.json` age (it
+  lags).
+- If bubbles read white, the per-vertex rainbow colour is missing — re-run the
+  generator (it bakes 7 distinct hues) and re-import; do not add `mat_bubble_N`
+  material nodes (they collapse to one pin).
+
 ## Cutaway Earth point cloud: glowing core + jittered translucent layers
 
 - **Outcome:** success (materials + glow + atmosphere), pitfall (framing reads as disc), pitfall (queue/drain recovery)
