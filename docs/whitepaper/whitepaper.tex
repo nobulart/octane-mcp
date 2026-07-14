@@ -58,7 +58,7 @@
 \maketitle
 
 \begin{abstract}
-\project{} is a local-first Model Context Protocol server that lets an agent use Octane X as a shared visual canvas. Instead of treating image generation as a single text-to-image request, it constructs explicit scene geometry, material intent, camera placement, lighting, render commands, and pixel-level verification loops. The current implementation routes Hermes tool calls through a Python MCP server, an allowlisted JSON command queue, and an Octane Lua bridge that executes bounded scene operations inside Octane X. This whitepaper describes the project's conceptual design, operating principles, recipe corpus, comparison with other image/model generation toolsets, planned development path, and application opportunities. It uses examples from the recent recipe corpus, including product-studio objects, Earth and planetary scenes, architecture/data/math visuals, and feedback-loop diagrams.
+\project{} is a local-first visualisation system in which an agent and a user collaboratively create, inspect, adapt, and render explicit 3D models. Its Agentic Canvas provides an immediate editable WebGL workbench alongside an explicit Octane X quality-render path: discussion and live modelling remain responsive, while a requested final render is a queued snapshot with traceable progress and review. Instead of treating image generation as a single text-to-image request, the system preserves scene geometry, material intent, camera placement, lighting, render commands, revisions, and verification evidence. The current implementation routes Hermes tool calls through a Python MCP server, browser-hydratable scene state, an allowlisted JSON command queue, and an Octane Lua bridge that executes bounded scene operations. This whitepaper describes the project's conceptual design, operating principles, recipe corpus, Canvas product direction, stewardship model, comparison with adjacent toolsets, and planned development path.
 \end{abstract}
 
 \tableofcontents
@@ -66,11 +66,13 @@
 
 \section{Executive summary}
 
-\project{} is best understood as a \emph{visual workbench for agents}, not a conventional image generator. Its goal is to make rendered scenes inspectable, reproducible, and editable by local AI agents. The project currently provides:
+\project{} is best understood as a \emph{shared visual workbench for people and agents}, not a conventional image generator. Its immediate product surface is the Agentic Canvas: an editable live 3D model, a natural-language collaboration loop, and a distinct Final panel for verified Octane renders. The project currently provides:
 
 \begin{itemize}[leftmargin=*]
   \item a Python MCP server exposing Octane-oriented tools to Hermes;
   \item a typed, allowlisted command schema for mesh import, material creation, material assignment, camera placement, lighting, rendering, preview saving, recipe loading, and review;
+  \item an Agentic Canvas built as a native Swift/WKWebView host with a live three.js/WebGL scene layer, object selection, scene patches, conversational context, recipe geometry loading, and Live/Final/Split views;
+  \item an explicit Octane handoff that snapshots the current live scene, queues a quality render, and surfaces real task state rather than substituting a preview image for editable geometry;
   \item a macOS Octane X bridge implemented as Lua scripts that drain JSON command files from a sandbox-compatible workspace;
   \item a growing recipe corpus of 30 checked-in scene directories, 25 of which currently declare native Octane verification and 29 of which carry preview imagery;
   \item a benchmark suite and pixel-level acceptance framework that evaluates renders through decoded image statistics rather than model opinion;
@@ -95,24 +97,28 @@ This framing is especially useful for Craig Stone's work across geospatial analy
 
 \section{Conceptual architecture}
 
-At the highest level, \project{} separates three concerns: agent intent, scene/command generation, and renderer execution. Hermes supplies the intent and tool call. The Python MCP server validates that intent and emits a safe command sequence. Octane X executes the sequence only through a Lua bridge inside the renderer.
+At the highest level, \project{} separates conversation, editable scene state, and renderer execution. The Agentic Canvas hydrates a validated \texttt{canvas.scene.v1} model immediately in WebGL. An explicit render request snapshots that live revision, then the Python MCP server validates and emits a safe command sequence for Octane X. This makes the live model, final frame, and provenance distinct but connected artifacts.
 
 \begin{figure}[htbp]
 \centering
 \fbox{\begin{minipage}{0.92\linewidth}
 \centering
 \vspace{0.8em}
-\texttt{Hermes tool call} $\rightarrow$ \texttt{Python MCP server} $\rightarrow$ \texttt{JSON command queue}\\[0.4em]
-$\rightarrow$ \texttt{Octane Lua bridge} $\rightarrow$ \texttt{Octane X scene/render target} $\rightarrow$ \texttt{PNG preview + review}
+\texttt{User + agent conversation} $\rightarrow$ \texttt{canvas.scene.v1} $\rightarrow$ \texttt{Live WebGL model}\\[0.4em]
+$\hspace{3.2em}\searrow$ \texttt{explicit render snapshot} $\rightarrow$ \texttt{Python MCP server} $\rightarrow$ \texttt{JSON command queue}\\[0.4em]
+$\hspace{8.7em}\rightarrow$ \texttt{Octane Lua bridge} $\rightarrow$ \texttt{Octane X render} $\rightarrow$ \texttt{verified Final frame}
 \vspace{0.8em}
 \end{minipage}}
-\caption{Current operating pipeline. The MCP server does not run arbitrary Lua. It writes an allowlisted command DSL into a workspace queue; Octane X processes that queue through generated Lua bridge scripts.}
+\caption{Current collaborative pipeline. Live geometry remains editable in the Canvas. A Final render is an explicit snapshot handoff through the allowlisted command DSL and Octane bridge, followed by structural and visual verification.}
 \label{fig:pipeline}
 \end{figure}
 
 \subsection{Core components}
 
 \begin{description}[leftmargin=!,labelwidth=36mm]
+  \item[Agentic Canvas] Provides the primary collaborative workbench: live WebGL geometry, orbit/pan/zoom, object selection, an inspector patch path, recipe loading as editable meshes, and Live/Final/Split comparison.
+  \item[Canvas scene contract] Defines the validated browser-hydratable \texttt{canvas.scene.v1} state. It preserves object identity, materials, geometry, camera, intent, and provenance independently of a final image.
+  \item[Render handoff] Converts an explicit live-scene snapshot into an Octane-ready plan, queues it, records task state, and returns a verified final frame without overwriting the live model.
   \item[Python MCP server] Provides tool surfaces such as status checks, schema inspection, geometry import, material creation, recipe indexing/loading/queueing, scene-plan construction, animation command generation, and preview review.
   \item[Typed command schema] Defines supported operations and payload validation. This is the main safety boundary: commands are explicit and bounded rather than arbitrary code.
   \item[Workspace queue] Stores ordered JSON command files under the Octane X sandbox-compatible workspace. Lifecycle directories include \texttt{queue/}, \texttt{processing/}, \texttt{processed/}, \texttt{failed/}, \texttt{results/}, \texttt{assets/}, and \texttt{renders/}.
@@ -141,6 +147,24 @@ This means later agents can inspect the actual assets, requeue them, compare out
 
 The project is designed around local execution. Hermes runs locally, Octane X runs locally, and rendered previews are written into local workspace folders. This aligns with privacy, reproducibility, and the ability to use local models for visual critique and documentation work.
 
+\subsection{Stewardship: a protected product and an open knowledge commons}
+
+The project distinguishes between reusable knowledge and the maintained product
+that operationalises it. Original research methods, tutorials, explanatory
+material, and conceptual visual-grammar specifications are released under CC
+BY-SA 4.0, so they can be studied, adapted, and shared with attribution and
+reciprocity. The data/corpus layer remains subject to CC BY-NC-SA 4.0 and every
+upstream asset's own provenance obligations.
+
+The Agentic Canvas package is separately source-available under PolyForm
+Noncommercial 1.0.0. This protects the commercial product surface---the native
+host, interaction design, live WebGL workbench, and original Canvas assets---
+while leaving the underlying knowledge available to humanity. The generic Core
+remains under BSL 1.1. The distinction does not claim ownership of visual ideas
+or prevent independent implementation; it reserves commercial rights in the
+maintained software, service, branded product, and separately licensed assets.
+The authoritative repository boundary is defined in \texttt{LICENSE-SCOPE.md}.
+
 \subsection{Allowlisted execution}
 
 The bridge intentionally avoids arbitrary Lua execution. The Python side emits a controlled command language with operations such as import geometry, create material, assign material, set camera, set lighting, save preview, and validate queue. The Lua side dispatches only recognized operations. Invalid commands are moved to failure paths with metadata.
@@ -159,7 +183,7 @@ Every non-trivial success, failure, or pitfall can be recorded in the recipe boo
 
 \section{Current implementation status}
 
-The current repository state, as captured in the project status documents, is a working visual workbench with a live bridge, broad unit coverage, 30 recipe directories, a growing corpus of native previews, and an active roadmap for bridge hardening and backend abstraction. The principal live constraints are not conceptual viability, but operational integration details: macOS sandbox paths, Accessibility/TCC permissions for AppleScript launch, Octane's Script-menu workflow, queue hygiene, and drift between rapidly evolving recipes and documentation.
+The current repository state is a working visual workbench: a live bridge and quality-render path, broad unit coverage, a growing recipe corpus, and an Agentic Canvas that loads real recipe geometry into an editable WebGL scene. The principal current work is no longer merely a status/operator surface; it is the collaborative modelling loop itself: reliable scene revisions, semantic handles, grammar composition, render-task provenance, truthful progress, and recovery across sessions. Operational constraints remain macOS sandbox paths, Accessibility/TCC permissions for AppleScript launch, Octane's Script-menu workflow, queue hygiene, and documentation drift during rapid development.
 
 \begin{table}[htbp]
 \centering
@@ -170,11 +194,12 @@ The current repository state, as captured in the project status documents, is a 
 \midrule
 MCP server & Python stdio server with tool catalogue, schema, recipe registry, preview review, scene-plan helpers, and animation command generation. \\
 Command transport & Ordered JSON queue processed by Octane-side Lua scripts. \\
-Renderer & Octane X, currently controlled via macOS Script-menu bridge rather than a formal CLI/plugin API. \\
-Recipe corpus & 30 recipe directories; 25 currently declare native Octane verification; 29 carry preview imagery. \\
-Verification & Unit tests, benchmark suite, recipe validation, pixel QA, and local visual inspection where appropriate. \\
+Renderer & Octane X for quality output plus a live three.js/WebGL Canvas layer for immediate editable scene work. \\
+Recipe corpus & Reusable recipe geometry that loads as real WebGL meshes, alongside native Octane previews and metadata. \\
+Verification & Unit tests, benchmark suite, recipe validation, pixel QA, local visual inspection, and explicit render-task review. \\
+Canvas interaction & Conversation-first design: plain discussion does not mutate a scene; explicit build/refine/render actions do, with selection and patch support. \\
 Open bridge work & Single-source Lua handler generation, capability-backed material/light registry, richer backend abstraction. \\
-Open application work & 3DXM parametric/Weierstrass meshing, geospatial live path, short orbit clips, Agentic Canvas status/operator surface. \\
+Open application work & Scene revisions/branches, semantic handles, visual grammar runtime, render-task provenance, geo/Copernicus workflow, and short orbit clips. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -265,7 +290,7 @@ ComfyUI / node graph diffusion workflows & Reusable generation graphs, condition
 \addlinespace
 Blender / bpy / Blender MCP & Open 3D scene graph, scripting, headless rendering, geometry nodes, Eevee/Cycles. & GPL licensing and heavier runtime; distinct API and material system; integration must be isolated carefully. & Strong candidate for an open renderer backend or separate MCP bridge behind the same scene DSL. \\
 \addlinespace
-WebGL / three.js / React Three Fiber & Realtime, interactive, browser-shareable, MIT-licensed, ideal for Agentic Canvas. & Less photoreal than Octane; requires a web scene representation and snapshot path. & Highest-leverage future preview/shareable backend; can host live data/math scenes. \\
+WebGL / three.js / React Three Fiber & Realtime, interactive, browser-shareable, MIT-licensed at the dependency level, and well suited to live scene work. & Less photoreal than Octane; requires a disciplined scene contract, renderer parity checks, and snapshot path. & Current realtime tier inside the Agentic Canvas: it hydrates editable geometry immediately while Octane remains the Final quality-render tier. \\
 \addlinespace
 Godot 4 & Realtime engine, interaction, physics, animation, MIT license. & Game-engine paradigm differs from the OBJ/command queue; less direct for photoreal stills. & Useful for staged interactive concepts if a specific need emerges. \\
 \addlinespace
@@ -316,17 +341,30 @@ The scene manifest should become the main agent-readable representation. Useful 
 
 The render-review loop should evolve from a preview checker into an orchestration tool: queue scene, drain/render, review pixels, suggest bounded camera/material/lighting fixes, compare before/after previews, and persist evidence next to the recipe. The principle remains: do not claim a render succeeded unless a real preview file exists and passes the appropriate checks.
 
-\subsection{Track D: Backend abstraction}
+\subsection{Track D: Renderer abstraction and Canvas parity}
 
-The strategic direction is to decouple the scene DSL from Octane X. The proposed backend interface would preserve the current Octane path while adding optional adapters:
+The strategic direction is to keep the scene contract renderer-neutral while
+preserving the already-implemented two-tier interaction model: WebGL is the
+responsive editable surface and Octane is the quality-render tier. The next
+work is parity and extension, not a first proof of concept:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{OctaneBackend}: existing photoreal quality path;
-  \item \textbf{WebGLBackend}: live three.js scenes in Agentic Canvas, with snapshot-to-PNG for review;
-  \item \textbf{GeoBackend}: CesiumJS/deck.gl style native geo visualization;
-  \item \textbf{BlenderBackend}: process-isolated open 3D backend using bpy or Blender MCP;
-  \item \textbf{QualityBackend}: Mitsuba/OSPRay-style reproducible path tracing.
+  \item \textbf{OctaneBackend}: preserve the photoreal quality path, with snapshot-linked queue tasks and verified Final frames;
+  \item \textbf{WebGLBackend}: extend the live Canvas scene contract with selection, annotations, mesh/material fidelity, and screenshot review;
+  \item \textbf{GeoBackend}: add CesiumJS/deck.gl style native geo visualization without forcing all maps into OBJ;
+  \item \textbf{BlenderBackend}: keep any GPL integration process-isolated through bpy or a separate MCP bridge;
+  \item \textbf{QualityBackend}: evaluate Mitsuba/OSPRay-style reproducible path tracing where an alternative quality tier is warranted.
 \end{itemize}
+
+\subsection{Track E: Collaborative model evolution and visual grammars}
+
+The Canvas should mature from a live viewer into a durable collaborative model
+workspace. Priorities are scene revisions and lightweight branches, semantic
+handles above raw mesh identifiers, explicit agent proposals rather than silent
+initiative, grammar composition, preflight checks before expensive renders, and
+an inspectable render queue. Each grammar should carry an input contract,
+editable scene output, validity constraints, examples, and behavioural fixtures
+so that the visual language becomes testable rather than merely demonstrative.
 
 \section{Future application opportunities}
 
@@ -379,8 +417,9 @@ A mature version of \project{} would satisfy the following criteria:
 
 \begin{enumerate}[leftmargin=*]
   \item An agent can describe a scene semantically and receive a validated scene manifest before rendering.
-  \item The renderer backend is selectable: Octane for photoreal output, WebGL for realtime interaction, geospatial backend for maps/globes, and optional open renderers for quality alternatives.
-  \item Every renderable scene has reproducible assets, command metadata, preview files, and review evidence.
+  \item The Agentic Canvas preserves a live editable model, an explicit revision/snapshot history, and a separate verified Final render rather than collapsing all work into a PNG.
+  \item The renderer backend is selectable: WebGL for realtime interaction, Octane for photoreal output, a geospatial backend for maps/globes, and optional open renderers for quality alternatives.
+  \item Every renderable scene has reproducible assets, command metadata, source revision identity, preview/final files, and review evidence.
   \item Pixel/structure review catches blank, clipped, stale, and misframed outputs automatically.
   \item Successful scenes become recipes or promoted tools; failed scenes become documented pitfalls and tests.
   \item Smaller/local models can use the docs and recipes without re-discovering bridge quirks.
@@ -388,9 +427,9 @@ A mature version of \project{} would satisfy the following criteria:
 
 \section{Conclusion}
 
-\project{} turns rendering from a one-off aesthetic act into an agentic engineering loop. Its key contribution is not merely that Hermes can produce Octane images. The stronger idea is that a local agent can build, inspect, verify, revise, and remember visual artifacts using explicit scene state. That makes the system useful for scientific visualization, research communication, diagramming, product iteration, and future multi-backend visual canvases.
+\project{} turns rendering from a one-off aesthetic act into a collaborative visual-engineering loop. Its contribution is not merely that Hermes can produce Octane images. The stronger idea is that a user and agent can build, inspect, verify, revise, branch, and remember visual models using explicit scene state, then deliberately promote a chosen snapshot to a quality-rendered Final. This makes the system useful for scientific visualization, research communication, diagramming, product iteration, and future multi-backend visual canvases.
 
-The next phase should focus on bridge hardening, richer scene grammar, backend abstraction, and application-specific generators. Octane X remains the photoreal anchor, but the long-term value is the renderer-independent visual language that the project is beginning to expose.
+The next phase is to harden the bridge while making the Canvas a natural, responsive collaborative workspace: strengthen revision and task provenance, develop composable visual grammars, maintain WebGL--Octane parity, and extend geospatial and scientific paths. The project stewards this work through a deliberate boundary: the knowledge and methods remain in a reciprocal commons, while the maintained Agentic Canvas product surface remains protected from uncompensated commercial extraction.
 
 \appendix
 \section{Selected recipe paths}
@@ -417,6 +456,10 @@ The next phase should focus on bridge hardening, richer scene grammar, backend a
   \item \texttt{docs/benchmark-suite.md}
   \item \texttt{docs/agent-quickstart.md}
   \item \texttt{docs/visualization-backends-research.md}
+  \item \texttt{docs/canvas-web-ui-build-plan.md}
+  \item \texttt{docs/octanex-agentic-canvas-product-spec.md}
+  \item \texttt{docs/canvas-licensing-boundary.md}
+  \item \texttt{LICENSE-SCOPE.md}
   \item \texttt{examples/recipes/*/scene.json}
 \end{itemize}
 
