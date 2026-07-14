@@ -63,7 +63,7 @@ from octanex_mcp.bridge_control import octane_process_status, reset_octane_scene
 from octanex_mcp.scheduler import DispatchLoop
 from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
-from octanex_mcp.recipes import load_recipe, RECIPES_ROOT
+from octanex_mcp.recipes import load_recipe, recipe_to_canvas_scene, RECIPES_ROOT
 from octanex_mcp import hermes_config
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
@@ -446,26 +446,27 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path.startswith("/canvas/recipe/"):
             # Instant-load a pre-existing recipe scene into the WebGL canvas.
-            # Returns the recipe's metadata + raw scene.json (Octane recipe
-            # format) and a preview_url pointing at the recipe's bundled
-            # preview raster, which the browser shows instantly (the recipe's
-            # real rendered scene) without re-planning or queueing Octane.
+            # The recipe is a pre-built scene whose geometry lives in scene.obj;
+            # we instantiate it as a canvas.scene.v1 so the browser renders real,
+            # pickable, editable meshes (a starting point for interactive
+            # development) rather than a flat preview raster.
             slug = path[len("/canvas/recipe/"):].strip("/")
             if not slug:
                 self._send_json({"ok": False, "error": "recipe slug required"}, code=400)
                 return
             try:
-                recipe = load_recipe(slug)
+                scene = recipe_to_canvas_scene(slug)
             except ValueError as exc:
                 self._send_json({"ok": False, "error": str(exc)}, code=404)
                 return
+            recipe = load_recipe(slug)
             preview = recipe.get("preview_path")
             preview_url = f"/recipe-preview/{slug}" if preview else None
             self._send_json({
                 "ok": True,
-                "slug": recipe.get("slug"),
+                "slug": slug,
                 "title": recipe.get("title"),
-                "scene": recipe.get("raw", {}),
+                "scene": scene,
                 "preview_url": preview_url,
             })
             return

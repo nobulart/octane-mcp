@@ -46,16 +46,31 @@ class RecipeRouteTest(unittest.TestCase):
         self.assertFalse(json.loads(raw)["ok"])
 
     def test_known_slug_returns_scene(self):
-        # A recipe that ships with a scene.json in the repo.
+        # A recipe that ships with a scene.obj in the repo.
         st, raw = self._get("/canvas/recipe/physics-orbits")
         bd = json.loads(raw)
         self.assertEqual(st, 200)
         self.assertTrue(bd["ok"])
-        # Octane recipe format: raw scene.json (named materials, commands),
-        # plus a preview_url for instant browser display.
-        self.assertIn("scene", bd)
-        self.assertIn("materials", bd["scene"])
+        # The route instantiates the recipe's scene.obj as a canvas.scene.v1
+        # with real, pickable mesh objects (not a flat preview raster).
+        scene = bd["scene"]
+        self.assertIn("objects", scene)
+        self.assertTrue(any(o.get("type") == "mesh" for o in scene["objects"]),
+                         "expected at least one mesh object")
+        self.assertTrue(any(o.get("geometry", {}).get("positions") for o in scene["objects"]),
+                        "mesh objects must carry triangle positions")
         self.assertIsNotNone(bd.get("preview_url"))
+
+    def test_recipe_to_canvas_scene_geometry(self):
+        # Direct unit check: the OBJ parser yields canvas.scene.v1 meshes.
+        from octanex_mcp.recipes import recipe_to_canvas_scene
+        scene = recipe_to_canvas_scene("physics-orbits")
+        self.assertEqual(scene["scene_id"], "physics-orbits")
+        self.assertTrue(len(scene["objects"]) >= 1)
+        mesh = next(o for o in scene["objects"] if o["type"] == "mesh")
+        self.assertIsInstance(mesh["geometry"]["positions"], list)
+        self.assertEqual(len(mesh["geometry"]["positions"]) % 9, 0)  # 3 verts/tri * 3 floats
+        self.assertEqual(len(scene["materials"]), len({o["material"] for o in scene["objects"]}))
 
     def test_recipe_preview_served(self):
         st, raw = self._get("/recipe-preview/physics-orbits")

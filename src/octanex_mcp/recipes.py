@@ -159,6 +159,145 @@ def load_recipe(slug: str, recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:
     return {**meta, "commands": commands, "raw": data}
 
 
+def recipe_to_canvas_scene(slug: str, recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:
+    """Instantiate a recipe's bundled ``scene.obj`` as a live ``canvas.scene.v1``.
+
+    The recipe is a pre-built scene: its geometry lives in ``scene.obj``
+    (``mtllib scene.mtl``, one ``o`` group, optional ``usemtl`` sub-groups).
+    We parse the OBJ into mesh objects so the WebGL canvas can render and
+    pick/edit them exactly like a freshly-built scene — the recipe becomes a
+    real starting point for interactive development, not a flat screenshot.
+
+    Returns a ``canvas.scene.v1``-shaped dict. Raises ``ValueError`` if the
+    recipe has no meshable ``scene.obj``.
+    """
+    recipe_dir = _find_recipe_dir(slug, recipes_root)
+    obj_path = recipe_dir / "scene.obj"
+    if not obj_path.exists():
+        raise ValueError(f"recipe {slug!r} has no scene.obj to instantiate")
+
+    verts: list[list[float]] = []
+    normals: list[list[float]] = []
+    # group -> { mtllib material name, list of face vertex-index tuples }
+    # Keyed by (object/group, material) so distinct usemtl blocks become
+    # individually editable meshes.
+    groups: dict[tuple[str, str | None], dict[str, Any]] = {}
+    active_group = "_default"
+    active_mtl = None
+    mtllib_name = None
+
+    def _face(indices: list[str]) -> list[int]:
+        # OBJ faces are 1-based; support v/vt/vn triples, ignore vt/vn here.
+        out = []
+        for tok in indices:
+            out.append(int(tok.split("/")[0]))
+        return out
+
+    def _group(force_new: bool = False) -> dict[str, Any]:
+        key = (active_group, active_mtl)
+        g = groups.get(key)
+        if g is None or force_new:
+            g = {"mtl": active_mtl, "faces": []}
+            groups[key] = g
+        return g
+
+    for raw in obj_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        tag = parts[0]
+        if tag == "mtllib":
+            mtllib_name = parts[1] if len(parts) > 1 else None
+        elif tag == "o" or tag == "g":
+            active_group = " ".join(parts[1:]) or active_group
+            _group(force_new=True)
+        elif tag == "v":
+            verts.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        elif tag == "vn":
+            normals.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        elif tag == "usemtl":
+            active_mtl = parts[1] if len(parts) > 1 else None
+            _group(force_new=True)
+        elif tag == "f":
+            g = _group()
+            g["faces"].append(_face(parts[1:]))
+
+    if not verts or all(not g["faces"] for g in groups.values()):
+        raise ValueError(f"recipe {slug!r} scene.obj has no meshable faces")
+
+    # Materials: derive a palette from scene.mtl (newmtl + Kd). Fall back to a
+    # neutral grey if the mtl is missing or a group names an unknown material.
+    mat_colors: dict[str, list[float]] = {}
+    mtl_path = recipe_dir / (mtllib_name or "scene.mtl")
+    if mtl_path.exists():
+        cur = None
+        for ml in mtl_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            mp = ml.strip().split()
+            if not mp:
+                continue
+            if mp[0] == "newmtl":
+                cur = mp[1]
+                mat_colors[cur] = [0.8, 0.8, 0.8]
+            elif mp[0] == "Kd" and cur:
+                try:
+                    mat_colors[cur] = [float(mp[1]), float(mp[2]), float(mp[3])]
+                except (IndexError, ValueError):
+                    pass
+
+    def _rgb_to_hex(rgb: list[float]) -> str:
+        return "#" + "".join(f"{int(max(0.0, min(1.0, c)) * 255):02x}" for c in rgb)
+
+    materials: list[dict[str, Any]] = []
+    objects: list[dict[str, Any]] = []
+    used_mats: set[str] = set()
+
+    for gi, (key, gdata) in enumerate(groups.items()):
+        if not gdata["faces"]:
+            continue
+        gname, mtl = key
+        mat_id = f"mat_{gi}"
+        color = mat_colors.get(mtl or "_default", [0.8, 0.8, 0.8])
+        materials.append({"id": mat_id, "color": _rgb_to_hex(color), "roughness": 0.6, "metalness": 0.0})
+        used_mats.add(mat_id)
+        # Pack positions as a flat triangle list (fan/triangle fan per face).
+        positions: list[float] = []
+        for f in gdata["faces"]:
+            if len(f) < 3:
+                continue
+            tri = f[:3]
+            for vi in tri:
+                v = verts[vi - 1]
+                positions.extend([float(v[0]), float(v[1]), float(v[2])])
+            # Triangulate polygons with 4+ verts as a fan.
+            for k in range(2, len(f) - 1):
+                for vi in (f[0], f[k], f[k + 1]):
+                    v = verts[vi - 1]
+                    positions.extend([float(v[0]), float(v[1]), float(v[2])])
+        label = (mtl or gname or f"group {gi}").split("/")[-1]
+        objects.append({
+            "id": f"{slug}_{gi}",
+            "type": "mesh",
+            "label": label,
+            "material": mat_id,
+            "geometry": {"type": "triangles", "positions": positions},
+        })
+
+    if not objects:
+        raise ValueError(f"recipe {slug!r} produced no mesh objects")
+
+    scene = {
+        "schema_version": SCHEMA_VERSION,
+        "scene_id": slug,
+        "title": slug.replace("-", " ").title(),
+        "provenance": {"source": "recipe", "slug": slug},
+        "objects": objects,
+        "materials": materials,
+        "environment": {"background": "#070a0e", "lighting": "soft_studio"},
+    }
+    return scene
+
+
 def _apply_overrides(commands: list[dict[str, Any]], overrides: Mapping[str, Any] | None) -> list[dict[str, Any]]:
     if not overrides:
         return commands

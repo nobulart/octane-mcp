@@ -54,7 +54,6 @@ const state = {
   renderer: null,
   vox: false,
   contract: "",
-  recipePreview: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -180,7 +179,6 @@ async function buildScene(intent, plan) {
     }
     const scene = res.scene;
     state.currentScene = scene;
-    state.recipePreview = false;
     if (state.renderer) state.renderer.setScene(scene);
     dom.placeholder.style.display = "none";
     // Honest status: show the interpreted intent the planner heard.
@@ -198,9 +196,6 @@ async function buildScene(intent, plan) {
 // Preview polling (Octane quality tier)
 // ---------------------------------------------------------------------------
 async function pollPreview() {
-  // When a recipe preview is pinned (instant-load), don't let the Octane
-  // /preview poller clobber it with a (missing) Octane frame.
-  if (state.recipePreview) return;
   if (state.viewMode === "live") {
     // In live-only mode the WebGL canvas owns the screen; don't cover it.
     dom.preview.classList.remove("visible");
@@ -273,35 +268,44 @@ async function pollStatus() {
 // Intent boundary — single entry point for all input
 // ---------------------------------------------------------------------------
 async function submitIntent(text) {
-  const t = (text || "").trim();
-  if (!t) return;
-  // Build the live WebGL scene immediately (independent of Octane), then
-  // route the query to the selected Hermes model via the gateway, which
-  // forwards it through the local Hermes proxy. The reply renders
-  // in the response line.
-  await buildScene(t);
+  const raw = (text || "").trim();
+  if (!raw) return;
+  // Conversation-first contract: the canvas is a natural-language modelling
+  // interface. Plain text is design discussion with the agent (no scene
+  // change); only an explicit Visualise/Build/Render prefix commits to a build.
+  // Recipes (⌘K) are a separate, deliberate instant-load path.
+  const buildMatch = raw.match(/^(visuali[sz]e|viz|build|render)\b[:\-\s]*/i);
+  const isBuild = !!buildMatch;
+  const intent = (buildMatch ? raw.slice(buildMatch[0].length) : raw).trim() || raw;
   const model = (dom.modelSelect && dom.modelSelect.value) || "";
+  // Notify the harness of the interpreted intent (for continuity), but only
+  // commit a build when the user explicitly asked for one.
   try {
     await fetch(`${GW}/intent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: t, voice: !!state.vox }),
+      body: JSON.stringify({ text: raw, voice: !!state.vox }),
     });
-    localStorage.setItem("octanex.lastIntent", JSON.stringify({ text: t, ts: Date.now() }));
+    localStorage.setItem("octanex.lastIntent", JSON.stringify({ text: raw, ts: Date.now() }));
   } catch (_) {
     dom.status.className = "state-error";
     dom.statusText.textContent = "dispatch failed";
   }
-  // Agentic model query (routed through the Hermes API / proxy).
+  if (isBuild) {
+    await buildScene(intent);
+    appendTranscript("build", `build "${intent}" → ${state.currentScene ? state.currentScene.objects.length : 0} object(s)${state.currentScene && state.currentScene.scene_id ? ` [${state.currentScene.scene_id}]` : ""}`, "octanex-mcp");
+  }
+  // Agentic model query (routed through the Hermes API / proxy). The reply
+  // renders in the response line; the turn is logged to the transcript.
   showResponse("…", model);
   try {
-    const res = await postJSON("/canvas/chat", { text: t, model, voice: !!state.vox });
+    const res = await postJSON("/canvas/chat", { text: raw, model, voice: !!state.vox });
     if (!res.ok) {
       showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
       return;
     }
     showResponse(res.reply || "(empty)", res.model);
-    appendTranscript("user", t, null);
+    appendTranscript("user", raw, null);
     appendTranscript("model", res.reply || "(empty)", res.model);
   } catch (e) {
     showResponse("model error — is `hermes proxy` running?", model, true);
@@ -387,33 +391,24 @@ async function refreshPalette(filter) {
 
 async function queueRecipe(slug, label) {
   dom.palette.classList.add("hidden");
-  // Recipes are pre-existing scenes: fetch the recipe and show its bundled
-  // preview raster in the canvas instantly (the recipe's real rendered
-  // scene) rather than re-planning or queueing a slow Octane render. Quality
-  // re-render stays on "Send to Octane".
+  // Recipes are pre-existing scenes: instantiate the recipe's bundled
+  // scene.obj as a canvas.scene.v1 and build it into the live WebGL canvas
+  // as real, pickable, editable meshes — a starting point for interactive
+  // development — rather than a flat preview raster. Quality re-render stays
+  // on "Send to Octane".
   dom.status.className = "state-live";
   dom.statusText.textContent = `loading ${slug}…`;
   try {
     const res = await getJSON(`/canvas/recipe/${encodeURIComponent(slug)}`);
-    if (!res.ok) {
+    if (!res.ok || !res.scene) {
       dom.status.className = "state-error";
       dom.statusText.textContent = `recipe "${slug}" not found`;
       return;
     }
-    // Show the recipe's actual preview image immediately in Final view.
-    if (res.preview_url && dom.preview) {
-      state.recipePreview = true;
-      dom.preview.src = res.preview_url + `?t=${Date.now()}`;
-      dom.preview.classList.add("visible");
-      dom.preview.classList.add("final-mode");
-      if (dom.placeholder) dom.placeholder.style.display = "none";
-      setViewMode("final");
-    } else {
-      await buildScene(null, res.scene);
-      setViewMode("live");
-    }
+    await buildScene(null, res.scene);
+    setViewMode("live");
     appendTranscript("user", `(recipe) ${label || slug}`, null);
-    appendTranscript("model", `Loaded pre-built scene "${res.title || slug}" into the canvas.`, "recipe");
+    appendTranscript("model", `Loaded pre-built scene "${res.title || slug}" into the canvas (${res.scene.objects.length} object(s), ready to edit).`, "recipe");
   } catch (e) {
     dom.status.className = "state-error";
     dom.statusText.textContent = "recipe load failed";
@@ -494,8 +489,6 @@ dom.inspectorClose.addEventListener("click", () => dom.inspector.classList.add("
 // ---------------------------------------------------------------------------
 function setViewMode(mode) {
   state.viewMode = mode;
-  // Leaving Final/Split back to Live releases any pinned recipe preview.
-  if (mode === "live") state.recipePreview = false;
   document.body.classList.remove("mode-live", "mode-final", "mode-split");
   document.body.classList.add(`mode-${mode}`);
   dom.viewmodes.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
@@ -634,7 +627,7 @@ function applyVox() {
   // Hint the conversation register in the command bar.
   dom.cmd.placeholder = state.vox
     ? "speak… or type (VOX: terse mode)"
-    : "describe a scene, or ⌘K for recipes…";
+    : "discuss the design, or 'visualise …' / ⌘K to build…";
 }
 
 async function onVoxToggle() {
@@ -675,7 +668,7 @@ function renderTranscript() {
   if (!dom.transcriptBody) return;
   dom.transcriptBody.innerHTML = (state.transcript || [])
     .map((t) => {
-      const who = t.role === "model" ? `model · ${t.model || ""}` : "you";
+      const who = t.role === "model" ? `model · ${t.model || ""}` : t.role === "build" ? `build · ${t.model || "octanex-mcp"}` : "you";
       return `<div class="turn ${t.role}"><div class="who">${who}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
     })
     .join("");

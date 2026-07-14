@@ -18,7 +18,7 @@ from octanex_mcp.backends.base import Backend
 # Fields we forward verbatim from a plan into the emitted scene. Anything not in
 # this set is dropped so the browser contract stays tight.
 _FORWARD_ROOT = ("title", "intent", "units", "camera", "environment", "provenance")
-_FORWARD_OBJECT = ("id", "label", "type", "position", "scale", "rotation", "points", "radius", "material", "text", "data")
+_FORWARD_OBJECT = ("id", "label", "type", "position", "scale", "rotation", "points", "radius", "material", "text", "data", "geometry")
 _FORWARD_MATERIAL = ("id", "color", "opacity", "roughness", "metalness", "emissive", "emissiveIntensity", "wireframe")
 _FORWARD_ANNOTATION = ("id", "text", "target", "position")
 

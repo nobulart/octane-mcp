@@ -195,8 +195,17 @@ export class CanvasRenderer {
         const geo = new THREE.BufferGeometry().setFromPoints(pts);
         return new THREE.Points(geo, new THREE.PointsMaterial({ size: o.radius || 0.05, color: mat.color }));
       }
+      case "mesh": {
+        // Real geometry from a recipe/import: flat triangle position list.
+        const pos = (o.geometry && o.geometry.positions) || o.positions || [];
+        if (!pos.length) return null;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        geo.computeVertexNormals();
+        return new THREE.Mesh(geo, mat);
+      }
       default:
-        return null; // mesh/arrow: later phases
+        return null; // arrow: later phases
     }
   }
 
