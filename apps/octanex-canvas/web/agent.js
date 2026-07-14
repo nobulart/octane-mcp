@@ -86,10 +86,12 @@ async function patchSelection(changes) {
 }
 
 // --- NL -> scene edit interpreter ------------------------------------------
-// The model emits `canvas.patch(object_id="...", color="red")` calls in its
-// reply (per CANVAS_SOUL). We parse + execute them against the live scene so
-// "make the roof red" actually recolors the WebGL mesh. The reply is returned
-// with the tool-call noise stripped so the human sees a clean message.
+// The model SHOULD emit `canvas.patch(object_id="...", color="red")` calls in
+// its reply (per CANVAS_SOUL). We parse + execute them so "make the roof red"
+// actually recolors the WebGL mesh. Some models narrate the edit instead of
+// emitting the call, so we also fall back to a lightweight NL parse: if the
+// reply contains an action verb + a color + an object id but no explicit
+// canvas.patch(...), we synthesize and apply the patch anyway.
 const COLOR_NAMES = {
   red: "#ff0000", green: "#008000", blue: "#0000ff", yellow: "#ffff00",
   white: "#ffffff", black: "#000000", orange: "#ffa500", purple: "#800080",
@@ -97,6 +99,7 @@ const COLOR_NAMES = {
   pink: "#ffc0cb", brown: "#8b4513", teal: "#008080", lime: "#00ff00",
 };
 const MAT_KEYS = new Set(["color", "opacity", "metalness", "roughness"]);
+const ACTION_VERBS = /\b(applied|make|turn|set|change|paint|painted|recolor|recolour|colou?r)\b/i;
 
 function _normalizeColor(v) {
   if (typeof v !== "string") return v;
@@ -119,37 +122,61 @@ function _parsePatchArgs(inner) {
   return out;
 }
 
+function _extractColor(text) {
+  const low = text.toLowerCase();
+  for (const name of Object.keys(COLOR_NAMES)) if (low.includes(name)) return name;
+  const hex = text.match(/#([0-9a-f]{6})/i);
+  return hex ? hex[0] : null;
+}
+
+function _extractObjectId(text) {
+  let m = text.match(/object_id\s*=\s*["']([^"']+)["']/i)
+    || text.match(/@([\w-]+)/)
+    || text.match(/\bto\s+['"]([\w-]+)['"]/i)
+    || text.match(/['"]([\w-]+_[\w-]+)['"]/);
+  return m ? m[1] : null;
+}
+
+async function _runPatchCall(inner) {
+  const args = _parsePatchArgs(inner);
+  const objectId = args.object_id || args.id || state.selectedId;
+  if (!objectId) return;
+  const changes = {};
+  const mat = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (k === "object_id" || k === "id") continue;
+    if (MAT_KEYS.has(k)) mat[k] = k === "color" ? _normalizeColor(v) : v;
+    else if (k === "scale") changes.scale = Array.isArray(v) ? v : [v, v, v];
+    else changes[k] = v;
+  }
+  if (Object.keys(mat).length) changes.material = mat;
+  try {
+    const res = await postJSON("/canvas/patch", { object_id: objectId, changes });
+    if (res.ok && res.scene) {
+      state.currentScene = res.scene;
+      if (state.renderer) state.renderer.setScene(res.scene);
+      if (objectId === state.selectedId) showSelection(objectId, null);
+      appendTranscript("build", `patch ${objectId}: ${JSON.stringify(changes)}`, "canvas");
+    }
+  } catch (e) {
+    console.error("reply patch failed", e);
+  }
+}
+
 async function applyReplyPatches(reply) {
   const calls = [];
   const re = /canvas\.patch\(\s*([^)]*)\)/g;
   let m;
   while ((m = re.exec(reply))) calls.push(m[1]);
-  if (calls.length === 0) return reply;
 
-  for (const inner of calls) {
-    const args = _parsePatchArgs(inner);
-    const objectId = args.object_id || args.id || state.selectedId;
-    if (!objectId) continue;
-    const changes = {};
-    const mat = {};
-    for (const [k, v] of Object.entries(args)) {
-      if (k === "object_id" || k === "id") continue;
-      if (MAT_KEYS.has(k)) mat[k] = k === "color" ? _normalizeColor(v) : v;
-      else if (k === "scale") changes.scale = Array.isArray(v) ? v : [v, v, v];
-      else changes[k] = v;
-    }
-    if (Object.keys(mat).length) changes.material = mat;
-    try {
-      const res = await postJSON("/canvas/patch", { object_id: objectId, changes });
-      if (res.ok && res.scene) {
-        state.currentScene = res.scene;
-        if (state.renderer) state.renderer.setScene(res.scene);
-        if (objectId === state.selectedId) showSelection(objectId, null);
-        appendTranscript("build", `patch ${objectId}: ${JSON.stringify(changes)}`, "canvas");
-      }
-    } catch (e) {
-      console.error("reply patch failed", e);
-    }
+  if (calls.length) {
+    for (const inner of calls) await _runPatchCall(inner);
+  } else if (state.currentScene && ACTION_VERBS.test(reply)) {
+    // NL fallback: model narrated an edit (e.g. "Applied red color to
+    // 'ancient-temple_4'") without emitting canvas.patch(...). Synthesize it.
+    const color = _extractColor(reply);
+    const oid = _extractObjectId(reply) || state.selectedId;
+    if (color && oid) await _runPatchCall(`object_id="${oid}", color="${color}"`);
   }
 
   let cleaned = reply.replace(/canvas\.patch\(\s*[^)]*\)/g, "").trim();
