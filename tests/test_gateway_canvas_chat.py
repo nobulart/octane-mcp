@@ -132,8 +132,8 @@ class ChatRoutingTest(unittest.TestCase):
     def test_local_provider_routes_to_ollama(self):
         with mock.patch.object(gw.hermes_config, "list_models",
                                return_value={"options": [
-                                   {"id": "qwen3.6:35b-mlx", "provider": "local-ollama"},
-                                   {"id": "tencent/hy3:free", "provider": "openrouter"},
+                                   {"id": "qwen3.6:35b-mlx", "provider": "local-ollama", "cloud": False},
+                                   {"id": "tencent/hy3:free", "provider": "openrouter", "cloud": True},
                                ]}):
             self.assertEqual(gw._chat_upstream("qwen3.6:35b-mlx"), gw.LOCAL_LLM_URL)
             self.assertEqual(gw._chat_upstream("tencent/hy3:free"), gw.HERMES_PROXY_URL)

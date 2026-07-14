@@ -83,16 +83,15 @@ LOCAL_LLM_URL = os.environ.get(
     "LOCAL_LLM_URL", "http://localhost:11434/v1/chat/completions"
 )
 
-# Providers whose models run locally (route to LOCAL_LLM_URL, not the proxy).
-_LOCAL_PROVIDERS = {"local-ollama", "inferencer"}
-
-
 def _chat_upstream(model_id: str) -> str:
     """Pick the OpenAI-compatible upstream for a model id.
 
-    Local providers (Ollama / inferencer) hit LOCAL_LLM_URL directly;
-    everything else (Nous Portal, cloud) goes through the Hermes proxy,
-    which attaches the user's real credentials.
+    Local/non-cloud providers (Ollama / inferencer) hit LOCAL_LLM_URL
+    directly; cloud/Nous models go through the Hermes proxy, which attaches
+    the user's real credentials. Routing is driven by the model's `cloud`
+    flag (authoritative — it already distinguishes local Ollama models from
+    Nous/cloud ones), not a brittle provider-name allowlist. The allowlist is
+    kept only as a fallback for unknown ids that aren't namespaced cloud ids.
     """
     try:
         opts = hermes_config.list_models().get("options", [])
@@ -100,8 +99,9 @@ def _chat_upstream(model_id: str) -> str:
         opts = []
     for o in opts:
         if o.get("id") == model_id:
-            return LOCAL_LLM_URL if o.get("provider") in _LOCAL_PROVIDERS else HERMES_PROXY_URL
-    # Unknown id: assume a local tag if it isn't a namespaced cloud id.
+            # cloud:False == served locally (Ollama / inferencer) -> LOCAL_LLM_URL
+            return LOCAL_LLM_URL if not o.get("cloud") else HERMES_PROXY_URL
+    # Unknown id: assume local if it isn't a namespaced cloud id (e.g. "org/model").
     return LOCAL_LLM_URL if "/" not in model_id else HERMES_PROXY_URL
 
 
