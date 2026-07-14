@@ -203,5 +203,5 @@ export function setOctaneBtn(stateName) {
   b.setAttribute("aria-busy", stateName === "rendering" ? "true" : "false");
 }
 
-export { callTool, postJSON, getJSON, escapeHtml, debugLog, pollPreview, pollStatus, setViewMode, setOctanePie, setOctaneBtn };
+export { callTool, postJSON, getJSON, escapeHtml, debugLog, pollPreview, pollStatus, setViewMode };
 
