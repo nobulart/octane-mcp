@@ -92,19 +92,15 @@ async function patchSelection(changes) {
 // emitting the call, so we also fall back to a lightweight NL parse: if the
 // reply contains an action verb + a color + an object id but no explicit
 // canvas.patch(...), we synthesize and apply the patch anyway.
-const COLOR_NAMES = {
-  red: "#ff0000", green: "#008000", blue: "#0000ff", yellow: "#ffff00",
-  white: "#ffffff", black: "#000000", orange: "#ffa500", purple: "#800080",
-  gray: "#808080", grey: "#808080", cyan: "#00ffff", magenta: "#ff00ff",
-  pink: "#ffc0cb", brown: "#8b4513", teal: "#008080", lime: "#00ff00",
-};
 const MAT_KEYS = new Set(["color", "opacity", "metalness", "roughness"]);
 const ACTION_VERBS = /\b(applied|make|turn|set|change|paint|painted|recolor|recolour|colou?r)\b/i;
 
 function _normalizeColor(v) {
-  if (typeof v !== "string") return v;
-  const low = v.trim().toLowerCase();
-  return COLOR_NAMES[low] || v; // name -> hex, else pass through (#rrggbb)
+  // The renderer (THREE.Color + EXTRA_COLORS) is the authoritative parser, so
+  // we pass the model's color token through verbatim: "vermillion", "#e34234",
+  // "rgb(227,66,52)", "hsv(12,0.85,0.89)" all resolve there. No client-side
+  // name list to drift out of sync.
+  return v;
 }
 
 function _parsePatchArgs(inner) {
@@ -123,10 +119,21 @@ function _parsePatchArgs(inner) {
 }
 
 function _extractColor(text) {
-  const low = text.toLowerCase();
-  for (const name of Object.keys(COLOR_NAMES)) if (low.includes(name)) return name;
-  const hex = text.match(/#([0-9a-f]{6})/i);
-  return hex ? hex[0] : null;
+  // Capture whatever color token the model wrote; the renderer parses it.
+  // Precedence: hsv(...) / #hex / rgb(...) / a color-name word (letters,
+  // optional internal hyphen — covers "vermillion", "sky-blue", etc.).
+  let m = text.match(/hsv\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*\)/i)
+    || text.match(/#[0-9a-f]{6}/i)
+    || text.match(/rgb\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*\)/i)
+    || text.match(/\b([a-z]+(?:-[a-z]+)*)\s+(?:colour|color)\b/i) // "sky blue color"
+    || text.match(/\b([a-z]+(?:-[a-z]+)*)\b/i);
+  if (!m) return null;
+  // For the bare-word / "X color" match, return just the color word (strip a
+  // trailing "color"/"colour" so we hand the renderer "vermillion", not
+  // "vermillion color").
+  let tok = m[0].trim().replace(/\s+(colour|color)$/i, "");
+  if (/^(the|a|an|roof|columns|temple|mesh|object|it|that|this|model|building|wall|base|structure)$/i.test(tok)) return null;
+  return tok;
 }
 
 function _extractObjectId(text) {
@@ -304,6 +311,7 @@ export async function submitIntent(text) {
   if (isBuild) {
     await buildScene(intent);
     appendTranscript("build", `build "${intent}" → ${state.currentScene ? state.currentScene.objects.length : 0} object(s)${state.currentScene && state.currentScene.scene_id ? ` [${state.currentScene.scene_id}]` : ""}`, "octanex-mcp");
+    dom.cmd.value = "";
   }
   // Agentic model query (routed through the Hermes API / proxy). The reply
   // renders in the response line; the turn is logged to the transcript. The
@@ -324,12 +332,14 @@ export async function submitIntent(text) {
     const res = await chatP;
     if (!res.ok) {
       showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
+      dom.cmd.value = "";
       return;
     }
     const cleaned = await applyReplyPatches(res.reply || "(empty)");
     showResponse(cleaned, res.model);
     appendTranscript("user", raw, null);
     appendTranscript("model", cleaned, res.model);
+    dom.cmd.value = ""; // auto-clear prompt after a successful turn
   } catch (e) {
     if (e && e.name === "AbortError") return;
     showResponse("model error — is `hermes proxy` running?", model, true);

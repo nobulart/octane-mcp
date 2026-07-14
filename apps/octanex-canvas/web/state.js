@@ -94,7 +94,15 @@ const STAGE_LABEL = {
 async function pollPreview() {
   if (state.viewMode === "live") {
     dom.preview.classList.remove("visible");
-    dom.placeholder.style.display = "";
+    // A live WebGL scene owns the viewport — the "no frame yet" overlay only
+    // makes sense when there is no scene at all. Hide it once a scene is loaded.
+    if (state.currentScene) {
+      dom.placeholder.style.display = "none";
+      dom.placeholder.textContent = "";
+    } else {
+      dom.placeholder.style.display = "";
+      dom.placeholder.textContent = "type an intent, or open ⌘K to load a recipe";
+    }
     return;
   }
   const url = `${GW}/preview?ts=${Date.now()}`;

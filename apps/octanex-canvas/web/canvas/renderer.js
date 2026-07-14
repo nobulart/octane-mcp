@@ -16,6 +16,52 @@ const OBJECT_TYPES = new Set([
   "polyline", "points", "arrow", "text_label",
 ]);
 
+// Curated color names beyond the CSS standard set that THREE.Color knows
+// (vermillion, ochre, sepia, … are NOT CSS keywords, so THREE would silently
+// yield black). THRE.Color remains the primary parser for hex / rgb() / hsl()
+// and the 140 standard CSS names; this map fills the gaps. Keep it additive.
+const EXTRA_COLORS = {
+  vermillion: "#e34234", vermilion: "#e34234",
+  ochre: "#cc7722", ochr: "#cc7722",
+  sepia: "#704214", sienna: "#a0522d",
+  crimson: "#dc143c", scarlet: "#ff2400",
+  teal: "#008080", turquoise: "#40e0d0", aquamarine: "#7fffd4",
+  lavender: "#b57edc", lilac: "#c8a2c8", mauve: "#e0b0ff",
+  maroon: "#800000", burgundy: "#800020",
+  navy: "#000080", cobalt: "#0047ab", azure: "#007fff", cerulean: "#2a52be",
+  olive: "#808000", khaki: "#c3b091", beige: "#f5f5dc", tan: "#d2b48c",
+  charcoal: "#36454f", slate: "#708090", silver: "#c0c0c0", gold: "#ffd700",
+  salmon: "#fa8072", coral: "#ff7f50", peach: "#ffcba4", plum: "#dda0dd",
+  mint: "#98fb98", forest: "#228b22", emerald: "#50c878", jade: "#00a86b",
+  ivory: "#fffff0", cream: "#fffdd0", rose: "#ff007f", ruby: "#e0115f",
+};
+
+// Authoritative color parser: hex / rgb()/rgba() / hsl()/hsla() / standard CSS
+// names via THREE.Color, then the EXTRA_COLORS gap-filler. Returns a hex
+// string, or null if the token is unparseable (caller should skip the change).
+function _parseColorToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const t = token.trim();
+  // hsv(h,s,v) -> convert to hsl (THREE supports hsl natively)
+  const hsv = t.match(/^hsv\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)$/i);
+  if (hsv) {
+    const h = parseFloat(hsv[1]) / 360;
+    const s = parseFloat(hsv[2]);
+    const v = parseFloat(hsv[3]);
+    const l = v * (1 - s / 2);
+    const sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
+    return "#" + new THREE.Color().setHSL(((h % 1) + 1) % 1, sl, l).getHexString();
+  }
+  const low = t.toLowerCase();
+  if (EXTRA_COLORS[low]) return EXTRA_COLORS[low];
+  try {
+    const c = new THREE.Color(t); // hex, rgb(), hsl(), or a known CSS name
+    if (c.getHexString() !== "000000" || low === "black") return "#" + c.getHexString();
+    // THREE yielded black on an unknown name — fall through to null
+  } catch (_) {}
+  return null;
+}
+
 export class CanvasRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -31,6 +77,14 @@ export class CanvasRenderer {
     this.objectNodes = new Map(); // id -> { node, meta }
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+
+    // Color-transition state (foundation for future material FX): we remember
+    // the last displayed color per material id and tween to the new one over
+    // TRANSITION_MS whenever a scene patch/rebuild changes it.
+    this._prevColors = new Map();   // materialId -> THREE.Color (last shown)
+    this._colorTweens = [];         // { mat, from, to, t, dur }
+    this._clock = new THREE.Clock();
+    this.TRANSITION_MS = 500;
 
     // Orbit state
     this.target = new THREE.Vector3(0, 0, 0);
@@ -55,10 +109,19 @@ export class CanvasRenderer {
   // ---- public API -------------------------------------------------------- //
 
   setScene(sceneJson) {
+    // Snapshot the colors currently on screen BEFORE disposing, so a patch can
+    // tween from the old color to the new one (smooth 0.5s transition).
+    this._prevColors.clear();
+    for (const [id, mat] of this.materialCache) {
+      this._prevColors.set(id, mat.color.clone());
+    }
     this._disposeScene();
     this._currentScene = sceneJson || {};
     this._applyEnvironment(this._currentScene.environment || {});
     this._buildObjects(this._currentScene.objects || []);
+    // Drop any tweens whose material id is no longer present.
+    const live = new Set((this._currentScene.materials || []).map((m) => m.id));
+    this._colorTweens = this._colorTweens.filter((tw) => live.has(tw.matId));
     // Frame the loaded model: center it and crop-zoom so it fills ~75% of the
     // view on its LARGER dimension (overflow is clipped, never squished — this
     // keeps aspect correct in the narrow split-view pane). Runs on every load
@@ -120,8 +183,9 @@ export class CanvasRenderer {
 
   _material(mat) {
     mat = mat || {};
+    const hex = _parseColorToken(mat.color) || "#cccccc";
     const m = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(mat.color || "#cccccc"),
+      color: new THREE.Color(hex),
       roughness: mat.roughness ?? 0.6,
       metalness: mat.metalness ?? 0.0,
       transparent: (mat.opacity ?? 1.0) < 1.0,
@@ -135,6 +199,16 @@ export class CanvasRenderer {
     if (mat.emissive) {
       m.emissive = new THREE.Color(mat.emissive);
       m.emissiveIntensity = mat.emissiveIntensity ?? 1.5;
+    }
+    // Smooth color transition: if this material id had a different on-screen
+    // color, start at the old one and tween to the new target over 0.5s.
+    const target = m.color.clone();
+    if (mat.id && this._prevColors.has(mat.id)) {
+      const from = this._prevColors.get(mat.id);
+      if (!from.equals(target)) {
+        m.color.copy(from);
+        this._colorTweens.push({ matId: mat.id, mat: m, from, to: target, t: 0, dur: this.TRANSITION_MS });
+      }
     }
     return m;
   }
@@ -335,7 +409,18 @@ export class CanvasRenderer {
   // ---- loop / resize ----------------------------------------------------- //
 
   _update() {
-    // Hook for future animation; nothing time-dependent yet.
+    // Advance active color tweens (foundation for material FX). dt in ms.
+    if (this._colorTweens.length) {
+      const dt = this._clock.getDelta() * 1000;
+      for (const tw of this._colorTweens) {
+        tw.t = Math.min(tw.dur, tw.t + dt);
+        const k = tw.t / tw.dur;
+        tw.mat.color.copy(tw.from).lerp(tw.to, k);
+      }
+      this._colorTweens = this._colorTweens.filter((tw) => tw.t < tw.dur);
+    } else {
+      this._clock.getDelta(); // keep the clock current when idle
+    }
   }
 
   _resize() {
