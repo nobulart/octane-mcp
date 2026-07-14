@@ -571,8 +571,14 @@ def create_primitive_obj(spec: dict[str, Any], *, scene_id: str = "scene", works
     object_id = str(spec.get("id") or spec.get("name") or kind)
     safe = _safe_name(f"{scene_id}_{object_id}")
     transform = spec.get("transform") if isinstance(spec.get("transform"), dict) else {}
-    translate = _vector3(transform.get("translate"), (0.0, 0.0, 0.0))
-    scale = _vector3(transform.get("scale"), (1.0, 1.0, 1.0))
+    # Honor top-level position/scale (what the WebGL renderer's addObject uses)
+    # as well as nested transform.translate/scale, so the Octane mesh lands in
+    # the same place as the live canvas mesh. Without this, a scene object with
+    # `position` but no `transform` is placed at the origin in Octane while the
+    # WebGL viewport shows it offset -> the inherited camera aims at the wrong
+    # spot. transform takes precedence when both are present.
+    translate = _vector3(transform.get("translate") or spec.get("position"), (0.0, 0.0, 0.0))
+    scale = _vector3(transform.get("scale") or spec.get("scale"), (1.0, 1.0, 1.0))
     material = str(spec.get("material") or "default")
     b = ObjBuilder(safe)
 

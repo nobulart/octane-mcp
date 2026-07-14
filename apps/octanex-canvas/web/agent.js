@@ -665,7 +665,10 @@ export async function renderToOctane() {
   let camOverride = null;
   if (state.renderer && typeof state.renderer.getCameraState === "function") {
     const cam = state.renderer.getCameraState();
-    if (cam && cam.position && cam.target) camOverride = cam;
+    // Both Three.js and Octane are Y-up (Octane up = [0,1,0]); FOV is vertical
+    // in both. So position/target/fov copy 1:1. Pin up explicitly so the
+    // Octane camera never inherits a stray default orientation.
+    if (cam && cam.position && cam.target) camOverride = { ...cam, up: [0, 1, 0] };
   }
   // 2) Hand off the live scene to the Octane pipeline (flush + queue + drain).
   dom.status.className = "state-queued";
