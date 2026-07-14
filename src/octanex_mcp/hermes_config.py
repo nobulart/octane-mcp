@@ -49,6 +49,28 @@ def _load_json(path: Path) -> Any:
         return None
 
 
+def _hermes_proxy_reachable(timeout: float = 1.5) -> bool:
+    """Best-effort check that the Hermes proxy (HERMES_PROXY_URL host:port) is up.
+
+    The canvas routes every cloud/Nous model through that proxy, so reachability
+    is the right gate for whether cloud models are selectable. We probe the raw
+    host:port (no HTTP round-trip) to stay cheap and side-effect free.
+    """
+    url = os.environ.get("HERMES_PROXY_URL", "http://127.0.0.1:8645/v1/chat/completions")
+    host = url.split("://", 1)[-1].split("/", 1)[0]
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+    else:
+        port = 80
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def _cloud_catalog_options() -> List[Dict[str, Any]]:
     """Merge Hermes's curated cloud catalog + live provider caches.
 
@@ -136,8 +158,14 @@ def list_models(path: Optional[Path] = None) -> Dict[str, Any]:
                         "selectable": True,
                     },
                 )
-    # Cloud catalog options (curated + live caches).
+    # Cloud catalog options (curated + live caches). The canvas routes every
+    # cloud/Nous model through HERMES_PROXY_URL, so as long as that proxy is
+    # reachable the model is usable — don't gate on a per-provider key check
+    # (the proxy owns auth). Mark selectable accordingly.
+    proxy_ok = _hermes_proxy_reachable()
     for opt in _cloud_catalog_options():
+        opt = dict(opt)
+        opt["selectable"] = bool(proxy_ok)
         seen.setdefault(opt["id"], opt)
     # Always include the current default even if it isn't enumerated anywhere.
     if current and current not in seen:

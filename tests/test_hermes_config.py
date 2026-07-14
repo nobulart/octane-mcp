@@ -82,11 +82,28 @@ class TestListModels(unittest.TestCase):
         by_id = {o["id"]: o for o in res["options"]}
         cloud = by_id["anthropic/claude-fable-5"]
         self.assertTrue(cloud["cloud"])
-        # Nous Portal is authed in this harness -> selectable; openrouter gated.
-        self.assertTrue(by_id["qwen3.6:35b"]["cloud"] is False)
-        self.assertTrue(by_id.get("openai/gpt-5.6-sol", {}).get("selectable") is False)
         # Local models are always selectable.
+        self.assertTrue(by_id["qwen3.6:35b"]["cloud"] is False)
         self.assertTrue(by_id["qwen3.6:35b"]["selectable"] is True)
+        # Cloud selectability is now gated on Hermes proxy reachability, not a
+        # per-provider key assumption. In the test env the proxy is down, so
+        # cloud models are disabled; when the proxy is up they're all usable.
+        self.assertEqual(by_id["openai/gpt-5.6-sol"]["selectable"], hc._hermes_proxy_reachable())
+
+    def test_cloud_selectable_when_proxy_up(self):
+        # Simulate the Hermes proxy being reachable: every cloud model becomes
+        # selectable (the canvas routes all cloud/Nous models through it).
+        orig = hc._hermes_proxy_reachable
+        hc._hermes_proxy_reachable = lambda *a, **k: True
+        try:
+            res = hc.list_models(self.path)
+        finally:
+            hc._hermes_proxy_reachable = orig
+        disabled = [o["id"] for o in res["options"] if o.get("selectable") is False]
+        self.assertEqual(disabled, [], "all models selectable when proxy reachable")
+        cloud = [o for o in res["options"] if o.get("cloud")]
+        self.assertTrue(cloud, "has cloud models")
+        self.assertTrue(all(o["selectable"] for o in cloud))
 
     def test_current_default_included(self):
         res = hc.list_models(self.path)
