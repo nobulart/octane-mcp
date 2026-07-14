@@ -447,6 +447,11 @@ _CONTENT_TYPES = {
 
 
 class Handler(BaseHTTPRequestHandler):
+    # HTTP/1.1 + explicit Content-Length so fetch-hooking browser extensions /
+    # intercepting proxies can't clip the stream and produce a truncated
+    # (SyntaxError) module load on localhost.
+    protocol_version = "HTTP/1.1"
+
     def _send_json(self, obj: Any, code: int = 200) -> None:
         body = json.dumps(_to_jsonable(obj), indent=2).encode("utf-8")
         self.send_response(code)
@@ -780,8 +785,11 @@ class Handler(BaseHTTPRequestHandler):
         ctype = _CONTENT_TYPES.get(target.suffix.lstrip("."), "application/octet-stream")
         # No-cache: the canvas is a live dev bundle; never let the browser
         # serve a stale app.js/app.css and silently run old key handlers.
+        # Connection: close forces a clean EOF so a fetch-hooking extension
+        # can't hold the stream open and clip the module (truncated SyntaxError).
         self._send_bytes(target.read_bytes(), ctype,
-                         extra_headers={"Cache-Control": "no-store"})
+                         extra_headers={"Cache-Control": "no-store",
+                                        "Connection": "close"})
 
     def log_message(self, *args: Any) -> None:  # quiet
         return
