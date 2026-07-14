@@ -170,256 +170,42 @@
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_table",
-        "group_index": 1
+        "material_name": "mat_table"
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_saucer",
-        "group_index": 2
+        "material_name": "mat_saucer"
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_saucer",
-        "group_index": 3
+        "material_name": "mat_cup"
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_cup",
-        "group_index": 4
+        "material_name": "mat_brew"
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_cup",
-        "group_index": 5
+        "material_name": "mat_froth"
       }
     },
     {
       "op": "assign_material",
       "payload": {
         "object_name": "coffee_cup",
-        "material_name": "mat_cup",
-        "group_index": 6
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_cup",
-        "group_index": 7
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_cup",
-        "group_index": 8
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_brew",
-        "group_index": 9
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_froth",
-        "group_index": 10
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 11
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 12
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 13
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 14
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 15
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 16
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 17
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 18
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 19
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 20
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 21
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 22
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 23
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 24
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 25
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 26
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 27
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 28
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 29
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 30
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 31
-      }
-    },
-    {
-      "op": "assign_material",
-      "payload": {
-        "object_name": "coffee_cup",
-        "material_name": "mat_bubble",
-        "group_index": 32
+        "material_name": "mat_bubble"
       }
     },
     {

@@ -425,9 +425,14 @@ def command_sequence(groups_full, *, asset_path, preview_path):
     unique = list(dict.fromkeys(groups_full))
     for name in unique:
         commands.append({"op": "create_material", "payload": {"name": name, **MATERIALS[name]}})
-    for idx, name in enumerate(groups_full, start=1):
+    # One assign_material per UNIQUE material: the mesh exposes one material pin
+    # per unique usemtl name (mat_table, mat_brew, ...) — NOT per OBJ group. The
+    # pin name equals the material name, so the bridge matches by name. (Queueing
+    # one per group would send 32 calls; only 6 pins exist, and the per-call
+    # render-restart also thrashed the engine before save_preview could write.)
+    for name in unique:
         commands.append({"op": "assign_material", "payload": {
-            "object_name": OBJECT_NAME, "material_name": name, "group_index": idx}})
+            "object_name": OBJECT_NAME, "material_name": name}})
     commands.extend([
         {"op": "set_camera", "payload": cam},
         {"op": "set_lighting", "payload": {"preset": "soft_studio"}},

@@ -510,15 +510,18 @@ end
 -- material pins are wired to the same material. This enables a single combined
 -- OBJ with multiple usemtl groups (e.g. red cube group + green sphere group)
 -- to receive distinct materials.
-local function connect_material_to_mesh_pins(mesh, mat, group_index)
+local function connect_material_to_mesh_pins(mesh, mat, group_index, mat_name_hint)
     local connected = false
     if not mesh or not mat then return connected end
     local ok_count, pin_count = pcall(function() return mesh:getPinCount() end)
     if not (ok_count and pin_count) then return connected end
-    -- Each usemtl group becomes a material INPUT pin named after the group.
-    -- This build does NOT expose octane.PT_MATERIAL (the pins report type=7),
-    -- and connectTo by numeric index fails — the pin must be addressed by its
-    -- NAME (e.g. "earth_ice"). Record both index and name; connect by name.
+    -- Each usemtl group becomes a material INPUT pin named after the material
+    -- (e.g. "mat_brew"). The mesh exposes ONE pin per UNIQUE material, not per
+    -- OBJ group. The OBJ group sequence number (1..32 for a cup with many
+    -- bubble groups) is NOT the pin index -> using it yields `pin nil` and
+    -- silently drops the material. So: match by MATERIAL NAME, which is both
+    -- the command's material_name and the mesh pin name. NOTE: mat:getName()
+    -- returns nil on this build, so we rely on the command-provided hint.
     local material_pins = {}  -- list of {index, name}
     local NON_MATERIAL = {
         position = true, rotation = true, scale = true, transform = true,
@@ -540,18 +543,27 @@ local function connect_material_to_mesh_pins(mesh, mat, group_index)
             end
         end
     end
-    local n_pins = #material_pins
-    if group_index then
-        local target = tonumber(group_index)
-        local p = material_pins[target]
-        append_log("material group #" .. tostring(target) .. " -> pin " .. tostring(p and p.name) .. " (of " .. tostring(n_pins) .. " material pins)")
-        if p and p.name then
-            connected = connect_to(mesh, p.name, mat) or connected
-        end
-    else
+    -- Resolve target: prefer a pin whose NAME equals the material name hint.
+    local target = nil
+    if mat_name_hint then
         for _, p in ipairs(material_pins) do
-            if p.name then connected = connect_to(mesh, p.name, mat) or connected end
+            if p.name == mat_name_hint then target = p; break end
         end
+    end
+    -- Fallbacks: explicit group_index (if it lands on a real pin), or the lone
+    -- material pin when exactly one exists.
+    if not target and group_index then
+        local t = tonumber(group_index)
+        if t and material_pins[t] then target = material_pins[t] end
+    end
+    if not target and #material_pins == 1 then target = material_pins[1] end
+    if target and target.name then
+        append_log("material " .. tostring(mat_name_hint) .. " -> pin " .. tostring(target.name)
+            .. " (of " .. tostring(#material_pins) .. " material pins)")
+        connected = connect_to(mesh, target.name, mat) or connected
+    else
+        append_log("material " .. tostring(mat_name_hint) .. " -> NO matching pin (of "
+            .. tostring(#material_pins) .. " material pins)")
     end
     return connected
 end
@@ -1006,11 +1018,10 @@ local function handle_assign_material(cmd)
             append_log("MESH_PINS(" .. tostring(pc) .. "): " .. table.concat(parts, " | "))
         end
     end)
-    local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
+    local connected = connect_material_to_mesh_pins(mesh, mat, group_index, cmd.material_name)
     if connected then
-        local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
-        append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
-        return true, "assigned material " .. tostring(cmd.material_name) .. (group_index and (" to group #" .. tostring(group_index)) or "")
+        append_log("post-material wired material=" .. tostring(cmd.material_name) .. " (render restart deferred to save_preview)")
+        return true, "assigned material " .. tostring(cmd.material_name)
     end
     return true, "material exists; no known material pin accepted on mesh"
 end
