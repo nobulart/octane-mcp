@@ -392,7 +392,7 @@ def command_schema() -> dict[str, Any]:
             "ping": {"fields": {"message": {"type": "string", "required": False}}},
             "open_or_create_project": {"fields": {"name": {"type": "string", "required": False}}},
             "import_geometry": {"fields": {"path": {"type": "safe path", "required": True}, "format": {"type": "string", "required": False}, "name": {"type": "string", "required": False}}},
-            "create_material": {"fields": {"name": {"type": "string", "required": True}, "kind": {"type": "string", "required": False}, "color": {"type": "number[3|4]", "min": 0, "max": 1}, "roughness": {"type": "number", "min": 0, "max": 1}, "metallic": {"type": "number", "min": 0, "max": 1}}},
+            "create_material": {"fields": {"name": {"type": "string", "required": True}, "kind": {"type": "string", "required": False}, "color": {"type": "number[3|4]", "min": 0, "max": 1}, "roughness": {"type": "number", "min": 0, "max": 1}, "metallic": {"type": "number", "min": 0, "max": 1}, "anisotropy": {"type": "number", "min": 0, "max": 1}}},
             "assign_material": {"fields": {"object_name": {"type": "string", "required": True}, "material_name": {"type": "string", "required": True}}},
             "set_camera": {"fields": {"position": {"type": "number[3]", "required": True}, "target": {"type": "number[3]", "required": True}, "fov": {"type": "number", "min": 5, "max": 120}}},
             "set_object_transform": {"fields": {"object_name": {"type": "string", "required": True}, "translation": {"type": "number[3]", "required": False}, "rotation_euler": {"type": "number[3]", "required": False}, "scale": {"type": "number[3]", "required": False}}},

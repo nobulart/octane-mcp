@@ -196,6 +196,10 @@ export class CanvasRenderer {
       // black inverted faces regardless of winding order.
       side: THREE.DoubleSide,
     });
+    // Anisotropy isn't a standard MeshStandardMaterial channel; stash it so a
+    // future MeshPhysicalMaterial swap (or the Octane handoff) can read it.
+    // The Octane bridge already consumes `anisotropy` on create_material.
+    if (mat.anisotropy != null) m.userData.anisotropy = mat.anisotropy;
     if (mat.emissive) {
       m.emissive = new THREE.Color(mat.emissive);
       m.emissiveIntensity = mat.emissiveIntensity ?? 1.5;

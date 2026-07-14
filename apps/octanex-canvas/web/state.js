@@ -40,6 +40,8 @@ export const dom = {
   transcriptClose: document.getElementById("transcript-close"),
   selChip: document.getElementById("sel-chip"),
   snapToggle: document.getElementById("snap-toggle"),
+  octaneBtn: document.getElementById("octane-render"),
+  octanePie: document.querySelector("#octane-render .ox-pie-progress"),
   tasks: document.getElementById("tasks"),
   dotFront: document.getElementById("dot-front"),
   dotBack: document.getElementById("dot-back"),
@@ -59,6 +61,7 @@ export const state = {
   contract: "",
   selectedId: null,
   activeTask: null, // { controller, el, label, kind }
+  octaneRendering: false,
 };
 
 async function callTool(tool, args = {}) {
@@ -181,5 +184,24 @@ function setViewMode(mode) {
   pollPreview();
 }
 
-export { callTool, postJSON, getJSON, escapeHtml, debugLog, pollPreview, pollStatus, setViewMode };
+// --- OctaneX render FAB: animated pie progress + button states -----------
+// The pie is an SVG ring (track + progress). `frac` in [0,1] fills it.
+export function setOctanePie(frac) {
+  if (!dom.octanePie) return;
+  // The progress ring uses pathLength="100", so the dasharray is 100 and the
+  // offset is 100*(1-frac). Fall back to the geometric circumference if a
+  // browser ignores pathLength.
+  const C = parseFloat(dom.octanePie.getAttribute("pathLength")) || parseFloat(dom.octanePie.dataset.circ || "0") || 100;
+  const f = Math.max(0, Math.min(1, frac || 0));
+  dom.octanePie.style.strokeDashoffset = String(C * (1 - f));
+}
+export function setOctaneBtn(stateName) {
+  // stateName: "idle" | "rendering" | "done" | "error"
+  const b = dom.octaneBtn;
+  if (!b) return;
+  b.dataset.state = stateName;
+  b.setAttribute("aria-busy", stateName === "rendering" ? "true" : "false");
+}
+
+export { callTool, postJSON, getJSON, escapeHtml, debugLog, pollPreview, pollStatus, setViewMode, setOctanePie, setOctaneBtn };
 

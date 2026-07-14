@@ -76,6 +76,24 @@
     <select id="model-select"></select>
   </div>
 
+  <!-- OctaneX render trigger (round FAB): inherits the live WebGL scene +
+       camera, renders via the Octane quality pipeline, shows the result in
+       the Final panel. The SVG ring is the progress pie (filled from /status). -->
+  <button id="octane-render" data-state="idle" title="Render this scene in OctaneX" aria-busy="false">
+    <svg class="ox-pie" viewBox="0 0 44 44" aria-hidden="true">
+      <circle class="ox-pie-track" cx="22" cy="22" r="20" />
+      <circle class="ox-pie-progress" cx="22" cy="22" r="20"
+              data-circ="125.66" pathLength="100"
+              transform="rotate(-90 22 22)" />
+    </svg>
+    <svg class="ox-logo" viewBox="0 0 24 24" aria-hidden="true">
+      <!-- OctaneX mark: ring (O) + X -->
+      <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.6" />
+      <path d="M7.2 7.2 L16.8 16.8 M16.8 7.2 L7.2 16.8" fill="none"
+            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    </svg>
+  </button>
+
   <script type="module" src="app.js?v=4"></script>
 </body>
 </html>

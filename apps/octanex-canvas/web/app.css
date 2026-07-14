@@ -463,7 +463,83 @@ body.focus #log-toggle { display: none !important; }
 #snap-toggle:hover { color: var(--text); border-color: var(--accent); }
 #snap-toggle[aria-pressed="true"] { color: #0b0d10; background: var(--accent); border-color: var(--accent); }
 
-/* --- Active task tray (cancellable processes) --- */
+/* --- OctaneX render FAB (round button + progress pie) --- */
+#octane-render {
+  position: fixed;
+  right: 16px;
+  bottom: 74px;
+  z-index: 22;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: radial-gradient(120% 120% at 30% 20%, #1c2a36 0%, #0e141b 75%);
+  color: #7fd4ff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(127, 212, 255, 0.0);
+  transition: transform .15s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
+}
+#octane-render:hover {
+  transform: translateY(-1px) scale(1.04);
+  color: #aee6ff;
+  border-color: #7fd4ff;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 18px rgba(127, 212, 255, 0.25);
+}
+#octane-render:active { transform: scale(0.97); }
+#octane-render .ox-logo {
+  width: 26px; height: 26px;
+  position: relative; z-index: 2;
+  filter: drop-shadow(0 0 4px rgba(127, 212, 255, 0.35));
+}
+/* progress pie ring (sits above the logo; hidden until rendering) */
+#octane-render .ox-pie {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+#octane-render .ox-pie-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-width: 3;
+}
+#octane-render .ox-pie-progress {
+  fill: none;
+  stroke: #7fd4ff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset .35s ease;
+  filter: drop-shadow(0 0 4px rgba(127, 212, 255, 0.6));
+}
+/* rendering state: show the pie, dim the logo, pulse the ring */
+#octane-render[data-state="rendering"] { color: #4a6b80; cursor: progress; }
+#octane-render[data-state="rendering"] .ox-logo { opacity: 0.35; }
+#octane-render[data-state="rendering"] .ox-pie { opacity: 1; }
+#octane-render[data-state="rendering"] .ox-pie-progress {
+  animation: ox-pie-glow 1.4s ease-in-out infinite;
+}
+@keyframes ox-pie-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(127, 212, 255, 0.4)); }
+  50% { filter: drop-shadow(0 0 8px rgba(127, 212, 255, 0.85)); }
+}
+/* done flash: brief green confirmation ring */
+#octane-render[data-state="done"] .ox-pie { opacity: 1; }
+#octane-render[data-state="done"] .ox-pie-progress { stroke: var(--green); animation: none; }
+#octane-render[data-state="error"] { color: var(--red); border-color: var(--red); }
+#octane-render[data-state="error"] .ox-pie { opacity: 1; }
+#octane-render[data-state="error"] .ox-pie-progress { stroke: var(--red); animation: none; }
+
 #tasks {
   position: fixed;
   left: 50%;

@@ -2,7 +2,7 @@
 // Imports the shared dom/state + net helpers, and exposes the agent-facing
 // functions (build, recipe load, scene-aware chat, selection, inspector,
 // model/VOX selectors, transcript). app.js wires the shell to these.
-import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml, debugLog, setViewMode } from "./state.js";
+import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml, debugLog, setViewMode, setOctanePie, setOctaneBtn } from "./state.js";
 
 // Selection -> inspector (Phase 5 first cut: editable live object).
 export function showSelection(id, meta) {
@@ -606,6 +606,100 @@ async function applyFix(action) {
   await callTool("octane_start_render", { samples: 64, width: 1280, height: 1280 });
   await callTool("octane_save_preview", { samples: 64, timeout_seconds: 12 });
   await refreshReview();
+}
+
+// --- OctaneX render FAB ------------------------------------------------------
+// Inherits the LIVE WebGL scene + camera, pushes the render to the Octane
+// quality pipeline, and shows progress on the button's pie while the Final
+// panel loads the resulting PNG. This is the user-facing trigger for the
+// canvas -> OctaneX handoff (the gateway's /canvas/to-octane does the queue +
+// drain; this only orchestrates camera inheritance + progress UI).
+let _renderWatchTimer = null;
+
+function _stopRenderWatch() {
+  if (_renderWatchTimer) { clearInterval(_renderWatchTimer); _renderWatchTimer = null; }
+}
+
+async function _renderWatch() {
+  // Poll /status until the Octane render completes, updating the pie from
+  // samples_done / samples_target. Returns when the stage leaves "rendering".
+  try {
+    const s = await (await fetch(`${GW}/status`, { cache: "no-store" })).json();
+    const stage = s.render_stage || (s.status === "failed" ? "error" : (s.status || "idle"));
+    let frac = null;
+    if (stage === "rendering" && s.samples_done != null && s.samples_target) {
+      frac = s.samples_done / s.samples_target;
+    }
+    if (frac != null) setOctanePie(frac);
+    if (stage === "ready" || stage === "error") {
+      _stopRenderWatch();
+      if (stage === "error") {
+        setOctaneBtn("error");
+        dom.status.className = "state-error";
+        dom.statusText.textContent = "Octane render failed";
+      } else {
+        setOctanePie(1);
+        setOctaneBtn("done");
+        dom.status.className = "state-ready";
+        dom.statusText.textContent = "Octane render ready";
+        appendTranscript("build", "OctaneX render complete → Final panel", "octanex-mcp");
+      }
+      // reset button to idle after a short confirmation flash
+      setTimeout(() => { setOctaneBtn("idle"); setOctanePie(0); state.octaneRendering = false; }, 1100);
+      return;
+    }
+  } catch (_) { /* gateway blip — keep watching */ }
+}
+
+export async function renderToOctane() {
+  if (state.octaneRendering) return; // ignore re-entrant clicks
+  if (!state.currentScene) {
+    dom.status.className = "state-error";
+    dom.statusText.textContent = "build a scene first";
+    return;
+  }
+  // 1) Inherit the live Three.js camera so Octane renders the user's viewpoint.
+  if (state.renderer && typeof state.renderer.getCameraState === "function") {
+    const cam = state.renderer.getCameraState();
+    if (cam && cam.position && cam.target) {
+      try {
+        await callTool("octane_set_camera", { position: cam.position, target: cam.target, fov: cam.fov || 45 });
+        debugLog("camera-inherit", cam);
+      } catch (_) { debugLog("camera-inherit", "skipped (octane_set_camera unavailable)"); }
+    }
+  }
+  // 2) Hand off the live scene to the Octane pipeline (flush + queue + drain).
+  dom.status.className = "state-queued";
+  dom.statusText.textContent = "sending scene to Octane…";
+  setOctaneBtn("rendering");
+  setOctanePie(0.02);
+  state.octaneRendering = true;
+  try {
+    const res = await postJSON("/canvas/to-octane", {});
+    if (!res.ok) {
+      _stopRenderWatch();
+      state.octaneRendering = false;
+      setOctaneBtn("error");
+      setOctanePie(0);
+      dom.status.className = "state-error";
+      dom.statusText.textContent = `Octane handoff failed: ${(res.error || "").slice(0, 60)}`;
+      return;
+    }
+    // 3) Final panel shows the result; the pie tracks the Octane render.
+    setViewMode("final");
+    dom.statusText.textContent = `Octane rendering · ${res.queued_commands} cmds`;
+    _stopRenderWatch();
+    _renderWatchTimer = setInterval(_renderWatch, 750);
+    _renderWatch(); // immediate first poll
+  } catch (e) {
+    _stopRenderWatch();
+    state.octaneRendering = false;
+    setOctaneBtn("error");
+    setOctanePie(0);
+    console.error("to-octane error", e);
+    dom.status.className = "state-error";
+    dom.statusText.textContent = "handoff error";
+  }
 }
 
 // --- ⌘K command palette ------------------------------------------------------

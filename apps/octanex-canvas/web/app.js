@@ -16,7 +16,7 @@ import {
   submitIntent, showSelection, clearSelection,
   openPalette, openInspector, snapAndSend,
   loadModels, onModelChange, loadVox, onVoxToggle,
-  loadTranscript, toggleLog,
+  loadTranscript, toggleLog, renderToOctane,
 } from "./agent.js";
 
 // Live WebGL scene (Phase 2)
@@ -105,3 +105,4 @@ if (dom.transcriptClose) dom.transcriptClose.addEventListener("click", () => {
   dom.logToggle.setAttribute("aria-pressed", "false");
 });
 if (dom.snapToggle) dom.snapToggle.addEventListener("click", snapAndSend);
+if (dom.octaneBtn) dom.octaneBtn.addEventListener("click", () => renderToOctane());
