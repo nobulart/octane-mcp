@@ -4,6 +4,14 @@
 
 export const GW = ""; // same origin (served from the gateway itself)
 
+// Dev-mode auto-detect: served from localhost/127.0.0.1 (the gateway runs
+// locally), or forced with ?dev. In dev mode the forensic debug stream renders
+// over the canvas so we can examine agent actions / model changes live.
+export const DEV_MODE =
+  /[?&]dev\b/.test(location.search) ||
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1";
+
 export const dom = {
   preview: document.getElementById("preview"),
   placeholder: document.getElementById("placeholder"),
@@ -35,6 +43,7 @@ export const dom = {
   tasks: document.getElementById("tasks"),
   dotFront: document.getElementById("dot-front"),
   dotBack: document.getElementById("dot-back"),
+  debugLog: document.getElementById("debug-log"),
 };
 
 export const state = {
@@ -74,6 +83,20 @@ async function getJSON(path) {
   const r = await fetch(`${GW}${path}`, { cache: "no-store" });
   if (!r.ok) throw new Error(`${path} -> ${r.status}`);
   return r.json();
+}
+
+function debugLog(cat, msg, payload) {
+  if (!DEV_MODE || !dom.debugLog) return;
+  const t = new Date();
+  const ts = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}:${String(t.getSeconds()).padStart(2, "0")}`;
+  const line = document.createElement("div");
+  line.className = `dbg dbg-${cat}`;
+  const p = payload !== undefined && payload !== null
+    ? ` ${typeof payload === "string" ? payload : JSON.stringify(payload)}`.slice(0, 400)
+    : "";
+  line.textContent = `${ts} ${cat.toUpperCase()} · ${msg}${p}`;
+  dom.debugLog.appendChild(line);
+  while (dom.debugLog.childElementCount > 400) dom.debugLog.removeChild(dom.debugLog.firstChild);
 }
 
 function escapeHtml(s) {
@@ -158,5 +181,5 @@ function setViewMode(mode) {
   pollPreview();
 }
 
-export { callTool, postJSON, getJSON, escapeHtml, pollPreview, pollStatus, setViewMode };
+export { callTool, postJSON, getJSON, escapeHtml, debugLog, pollPreview, pollStatus, setViewMode };
 

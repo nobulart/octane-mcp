@@ -11,9 +11,9 @@
 // Everything funnels through submitIntent() (in agent.js) so voice / drag-drop
 // can later drop payloads into the identical path.
 import { CanvasRenderer } from "./canvas/renderer.js";
-import { dom, state, setViewMode, pollPreview, pollStatus } from "./state.js";
+import { dom, state, setViewMode, pollPreview, pollStatus, DEV_MODE } from "./state.js";
 import {
-  submitIntent, showSelection,
+  submitIntent, showSelection, clearSelection,
   openPalette, openInspector, snapAndSend,
   loadModels, onModelChange, loadVox, onVoxToggle,
   loadTranscript, toggleLog,
@@ -23,6 +23,7 @@ import {
 function initRenderer() {
   state.renderer = new CanvasRenderer(dom.webgl);
   state.renderer.onPick = (id, meta) => {
+    if (!id) { clearSelection(); return; }
     state.selectedId = id;
     showSelection(id, meta);
   };
@@ -86,6 +87,7 @@ document.addEventListener("keydown", (e) => {
 // Boot
 // ---------------------------------------------------------------------------
 initRenderer();
+if (DEV_MODE && dom.debugLog) dom.debugLog.classList.remove("hidden"); // forensic stream on
 restoreContinuity();
 setViewMode("live");
 setInterval(pollPreview, 750);

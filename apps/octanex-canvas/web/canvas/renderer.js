@@ -398,6 +398,9 @@ export class CanvasRenderer {
     if (hits.length && this.onPick) {
       const id = this._idForNode(hits[0].object);
       if (id) this.onPick(id, this.objectNodes.get(id).meta);
+    } else if (this.onPick) {
+      // Clicked empty canvas (or a non-pickable node) -> clear selection.
+      this.onPick(null, null);
     }
   }
 

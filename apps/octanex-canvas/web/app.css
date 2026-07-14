@@ -273,6 +273,34 @@ body.mode-final #webgl-canvas { display: none; }
 }
 #inspector-fixes button:hover { background: rgba(78, 161, 255, 0.20); }
 
+/* --- Dev-mode forensic debug stream (left side, low-opacity overlay) --- */
+#debug-log {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 38%;
+  max-width: 460px;
+  z-index: 15;
+  padding: 10px 12px;
+  overflow-y: auto;
+  pointer-events: none;            /* never blocks canvas clicks/orbit */
+  opacity: 0.42;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#debug-log .dbg { margin-bottom: 2px; }
+#debug-log .dbg-intent   { color: var(--accent); }
+#debug-log .dbg-build,
+#debug-log .dbg-scene     { color: var(--amber); }
+#debug-log .dbg-patch     { color: var(--green); }
+#debug-log .dbg-pick      { color: #c9a0ff; }
+#debug-log .dbg-reply     { color: var(--text); }
+#debug-log .dbg-model,
+#debug-log .dbg-vox       { color: var(--amber); }
+#debug-log .dbg-vision,
+#debug-log .dbg-recipe    { color: #7fd0ff; }
+
 .hidden { display: none !important; }
 
 /* --- Agent model selector (lower-right) --- */

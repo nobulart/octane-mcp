@@ -2,11 +2,12 @@
 // Imports the shared dom/state + net helpers, and exposes the agent-facing
 // functions (build, recipe load, scene-aware chat, selection, inspector,
 // model/VOX selectors, transcript). app.js wires the shell to these.
-import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml, setViewMode } from "./state.js";
+import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml, debugLog, setViewMode } from "./state.js";
 
 // Selection -> inspector (Phase 5 first cut: editable live object).
 export function showSelection(id, meta) {
   state.selectedId = id;
+  debugLog("pick", id, meta);
   const o = (state.currentScene && state.currentScene.objects || []).find((x) => x.id === id);
   if (!o) return;
   // Selection chip in the cmd bar: click to reference @id in the next message.
@@ -68,6 +69,13 @@ export function showSelection(id, meta) {
       dom.statusText.textContent = "handoff error";
     }
   });
+}
+
+export function clearSelection() {
+  state.selectedId = null;
+  if (dom.selChip) dom.selChip.classList.add("hidden");
+  if (dom.inspector && !dom.inspector.classList.contains("hidden")) dom.inspector.classList.add("hidden");
+  debugLog("pick", "cleared");
 }
 
 async function patchSelection(changes) {
@@ -164,6 +172,7 @@ async function _runPatchCall(inner) {
       if (state.renderer) state.renderer.setScene(res.scene);
       if (objectId === state.selectedId) showSelection(objectId, null);
       appendTranscript("build", `patch ${objectId}: ${JSON.stringify(changes)}`, "canvas");
+      debugLog("patch", objectId, changes);
     }
   } catch (e) {
     console.error("reply patch failed", e);
@@ -220,6 +229,7 @@ async function buildScene(intent, plan) {
     dom.status.className = "state-ready";
     dom.statusText.textContent = heard;
     if (scene.scene_id) localStorage.setItem("octanex.lastSceneId", scene.scene_id);
+    debugLog("scene", `${scene.objects ? scene.objects.length : 0} object(s)${scene.scene_id ? " · " + scene.scene_id : ""}`);
   } catch (e) {
     if (e && e.name !== "AbortError") {
       dom.status.className = "state-error";
@@ -254,12 +264,14 @@ export function trackTask(label, kind, makeFetch) {
   const p = makeFetch(controller.signal);
   setFront(kind === "build");
   setBack(true);
+  debugLog(kind, `start · ${label}`);
   const done = () => {
     el.classList.add("done");
     setTimeout(() => el.remove(), 600);
     if (state.activeTask === task) state.activeTask = null;
     setFront(false);
     setBack(false);
+    debugLog(kind, `done · ${label}`);
   };
   p.then(done, (e) => {
     if (e && e.name === "AbortError") {
@@ -297,6 +309,8 @@ export async function submitIntent(text) {
   const isBuild = !!buildMatch;
   const intent = (buildMatch ? raw.slice(buildMatch[0].length) : raw).trim() || raw;
   const model = (dom.modelSelect && dom.modelSelect.value) || "";
+  debugLog("intent", raw, { isBuild });
+  if (isBuild) debugLog("build", intent);
   try {
     await fetch(`${GW}/intent`, {
       method: "POST",
@@ -308,10 +322,12 @@ export async function submitIntent(text) {
     dom.status.className = "state-error";
     dom.statusText.textContent = "dispatch failed";
   }
+  // Clear the prompt immediately so the user can queue more prompts while the
+  // agent works (the input is already captured in `raw` + logged to transcript).
+  dom.cmd.value = "";
   if (isBuild) {
     await buildScene(intent);
     appendTranscript("build", `build "${intent}" → ${state.currentScene ? state.currentScene.objects.length : 0} object(s)${state.currentScene && state.currentScene.scene_id ? ` [${state.currentScene.scene_id}]` : ""}`, "octanex-mcp");
-    dom.cmd.value = "";
   }
   // Agentic model query (routed through the Hermes API / proxy). The reply
   // renders in the response line; the turn is logged to the transcript. The
@@ -332,14 +348,13 @@ export async function submitIntent(text) {
     const res = await chatP;
     if (!res.ok) {
       showResponse(`model offline — ${res.error || "proxy down"}`, model, true);
-      dom.cmd.value = "";
       return;
     }
     const cleaned = await applyReplyPatches(res.reply || "(empty)");
     showResponse(cleaned, res.model);
     appendTranscript("user", raw, null);
     appendTranscript("model", cleaned, res.model);
-    dom.cmd.value = ""; // auto-clear prompt after a successful turn
+    debugLog("reply", cleaned, res.model);
   } catch (e) {
     if (e && e.name === "AbortError") return;
     showResponse("model error — is `hermes proxy` running?", model, true);
@@ -364,6 +379,7 @@ export async function snapAndSend() {
   const selection = state.selectedId || null;
   const prompt = dom.cmd.value.trim() || "Analyse this viewport. What geometry, colours, and framing do you see? Flag anything wrong (black faces, clipping, off-centre).";
   dom.cmd.value = "";
+  debugLog("vision", prompt.slice(0, 80));
   showResponse("… analysing screenshot", model);
   const { promise: snapP } = trackTask("vision · screenshot", "chat", (signal) =>
     fetch(`${GW}/canvas/chat`, {
@@ -433,6 +449,7 @@ export async function onModelChange() {
   const id = dom.modelSelect && dom.modelSelect.value;
   if (!id) return;
   localStorage.setItem("octanex.model", id);
+  debugLog("model", id);
   try {
     const res = await postJSON("/config/models", { model: id });
     if (!res.ok) {
@@ -477,6 +494,7 @@ function applyVox() {
 export async function onVoxToggle() {
   state.vox = !state.vox;
   localStorage.setItem("octanex.vox", state.vox ? "1" : "0");
+  debugLog("vox", state.vox ? "on" : "off");
   applyVox();
   try {
     const res = await postJSON("/config/vox", { enabled: state.vox });
@@ -505,13 +523,15 @@ export function loadTranscript() {
 
 function renderTranscript() {
   if (!dom.transcriptBody) return;
-  dom.transcriptBody.innerHTML = (state.transcript || [])
+  // Newest first: the latest message sits at the top, older ones pushed down.
+  const ordered = (state.transcript || []).slice().reverse();
+  dom.transcriptBody.innerHTML = ordered
     .map((t) => {
       const who = t.role === "model" ? `model · ${t.model || ""}` : t.role === "build" ? `build · ${t.model || "octanex-mcp"}` : "you";
       return `<div class="turn ${t.role}"><div class="who">${who}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
     })
     .join("");
-  dom.transcriptBody.scrollTop = dom.transcriptBody.scrollHeight;
+  dom.transcriptBody.scrollTop = 0;
 }
 
 export function appendTranscript(role, text, model) {
@@ -609,6 +629,7 @@ export async function queueRecipe(slug, label) {
   dom.palette.classList.add("hidden");
   dom.status.className = "state-live";
   dom.statusText.textContent = `loading ${slug}…`;
+  debugLog("recipe", slug);
   try {
     const res = await getJSON(`/canvas/recipe/${encodeURIComponent(slug)}`);
     if (!res.ok || !res.scene) {
