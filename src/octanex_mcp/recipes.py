@@ -384,6 +384,34 @@ def queue_recipe(slug: str, overrides: Mapping[str, Any] | None = None, *, works
     }
 
 
+def _is_regenerable_recipe(slug: str, recipe_dir: Path, data: Mapping[str, Any]) -> bool:
+    """True when a missing scene.obj is acceptable because it is regenerable.
+
+    The repo deliberately gitignores some large recipe OBJs (e.g.
+    ``earth-hemisphere``, excluded on the Mac Studio working copy for size).
+    Those recipes ship a committed generator (``scripts/gen_<slug>.py``) that
+    produces ``scene.obj`` locally, so the OBJ is NOT a checkout-required asset
+    and its absence must not fail the offline contract on a clean clone.
+
+    Judges regenerability from the presence of a committed generator plus
+    evidence the recipe references the OBJ (a top-level field or a ``scene.obj``
+    mention in scene.json).
+    """
+    gen = REPO_ROOT / "scripts" / f"gen_{slug.replace('-', '_')}.py"
+    if not gen.exists():
+        return False
+    for token in (data.get("obj_path"), data.get("path"), data.get("geometry_path")):
+        if isinstance(token, str) and token.replace("/", "").endswith("scene.obj"):
+            return True
+    try:
+        blob = (recipe_dir / "scene.json").read_text(encoding="utf-8")
+        if "scene.obj" in blob:
+            return True
+    except OSError:
+        pass
+    return False
+
+
 def validate_recipe_library(recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:
     """Validate recipe files, metadata, assets, and command payloads."""
 
@@ -395,9 +423,16 @@ def validate_recipe_library(recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]
             meta = _metadata(recipe_dir, data)
             if meta["slug"] != recipe_dir.name:
                 errors.append("slug should match recipe directory name")
-            for filename in ("README.md", "scene.obj", "scene.json"):
-                if not (recipe_dir / filename).exists():
-                    errors.append(f"missing {filename}")
+            # scene.obj: a missing OBJ is a hard error UNLESS the recipe is
+            # regenerable (large OBJ gitignored with a committed generator —
+            # e.g. earth-hemisphere). In that case the contract still holds on a
+            # clean checkout without committing the asset, so it is not an error.
+            if not (recipe_dir / "scene.obj").exists() and not _is_regenerable_recipe(meta["slug"], recipe_dir, data):
+                errors.append("missing scene.obj")
+            if not (recipe_dir / "README.md").exists():
+                errors.append("missing README.md")
+            if not (recipe_dir / "scene.json").exists():
+                errors.append("missing scene.json")
             if not meta["preview_exists"]:
                 errors.append("missing preview.png, photoreal-preview.png, or octane-preview.png")
             commands = _resolved_commands(data, repo_root=recipes_root.parents[1])

@@ -42,6 +42,7 @@ from octanex_mcp.config import resolve_config
 from octanex_mcp.recipes import (
     RECIPES_ROOT,
     _find_recipe_dir,
+    _is_regenerable_recipe,
     _read_scene_json,
     _resolved_commands,
 )
@@ -128,7 +129,14 @@ def _check_contract(slug: str, recipe_dir: Path, data: Mapping[str, Any]) -> tup
     obj_path: Path | None = None
 
     if not (recipe_dir / "scene.obj").exists():
-        errors.append("missing scene.obj")
+        if _is_regenerable_recipe(slug, recipe_dir, data):
+            # Regenerable (gitignored large OBJ with a committed generator):
+            # acceptable on a clean checkout — flag as a warning so the recipe
+            # still passes the offline contract without committing the asset.
+            warnings.append("missing scene.obj (regenerable via scripts/gen_"
+                            f"{slug.replace('-', '_')}.py; not checkout-required)")
+        else:
+            errors.append("missing scene.obj")
     else:
         obj_path = recipe_dir / "scene.obj"
 

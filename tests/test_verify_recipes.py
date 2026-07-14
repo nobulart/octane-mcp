@@ -40,14 +40,16 @@ class TestRecipeContractOffline(TestCase):
         self.assertTrue(any("pitfall" in w for w in warnings), f"expected pitfall warning, got: {warnings}")
 
     def test_missing_obj_fails_contract(self):
-        # A recipe dir without scene.obj must fail the contract.
+        # A recipe dir without scene.obj and with NO committed generator must
+        # fail the contract (regenerable recipes are lenient, so pick one that
+        # is not regenerable — ancient-temple has a tracked OBJ but no gen_*.py).
         import tempfile
 
-        data = json.loads((RECIPES / "math-surface" / "scene.json").read_text())
+        data = json.loads((RECIPES / "ancient-temple" / "scene.json").read_text())
         with tempfile.TemporaryDirectory() as td:
             td_path = Path(td)
             (td_path / "scene.json").write_text(json.dumps(data))
-            ok, errors, warnings, _ = _check_contract("math-surface", td_path, data)
+            ok, errors, warnings, _ = _check_contract("ancient-temple", td_path, data)
             self.assertFalse(ok)
             self.assertTrue(any("scene.obj" in e for e in errors), f"expected missing scene.obj error, got: {errors}")
 
@@ -55,13 +57,19 @@ class TestRecipeContractOffline(TestCase):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
         self.assertEqual(report["total"], 32)
-        # 31/32 recipe dirs ship a real reference preview and pass the offline
-        # contract. `earth-moon-space` is the remaining intentional exception
-        # until it receives a checked-in native preview.
+        # 31/32 recipe dirs pass the offline contract. `earth-moon-space` is the
+        # remaining intentional exception (no checked-in preview). `earth-hemisphere`
+        # is regenerable (large OBJ gitignored for size; rebuilt via the committed
+        # scripts/gen_earth_hemisphere.py) and is therefore accepted with a warning,
+        # not a contract failure — so the suite stays green on a clean checkout.
         self.assertEqual(report["contract_ok"], 31, report)
         self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, ["earth-moon-space"], report)
+        # The regenerable recipe must still warn (not silently pass cleanly).
+        hemi = next(r for r in report["recipes"] if r["slug"] == "earth-hemisphere")
+        self.assertTrue(hemi["contract_ok"], report)
+        self.assertTrue(any("regenerable" in w for w in hemi["contract_warnings"]), report)
 
     def test_verify_recipe_library_single_slug(self):
         report = verify_recipe_library(dry_run=True, slug="data-bars")
