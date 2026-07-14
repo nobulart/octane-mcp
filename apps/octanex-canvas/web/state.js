@@ -81,4 +81,74 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-export { callTool, postJSON, getJSON, escapeHtml };
+// --- View modes + status polling (shared; imported by app.js + agent.js) ----
+const STAGE_LABEL = {
+  queued: ["queued", "state-queued"],
+  processing: ["processing", "state-queued"],
+  rendering: ["rendering", "state-render"],
+  review: ["reviewing", "state-render"],
+  ready: ["ready", "state-ready"],
+  error: ["error", "state-error"],
+};
+
+async function pollPreview() {
+  if (state.viewMode === "live") {
+    dom.preview.classList.remove("visible");
+    dom.placeholder.style.display = "";
+    return;
+  }
+  const url = `${GW}/preview?ts=${Date.now()}`;
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    if (r.ok) {
+      dom.preview.src = url;
+      dom.preview.classList.add("visible");
+      dom.preview.classList.toggle("final-mode", state.viewMode === "final");
+      dom.placeholder.style.display = "none";
+    } else {
+      dom.preview.classList.remove("visible");
+      dom.placeholder.style.display = "";
+      dom.placeholder.textContent = "no Octane frame yet — build or queue a recipe, or switch to Live";
+    }
+  } catch (_) {
+    /* gateway down — leave last frame */
+  }
+}
+
+async function pollStatus() {
+  try {
+    const s = await (await fetch(`${GW}/status`, { cache: "no-store" })).json();
+    state.lastStatusAt = Date.now();
+    const stage = s.render_stage || (s.status === "failed" ? "error" : (s.status || "idle"));
+    const [label, cls] = STAGE_LABEL[stage] || ["idle", "state-idle"];
+    let text = label;
+    if (stage === "rendering" && s.samples_done && s.samples_target) {
+      const pct = Math.round((s.samples_done / s.samples_target) * 100);
+      text = `rendering ${pct}%`;
+    } else if (s.last_event) {
+      text = `${label} · ${s.last_event}`.slice(0, 80);
+    }
+    // Once a live WebGL scene exists, the canvas owns the status text. Only let
+    // Octane status through when it is actively doing something.
+    const octaneActive = ["queued", "processing", "rendering", "review", "error"].includes(stage);
+    if (state.currentScene && !octaneActive) return;
+    dom.status.className = cls;
+    dom.statusText.textContent = text;
+  } catch (_) {
+    if (state.lastStatusAt && Date.now() - state.lastStatusAt > 15000 && !state.currentScene) {
+      dom.status.className = "state-error";
+      dom.statusText.textContent = "stalled";
+    }
+  }
+}
+
+function setViewMode(mode) {
+  state.viewMode = mode;
+  document.body.classList.remove("mode-live", "mode-final", "mode-split");
+  document.body.classList.add(`mode-${mode}`);
+  dom.viewmodes.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  pollPreview();
+}
+
+export { callTool, postJSON, getJSON, escapeHtml, pollPreview, pollStatus, setViewMode };
+

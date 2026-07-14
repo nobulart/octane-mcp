@@ -2,7 +2,7 @@
 // Imports the shared dom/state + net helpers, and exposes the agent-facing
 // functions (build, recipe load, scene-aware chat, selection, inspector,
 // model/VOX selectors, transcript). app.js wires the shell to these.
-import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml } from "./state.js";
+import { GW, dom, state, callTool, postJSON, getJSON, escapeHtml, setViewMode } from "./state.js";
 
 // Selection -> inspector (Phase 5 first cut: editable live object).
 export function showSelection(id, meta) {
@@ -84,9 +84,6 @@ async function patchSelection(changes) {
     console.error("patch error", e);
   }
 }
-
-// Imported lazily to avoid a cycle at module init.
-import { setViewMode } from "./app.js";
 
 async function buildScene(intent, plan) {
   dom.status.className = "state-queued";

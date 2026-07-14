@@ -11,7 +11,7 @@
 // Everything funnels through submitIntent() (in agent.js) so voice / drag-drop
 // can later drop payloads into the identical path.
 import { CanvasRenderer } from "./canvas/renderer.js";
-import { dom, state } from "./state.js";
+import { dom, state, setViewMode, pollPreview, pollStatus } from "./state.js";
 import {
   submitIntent, showSelection,
   openPalette, openInspector, snapAndSend,
@@ -27,73 +27,6 @@ function initRenderer() {
     showSelection(id, meta);
   };
   state.renderer.start();
-}
-
-// ---------------------------------------------------------------------------
-// Preview polling (Octane quality tier)
-// ---------------------------------------------------------------------------
-async function pollPreview() {
-  if (state.viewMode === "live") {
-    dom.preview.classList.remove("visible");
-    dom.placeholder.style.display = "";
-    return;
-  }
-  const url = `${""}/preview?ts=${Date.now()}`;
-  try {
-    const r = await fetch(url, { cache: "no-store" });
-    if (r.ok) {
-      dom.preview.src = url;
-      dom.preview.classList.add("visible");
-      dom.preview.classList.toggle("final-mode", state.viewMode === "final");
-      dom.placeholder.style.display = "none";
-    } else {
-      dom.preview.classList.remove("visible");
-      dom.placeholder.style.display = "";
-      dom.placeholder.textContent = "no Octane frame yet — build or queue a recipe, or switch to Live";
-    }
-  } catch (_) {
-    /* gateway down — leave last frame */
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Status pill + truthful stage mapping
-// ---------------------------------------------------------------------------
-const STAGE_LABEL = {
-  queued: ["queued", "state-queued"],
-  processing: ["processing", "state-queued"],
-  rendering: ["rendering", "state-render"],
-  review: ["reviewing", "state-render"],
-  ready: ["ready", "state-ready"],
-  error: ["error", "state-error"],
-};
-
-async function pollStatus() {
-  try {
-    const s = await (await fetch(`${""}/status`, { cache: "no-store" })).json();
-    state.lastStatusAt = Date.now();
-    const stage = s.render_stage || (s.status === "failed" ? "error" : (s.status || "idle"));
-    const [label, cls] = STAGE_LABEL[stage] || ["idle", "state-idle"];
-    let text = label;
-    if (stage === "rendering" && s.samples_done && s.samples_target) {
-      const pct = Math.round((s.samples_done / s.samples_target) * 100);
-      text = `rendering ${pct}%`;
-    } else if (s.last_event) {
-      text = `${label} · ${s.last_event}`.slice(0, 80);
-    }
-    // Once a live WebGL scene exists, the canvas owns the status text (it shows
-    // the interpreted intent). Only let Octane status through when it is actively
-    // doing something (rendering / queued / error).
-    const octaneActive = ["queued", "processing", "rendering", "review", "error"].includes(stage);
-    if (state.currentScene && !octaneActive) return;
-    dom.status.className = cls;
-    dom.statusText.textContent = text;
-  } catch (_) {
-    if (state.lastStatusAt && Date.now() - state.lastStatusAt > 15000 && !state.currentScene) {
-      dom.status.className = "state-error";
-      dom.statusText.textContent = "stalled";
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
