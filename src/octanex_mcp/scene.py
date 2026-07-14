@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Sequence
 # octane_patch_scene is loaded lazily via __getattr__
 from .bridge import Workspace, write_command
 from .schema import SCHEMA_VERSION, validate_command
-from .visuals import create_primitive_obj
+from .visuals import create_primitive_obj, create_inline_mesh_obj
 
 if TYPE_CHECKING:
     from .bridge import octane_patch_scene as octane_patch_scene
@@ -261,6 +261,14 @@ def build_scene_commands(plan: Mapping[str, Any], workspace: Workspace = Workspa
         object_name = namespaced(scene_id, object_id)
         if obj_type in _PRIMITIVE_TYPES:
             asset = create_primitive_obj(dict(obj), scene_id=scene_id, workspace=workspace)
+            obj["path"] = asset["path"]
+            obj["format"] = asset["format"]
+            obj["bounds"] = asset["bounds"]
+        elif obj_type == "mesh" and isinstance(obj.get("geometry"), Mapping) and obj["geometry"].get("positions"):
+            # Recipe-derived canvas meshes carry inline triangle geometry and no
+            # OBJ path. Synthesize one so import_geometry can load it (the Octane
+            # handoff can only import from a file, not raw vertex arrays).
+            asset = create_inline_mesh_obj(dict(obj), scene_id=scene_id, workspace=workspace)
             obj["path"] = asset["path"]
             obj["format"] = asset["format"]
             obj["bounds"] = asset["bounds"]

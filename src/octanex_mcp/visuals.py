@@ -83,6 +83,32 @@ class ObjBuilder:
                 self.lines.append(f"f {a} {b} {e} {d}")
         self.vertex_count += rows * cols
 
+    def add_triangles(
+        self,
+        *,
+        positions: list[float],
+        material: str = "default",
+    ) -> None:
+        """Emit a flat triangle list (9 floats per triangle) as raw OBJ geometry.
+
+        Used for recipe-derived mesh objects whose geometry is supplied inline
+        (triangle positions) rather than from a generated primitive. Faces are
+        emitted in consecutive triples so the bridge can import_geometry it.
+        """
+        if not positions or len(positions) < 9:
+            return
+        n = (len(positions) // 9) * 3
+        self.lines.append(f"usemtl {material}")
+        start = self.vertex_count + 1
+        for k in range(0, n * 3, 3):
+            x, y, z = positions[k], positions[k + 1], positions[k + 2]
+            self._points.append((float(x), float(y), float(z)))
+            self.lines.append(f"v {float(x):.6f} {float(y):.6f} {float(z):.6f}")
+        for t in range(n // 3):
+            a = start + t * 3
+            self.lines.append(f"f {a} {a + 1} {a + 2}")
+        self.vertex_count += n
+
     def text(self) -> str:
         return "\n".join(self.lines) + "\n"
 
@@ -512,6 +538,30 @@ def _vector3(value: Any, default: tuple[float, float, float]) -> tuple[float, fl
     if not isinstance(value, (list, tuple)) or len(value) != 3:
         return default
     return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def create_inline_mesh_obj(spec: dict[str, Any], *, scene_id: str = "scene", workspace: Workspace = Workspace()) -> dict[str, Any]:
+    """Compile an inline-geometry mesh spec (flat triangle positions) to an OBJ asset.
+
+    Recipe-derived canvas scenes emit meshes with ``geometry.positions`` (a flat
+    triangle list) and no OBJ ``path``. The Octane handoff can only import_geometry
+    from a file, so synthesize one here — mirroring create_primitive_obj's
+    asset-convention (OBJ in the workspace assets dir, with bounds).
+    """
+    workspace.ensure()
+    object_id = str(spec.get("id") or spec.get("name") or "mesh")
+    safe = _safe_name(f"{scene_id}_{object_id}")
+    material = str(spec.get("material") or "default")
+    positions = (spec.get("geometry") or {}).get("positions") or []
+    if not positions:
+        raise ValueError(f"inline mesh {object_id!r} has no geometry.positions")
+    b = ObjBuilder(safe)
+    b.add_triangles(positions=positions, material=material)
+    if b.vertex_count == 0:
+        raise ValueError(f"inline mesh {object_id!r} produced no vertices")
+    path = workspace.assets_dir / f"{safe}.obj"
+    path.write_text(b.text(), encoding="utf-8")
+    return {"path": str(path), "name": safe, "kind": "mesh", "format": "obj", "bounds": b.bounds()}
 
 
 def create_primitive_obj(spec: dict[str, Any], *, scene_id: str = "scene", workspace: Workspace = Workspace()) -> dict[str, Any]:
