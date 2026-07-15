@@ -1,0 +1,280 @@
+{
+  "slug": "mass-spring-cloth-drape",
+  "title": "Mass-Spring Cloth Drape over a Sphere",
+  "category": "Physical simulation / deformable bodies",
+  "domain": "Physics simulation",
+  "purpose": "A small cloth sheet solved with Verlet integration + distance constraints (PBD-style) drapes under gravity and tents over a rigid sphere. The sag and contact curvature are emergent from the solver, not sculpted. Deterministic, no external physics engine.",
+  "prompt": "Visualise a cloth sheet draping and tenting over a rigid sphere under gravity.",
+  "camera": {
+    "position": [
+      16.25165,
+      -23.849191,
+      13.869006
+    ],
+    "target": [
+      -0.740483,
+      -3.553032,
+      0.180899
+    ],
+    "fov": 42.0
+  },
+  "materials": {
+    "cloth_sphere": {
+      "name": "cloth_sphere",
+      "kind": "glossy",
+      "color": [
+        0.3,
+        0.32,
+        0.36
+      ],
+      "roughness": 0.5
+    },
+    "cloth_sheet": {
+      "name": "cloth_sheet",
+      "kind": "glossy",
+      "color": [
+        0.85,
+        0.3,
+        0.35
+      ],
+      "roughness": 0.6
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/cloth-drape/scene.obj",
+        "format": "obj",
+        "name": "cloth_drape"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cloth_sphere",
+        "kind": "glossy",
+        "color": [
+          0.3,
+          0.32,
+          0.36
+        ],
+        "roughness": 0.5
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cloth_sheet",
+        "kind": "glossy",
+        "color": [
+          0.85,
+          0.3,
+          0.35
+        ],
+        "roughness": 0.6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cloth_drape",
+        "material_name": "cloth_sphere",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cloth_drape",
+        "material_name": "cloth_sheet",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          16.25165,
+          -23.849191,
+          13.869006
+        ],
+        "target": [
+          -0.740483,
+          -3.553032,
+          0.180899
+        ],
+        "fov": 42.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "/Users/craig/octanex-mcp/examples/recipes/mass-spring-cloth-drape/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "analytic (Verlet/PBD fixture)",
+    "fixture": "embedded 28\u00d728 Verlet cloth, 90 steps",
+    "physical_variables": [
+      "displacement",
+      "contact"
+    ],
+    "units": {
+      "length": "m",
+      "time": "s"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 1.0,
+      "vector_scale": 1.0
+    },
+    "time": {
+      "frames": 1,
+      "t_seconds": 54.0
+    },
+    "null_model": "pinned flat sheet with zero gravity",
+    "limitations": [
+      "small grid, not a production cloth solver",
+      "sphere collision is a hard radius push"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "A red cloth sheet clearly drapes above/around the grey sphere.",
+    "Contact tenting over the sphere top is visible (cloth does not pass through).",
+    "Each usemtl group has explicit create_material + assign_material(group_index).",
+    "Camera frames both the sphere and the cloth silhouette."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge \u2014 the red cloth vs grey sphere needs explicit materials.",
+    "Cloth is a triangulated surface; at low grid resolution it can look faceted \u2014 keep G\u226524.",
+    "Sphere collision is approximate; do not claim continuous contact for overhangs."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/mass-spring-cloth-drape/preview.png",
+    "candidate_image": "examples/recipes/mass-spring-cloth-drape/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "physical subject readability",
+      "material/color families",
+      "geometry carrying the physical claim",
+      "framing",
+      "lighting"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              16.25165,
+              -23.849191,
+              13.869006
+            ],
+            "target": [
+              -0.740483,
+              -3.553032,
+              0.180899
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              11.376155,
+              -16.6944337,
+              9.7083042
+            ],
+            "target": [
+              -0.740483,
+              -3.553032,
+              0.180899
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              21.127145000000002,
+              -31.0039483,
+              18.0297078
+            ],
+            "target": [
+              -0.740483,
+              -3.553032,
+              0.180899
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              16.25165,
+              -21.849191,
+              13.869006
+            ],
+            "target": [
+              -0.740483,
+              -3.553032,
+              0.180899
+            ],
+            "fov": 42.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "material families visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/mass-spring-cloth-drape/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-15)"
+}

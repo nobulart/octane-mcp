@@ -757,11 +757,16 @@ local function request_render_restart(samples, width, height, do_start, max_rend
             return false
         end
         for attempt = 1, 5 do
+            -- Current live evidence: restart()/continue() return ok but do not
+            -- begin sampling (stats stay beauty=0/state=0). start{RT} blocks
+            -- until Octane finishes the frame, then saveImage can capture it.
+            -- The Python caller must therefore use a drain timeout long enough
+            -- for this synchronous render path.
             local ok1, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode = rt } end)
             if ok1 and engine_running() then started = true; break end
             ok1, result = try_render_call("restart()", function() return octane.render.restart() end)
             if ok1 and engine_running() then started = true; break end
-            ok1, result = try_render_call("continue()", function() return octane.render.continue() end)
+            ok1, result = try_render_call("continue()", function() return octane.render["continue"]() end)
             if ok1 and engine_running() then started = true; break end
             last_err = tostring(result)
             sleep_seconds(0.5)
@@ -1308,14 +1313,15 @@ local function handle_save_preview(cmd)
         end
     end
 
+    -- CURRENT Octane X build (2026-07-15) save envelope (fresh probe):
+    -- Current live evidence (2026-07-15): saveImage(path, imageSaveType.PNG8)
+    -- succeeds once start{renderTargetNode=rt} has produced a frame. saveImage2
+    -- table form is rejected by this build (string expected, got table), so keep
+    -- it as a late compatibility fallback rather than the primary path.
     local candidates = {}
     if octane.imageSaveType then
         if octane.imageSaveType.PNG8 ~= nil then table.insert(candidates, {"imageSaveType.PNG8", octane.imageSaveType.PNG8}) end
         if octane.imageSaveType.PNG16 ~= nil then table.insert(candidates, {"imageSaveType.PNG16", octane.imageSaveType.PNG16}) end
-    end
-    if octane.imageSaveFormat then
-        if octane.imageSaveFormat.PNG_8 ~= nil then table.insert(candidates, {"imageSaveFormat.PNG_8", octane.imageSaveFormat.PNG_8}) end
-        if octane.imageSaveFormat.PNG_16 ~= nil then table.insert(candidates, {"imageSaveFormat.PNG_16", octane.imageSaveFormat.PNG_16}) end
     end
 
     local last_err = "no PNG save constants found"
@@ -1328,18 +1334,27 @@ local function handle_save_preview(cmd)
         return false, tostring(r1)
     end
 
+    -- saveImage can return false if the RT frame is not yet grabbable; retry
+    -- once after a short settle so a warming buffer does not abort the save.
+    local function try_save(fn_label, fn)
+        local ok, err = attempt(fn_label, fn)
+        if ok then return true, err end
+        if octane and octane.render and octane.render["continue"] then
+            pcall(function() octane.render["continue"]() end)
+        end
+        pcall(function() os.execute("sleep 2") end)
+        return attempt(fn_label .. " retry", fn)
+    end
+
     for _, candidate in ipairs(candidates) do
         local cname, cvalue = candidate[1], candidate[2]
-        local ok, err = attempt("saveImage path," .. cname, function() return octane.render.saveImage(path, cvalue) end)
+        local ok, err = try_save("saveImage path," .. cname, function() return octane.render.saveImage(path, cvalue) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage2 filename,saveType " .. cname, function() return octane.render.saveImage2(path, cvalue) end)
+        ok, err = try_save("saveRenderPass 0,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
-        ok, err = attempt("saveImage3 filename,saveType " .. cname, function() return octane.render.saveImage3(path, cvalue) end)
-        if ok then return true, "preview saved " .. tostring(path) end
-        last_err = err
-        ok, err = attempt("saveRenderPass beauty,path,type " .. cname, function() return octane.render.saveRenderPass(0, path, cvalue) end)
+        ok, err = try_save("saveImage2 table " .. cname, function() return octane.render.saveImage2{ path = path, saveType = cvalue, type = cvalue, renderTargetNode = rt } end)
         if ok then return true, "preview saved " .. tostring(path) end
         last_err = err
     end

@@ -446,18 +446,14 @@ function runtime.request_render_restart(samples, width, height, max_render_time)
     -- render is still "in progress").
     pcall(function() if octane.render.stop then octane.render.stop() end end)
     pcall(function() octane.render.pause() end)
-    -- NOTE: maxSamples is NOT a recognized key for octane.render.start on this
-    -- Octane build, so it is intentionally NOT used; the render is instead
-    -- bounded by wait_for_render_ready() polling the sample count to min_samples
-    -- (with a wall-clock timeout), then the frame is grabbed. This avoids an
-    -- unbounded render that would block every subsequent restart.
+    -- Current live evidence: restart()/continue() return ok but do not begin
+    -- sampling. start{RT} is synchronous on this build, but produces the frame
+    -- saveImage can capture; callers must use a long enough drain timeout.
     local ok, result = try_render_call("start{renderTargetNode=rt}", function() return octane.render.start{ renderTargetNode=rt } end)
-    if ok then return true, "render start requested (unbounded; bounded by wait_for_render_ready)" end
+    if ok then return true, "render start requested (synchronous; caller timeout must cover render)" end
     ok, result = try_render_call("restart()", function() return octane.render.restart() end)
     if ok then return true, "render restart requested" end
-    ok, result = try_render_call("start({renderTargetNode=rt})", function() return octane.render.start({ renderTargetNode=rt }) end)
-    if ok then return true, "render start requested" end
-    ok, result = try_render_call("continue()", function() return octane.render.continue() end)
+    ok, result = try_render_call("continue()", function() return octane.render["continue"]() end)
     if ok then return true, "render continue requested" end
     return false, "render refresh failed; see bridge.log"
 end

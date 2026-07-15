@@ -89,7 +89,7 @@ class SpecCoverageTests(unittest.TestCase):
     def test_all_tasks_have_unique_slugs(self):
         slugs = [t.slug for t in ALL_TASKS]
         self.assertEqual(len(slugs), len(set(slugs)), "duplicate task slugs")
-        self.assertEqual(len(slugs), 18)
+        self.assertEqual(len(slugs), 21)
 
     def test_task_build_is_deterministic_and_complete(self):
         for slug in (t.slug for t in ALL_TASKS):

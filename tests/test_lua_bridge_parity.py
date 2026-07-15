@@ -12,6 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ONESHOT = ROOT / "octane_lua" / "hermes_bridge_oneshot_v2.lua"
 PERSISTENT = ROOT / "octane_lua" / "hermes_bridge_persistent_v1.lua"
+GENERATED_ONESHOT = ROOT / "octane_lua" / "hermes_bridge_oneshot.generated.lua"
+GENERATED_PERSISTENT = ROOT / "octane_lua" / "hermes_bridge_persistent.generated.lua"
 
 
 def lua_function_body(path: Path, name: str) -> str:
@@ -58,6 +60,20 @@ class LuaBridgeParityTests(unittest.TestCase):
                 self.assertIn("pre-save render readiness ok=", save_body)
                 self.assertIn("octane.render.saveImage(path, cvalue)", save_body)
                 self.assertNotIn("saveRenderPass(0, path, {", save_body)
+
+    def test_continue_keyword_uses_bracket_access_and_generated_lua_compiles(self) -> None:
+        """Lua treats bare `continue` as a keyword on this build; dot access breaks both bridges."""
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua executable not available")
+
+        for path in [ONESHOT, PERSISTENT, GENERATED_ONESHOT, GENERATED_PERSISTENT]:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("octane.render.continue()", text)
+                self.assertIn('octane.render["continue"]()', text)
+                proc = subprocess.run([lua, "-e", f"assert(loadfile({str(path)!r}))"], cwd=ROOT, text=True, capture_output=True, timeout=30)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_both_bridges_use_phase3_lifecycle_dirs_and_results(self) -> None:
         for path in [ONESHOT, PERSISTENT]:

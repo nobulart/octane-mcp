@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.15
+version: 1.9.16
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -368,6 +368,34 @@ sequence:
    re-click while `save_preview` is rendering.
 7. **Return to step 2** for the next scene (reset → build → drain). Do NOT pile
    scenes into one uncleared session.
+
+### Recipe live-promotion pitfall (2026-07-15)
+
+For checked-in recipes, use the verified live path:
+
+```bash
+OCTANEX_LIVE=1 PYTHONPATH=scripts:. uv run python -m benchmarks.verify_recipes \
+  --live --copy-back --slug <slug> --drain-timeout 300
+```
+
+Load-bearing details from the 2026-07-15 bridge repair:
+
+- `benchmarks.verify_recipes.run_recipe()` must flush stale global queue files
+  **before** writing that recipe's commands. Flushing after queueing deletes the
+  render job, and the one-shot bridge drains zero commands.
+- On this Octane X build, `octane.render.start{renderTargetNode=rt}` is
+  effectively synchronous: it may block the Lua drain until the frame is ready,
+  but it is also the call that causes sampling to advance. `restart()` /
+  `continue()` alone returned `ok=true` while stats stayed `beauty=0 state=0`.
+  Therefore recipe promotion needs a long enough drain budget (`--drain-timeout
+  300` worked for `mass-spring-cloth-drape` and `dam-break-splash`).
+- `octane.render.saveImage(path, octane.imageSaveType.PNG8)` is the successful
+  save path once a real frame exists. `saveImage2{...}` table form was rejected
+  by this build (`string expected, got table`) and should remain a fallback, not
+  the primary path.
+- Lua keyword trap: call `octane.render["continue"]()` rather than
+  `octane.render.continue()`; this Lua parser treats bare `continue` as a syntax
+  error near `and`, breaking both generated bridges.
 
 > **CRITICAL — after the bridge populates the node tree, the Hermes Render
 > Target node MUST be selected and the renderer MUST be explicitly started, or

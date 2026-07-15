@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest import TestCase
+from types import SimpleNamespace
+from unittest import TestCase, mock
 
 import benchmarks.verify_recipes as vr
 from benchmarks.verify_recipes import _check_contract, verify_recipe_library
@@ -56,12 +57,12 @@ class TestRecipeContractOffline(TestCase):
     def test_verify_recipe_library_dry_run_counts(self):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
-        self.assertEqual(report["total"], 33)
-        # 32/33 recipe dirs pass the offline contract. `earth-moon-space` is the
-        # remaining intentional exception (no checked-in preview). `earth-hemisphere`
-        # may be present as a checked-in/generated OBJ in this working tree or absent
-        # as a regenerable large asset on a clean checkout; either state should pass.
-        self.assertEqual(report["contract_ok"], 32, report)
+        self.assertEqual(report["total"], 39)
+        # 38/39 recipe dirs pass the offline contract. `earth-moon-space` is the
+        # remaining intentional exception (no checked-in preview). The 5 Phase A
+        # recipes + the Phase B `dam-break-splash` adapter recipe are checked in
+        # and pass the contract.
+        self.assertEqual(report["contract_ok"], 38, report)
         self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, ["earth-moon-space"], report)
@@ -85,6 +86,61 @@ class TestRecipeContractOffline(TestCase):
         os.environ.pop("OCTANEX_LIVE", None)
         with self.assertRaises(RuntimeError):
             verify_recipe_library(dry_run=False, live=True)
+
+    def test_live_run_flushes_stale_queue_before_writing_recipe_commands(self):
+        """A live recipe run must not flush away the commands it just wrote."""
+        import tempfile
+
+        from octanex_mcp.bridge import Workspace
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            recipe_dir = root / "recipes" / "flush-order"
+            recipe_dir.mkdir(parents=True)
+            obj_path = recipe_dir / "scene.obj"
+            obj_path.write_text("o cube\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", encoding="utf-8")
+            (recipe_dir / "scene.mtl").write_text("newmtl mat\nKd 1 1 1\n", encoding="utf-8")
+            (recipe_dir / "preview.png").write_bytes(b"reference")
+            data = {
+                "slug": "flush-order",
+                "title": "Flush Order",
+                "commands": [
+                    {"op": "import_geometry", "payload": {"path": "scene.obj", "name": "flush-order"}},
+                    {"op": "save_preview", "payload": {"path": "renders/octane-preview.png"}},
+                ],
+            }
+            ws = Workspace(root / "workspace")
+            ws.ensure()
+            (ws.queue_dir / "stale.json").write_text("{}", encoding="utf-8")
+            seen_queue_counts: list[int] = []
+
+            def fake_drain(workspace, timeout_seconds):
+                queued = sorted(workspace.queue_dir.glob("*.json"))
+                seen_queue_counts.append(len(queued))
+                self.assertEqual(len(queued), 2, "drain should see current recipe commands, not an empty queue")
+                self.assertFalse((workspace.queue_dir / "stale.json").exists(), "stale command should have been flushed before queueing")
+                for command_path in queued:
+                    command = json.loads(command_path.read_text(encoding="utf-8"))
+                    if command.get("op") == "save_preview":
+                        preview = Path(command["payload"]["path"])
+                        preview.parent.mkdir(parents=True, exist_ok=True)
+                        preview.write_bytes(b"native png placeholder")
+                return {"ok": True}
+
+            with mock.patch.object(vr, "resolve_config", return_value=SimpleNamespace(workspace=ws.root)), \
+                mock.patch.object(vr, "_find_recipe_dir", return_value=recipe_dir), \
+                mock.patch.object(vr, "_read_scene_json", return_value=data), \
+                mock.patch.object(vr, "_check_contract", return_value=(True, [], [], obj_path)), \
+                mock.patch.object(vr, "_resolved_commands", return_value=[dict(c) for c in data["commands"]]), \
+                mock.patch.object(vr, "drain_oneshot", side_effect=fake_drain), \
+                mock.patch.object(vr.acceptance, "evaluate_acceptance", return_value={"passed": True}):
+                run = vr.run_recipe("flush-order", dry_run=False, drain=True, drain_timeout=1)
+
+            self.assertEqual(seen_queue_counts, [2])
+            self.assertEqual(run.queued, 2)
+            self.assertIsNone(run.error)
+            self.assertTrue(any("auto-flushed 1 stale queue files" in note for note in run.notes), run.notes)
+            self.assertEqual(len(list(ws.queue_dir.glob("*.json"))), 2)
 
 
 class TestVisionTierOffline(TestCase):

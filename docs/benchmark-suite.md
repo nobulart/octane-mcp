@@ -22,8 +22,9 @@ The bridge improves with use, but "use" must be measurable. This suite gives us:
 * **A regression net** — if a Lua/Python change breaks a tier, the offline
   tests fail immediately (OBJ generation, index integrity, acceptance logic,
   queue marshalling) without needing Octane.
-* **A development ladder** — 18 tasks across 6 tiers, from a single glossy cube
-  to a Saturn system, each isolating one failure mode.
+* **A development ladder** — 21 tasks across 7 tiers, from a single glossy cube
+  to a Saturn system and deterministic physical-simulation fixtures, each
+  isolating one failure mode.
 * **A verified recipe feeder** — successful live runs are dumped straight into
   `docs/recipe-book.md` with the exact command sequence, so future agents
   inherit working scenes instead of re-discovering them.
@@ -81,8 +82,9 @@ face-index bug (#13/#19) that silently yields a blank frame.
 | 4 | Multi-object scene graphs | `t4_architecture_flow`, `t4_network_graph`, `t4_annotated_diagram` | 6–12 meshes, hierarchy, flow arrows; e.g. the MCP pipeline as a scene. |
 | 5 | Data & math | `t5_math_surface_complex`, `t5_wave_interference`, `t5_vector_field` | Dense surfaces (60×60), two-source interference, rotational vector field. |
 | 6 | Photoreal / stress | `t6_vase_studio`, `t6_earth_space`, `t6_saturn_system` | High face counts, multi-material families, translucent shells, oblate bodies. |
+| 7 | Physical simulation fixtures | `t7_advection_diffusion_panels`, `t7_cloth_drape_contact`, `t7_particle_splash_fixture` | Deterministic physics grammar: advection–diffusion panels, PBD cloth drape, seeded particle splash. Offline-verified; native render pending. |
 
-18 tasks total. Each is enumerated in `benchmarks/spec.py::ALL_TASKS`.
+21 tasks total. Each is enumerated in `benchmarks/spec.py::ALL_TASKS`.
 
 ---
 
@@ -114,7 +116,7 @@ criterion passes.
 ```bash
 PYTHONPATH= uv run python -m unittest tests.test_benchmarks -v
 ```
-Validates: spec determinism, OBJ index integrity for all 18 tasks, the
+Validates: spec determinism, OBJ index integrity for all 21 tasks, the
 `CombinedObj` offset logic, acceptance logic on synthetic PNGs, and the
 harness mirror+queue side-effects against a fake container.
 
@@ -162,8 +164,11 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 | 6 | `t6_vase_studio` | ✅ verified | three vases on studio cyclorama. |
 | 6 | `t6_earth_space` | ✅ verified | blue Earth + atmosphere rim in space; `color_family` blue. |
 | 6 | `t6_saturn_system` | ✅ verified | planet + ring + moon. |
+| 7 | `t7_advection_diffusion_panels` | ⏳ pending native | offline-verified; 4-panel tracer, peak-decay + broadening. |
+| 7 | `t7_cloth_drape_contact` | ⏳ pending native | offline-verified; PBD cloth tenting over sphere. |
+| 7 | `t7_particle_splash_fixture` | ⏳ pending native | offline-verified; seeded liquid + foam families. |
 
-**All 18 tasks render natively and pass pixel acceptance (18/18).**
+**18/18 Tier 1–6 tasks render natively and pass pixel acceptance. Tier 7 (3 tasks) is offline-verified and pending native render (blocked on Octane Accessibility/TCC from this session).**
 
 **Lessons (also in `docs/recipe-book.md`):**
 * **Deferred render start is the current protection against render-restart

@@ -1,0 +1,603 @@
+{
+  "slug": "nbody-chaotic-divergence",
+  "title": "N-Body Chaotic Divergence (3-Body)",
+  "category": "Physical simulation / n-body dynamics",
+  "domain": "Physics simulation",
+  "purpose": "Two near-identical three-body systems integrated from the same initial conditions except a 1e-3 velocity perturbation on one body. Their paths start together and visibly diverge \u2014 sensitive dependence on initial conditions. Deterministic symplectic integration, no live solver.",
+  "prompt": "Visualise two nearly identical 3-body trajectories diverging due to a tiny perturbation.",
+  "camera": {
+    "position": [
+      7.217433,
+      -6.801144,
+      4.863934
+    ],
+    "target": [
+      1.179446,
+      0.410896,
+      0.0
+    ],
+    "fov": 45.0
+  },
+  "materials": {
+    "nb_t0_b0": {
+      "name": "nb_t0_b0",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.35,
+        0.3
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t0_b0": {
+      "name": "nb_path_t0_b0",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.35,
+        0.3
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    },
+    "nb_t0_b1": {
+      "name": "nb_t0_b1",
+      "kind": "glossy",
+      "color": [
+        0.3,
+        0.75,
+        0.95
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t0_b1": {
+      "name": "nb_path_t0_b1",
+      "kind": "glossy",
+      "color": [
+        0.3,
+        0.75,
+        0.95
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    },
+    "nb_t0_b2": {
+      "name": "nb_t0_b2",
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.95,
+        0.45
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t0_b2": {
+      "name": "nb_path_t0_b2",
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.95,
+        0.45
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    },
+    "nb_t1_b0": {
+      "name": "nb_t1_b0",
+      "kind": "glossy",
+      "color": [
+        0.865,
+        0.44499999999999995,
+        0.41000000000000003
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t1_b0": {
+      "name": "nb_path_t1_b0",
+      "kind": "glossy",
+      "color": [
+        0.865,
+        0.44499999999999995,
+        0.41000000000000003
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    },
+    "nb_t1_b1": {
+      "name": "nb_t1_b1",
+      "kind": "glossy",
+      "color": [
+        0.41000000000000003,
+        0.7249999999999999,
+        0.865
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t1_b1": {
+      "name": "nb_path_t1_b1",
+      "kind": "glossy",
+      "color": [
+        0.41000000000000003,
+        0.7249999999999999,
+        0.865
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    },
+    "nb_t1_b2": {
+      "name": "nb_t1_b2",
+      "kind": "glossy",
+      "color": [
+        0.585,
+        0.865,
+        0.515
+      ],
+      "roughness": 0.35
+    },
+    "nb_path_t1_b2": {
+      "name": "nb_path_t1_b2",
+      "kind": "glossy",
+      "color": [
+        0.585,
+        0.865,
+        0.515
+      ],
+      "roughness": 0.4,
+      "emission": 0.4
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/nbody-divergence/scene.obj",
+        "format": "obj",
+        "name": "nbody_divergence"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t0_b0",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.35,
+          0.3
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t0_b1",
+        "kind": "glossy",
+        "color": [
+          0.3,
+          0.75,
+          0.95
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t0_b2",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.95,
+          0.45
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t1_b0",
+        "kind": "glossy",
+        "color": [
+          0.865,
+          0.44499999999999995,
+          0.41000000000000003
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t1_b1",
+        "kind": "glossy",
+        "color": [
+          0.41000000000000003,
+          0.7249999999999999,
+          0.865
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_t1_b2",
+        "kind": "glossy",
+        "color": [
+          0.585,
+          0.865,
+          0.515
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t0_b0",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.35,
+          0.3
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t0_b1",
+        "kind": "glossy",
+        "color": [
+          0.3,
+          0.75,
+          0.95
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t0_b2",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.95,
+          0.45
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t1_b0",
+        "kind": "glossy",
+        "color": [
+          0.865,
+          0.44499999999999995,
+          0.41000000000000003
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t1_b1",
+        "kind": "glossy",
+        "color": [
+          0.41000000000000003,
+          0.7249999999999999,
+          0.865
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "nb_path_t1_b2",
+        "kind": "glossy",
+        "color": [
+          0.585,
+          0.865,
+          0.515
+        ],
+        "roughness": 0.4,
+        "emission": 0.4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t0_b0",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t0_b1",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t0_b2",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t1_b0",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t1_b1",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_t1_b2",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t0_b0",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t0_b1",
+        "group_index": 8
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t0_b2",
+        "group_index": 9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t1_b0",
+        "group_index": 10
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t1_b1",
+        "group_index": 11
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "nbody_divergence",
+        "material_name": "nb_path_t1_b2",
+        "group_index": 12
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          7.217433,
+          -6.801144,
+          4.863934
+        ],
+        "target": [
+          1.179446,
+          0.410896,
+          0.0
+        ],
+        "fov": 45.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "/Users/craig/octanex-mcp/examples/recipes/nbody-chaotic-divergence/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "analytic (symplectic Euler n-body)",
+    "fixture": "two 3-body integrations, \u0394v=1e-3 perturbation",
+    "physical_variables": [
+      "position",
+      "velocity"
+    ],
+    "units": {
+      "length": "m",
+      "time": "s",
+      "mass": "kg"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 1.0,
+      "vector_scale": 1.0
+    },
+    "time": {
+      "frames": 1,
+      "t_seconds": 8.8
+    },
+    "null_model": "identical initial conditions (zero perturbation): paths overlay",
+    "limitations": [
+      "symplectic Euler, moderate step count",
+      "no relativistic/relaxation effects"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "Two sets of three-body paths are visible, starting from a common region.",
+    "The two path sets diverge as they extend (sensitive dependence).",
+    "Endpoint spheres mark the final body positions.",
+    "Each usemtl group has explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge \u2014 path + endpoint colours need explicit materials.",
+    "Paths use tube/arrow geometry, not OBJ `l` lines (which Octane can drop).",
+    "Divergence is real but the integrator is low-order; do not overclaim precision."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/nbody-chaotic-divergence/preview.png",
+    "candidate_image": "examples/recipes/nbody-chaotic-divergence/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "physical subject readability",
+      "material/color families",
+      "geometry carrying the physical claim",
+      "framing",
+      "lighting"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              7.217433,
+              -6.801144,
+              4.863934
+            ],
+            "target": [
+              1.179446,
+              0.410896,
+              0.0
+            ],
+            "fov": 45.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              5.0522031,
+              -4.760800799999999,
+              3.4047538
+            ],
+            "target": [
+              1.179446,
+              0.410896,
+              0.0
+            ],
+            "fov": 45.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              9.3826629,
+              -8.8414872,
+              6.323114200000001
+            ],
+            "target": [
+              1.179446,
+              0.410896,
+              0.0
+            ],
+            "fov": 45.0
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              7.217433,
+              -4.801144,
+              4.863934
+            ],
+            "target": [
+              1.179446,
+              0.410896,
+              0.0
+            ],
+            "fov": 45.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "material families visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/nbody-chaotic-divergence/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (physical-simulation Phase A)"
+}

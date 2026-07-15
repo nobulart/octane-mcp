@@ -851,6 +851,222 @@ def _t6_saturn_system() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Tier 7 — Physical simulation fixtures: deterministic physics grammar
+# ---------------------------------------------------------------------------
+
+
+def _t7_advection_diffusion_panels() -> dict[str, Any]:
+    """Four time panels of a Gaussian tracer advecting (+x) and diffusing.
+
+    The physical claim is carried by geometry: each panel's peak height decays
+    and its footprint broadens with time (diffusion), so the heightfield shape
+    itself tells the story. No external simulator required.
+    """
+    steps = 20
+    panels = 4
+    xmin = ymin = -1.3
+    xmax = ymax = 1.3
+    xspan = xmax - xmin
+    yspan = ymax - ymin
+    gap = 0.5
+    pitch = xspan + gap
+    tracer_color = [0.1, 0.82, 0.7]
+
+    base_b = ObjBuilder("base")
+    base_b.add_box(center=(0, 0, -0.06),
+                   size=(panels * pitch, yspan + 0.4, 0.04),
+                   material="base_mat")
+    obj = CombinedObj("t7_advect")
+    obj.add_group("base", "base_mat", base_b)
+    assignments = [{"group_index": 1, "material_name": "base_mat"}]
+    for p in range(panels):
+        t = float(p) * 1.2
+        xoff = (p - (panels - 1) / 2) * pitch
+        sigma = math.sqrt(0.25 + 0.12 * t)
+        raw: list[list[tuple[float, float, float]]] = []
+        zs: list[float] = []
+        for iy in range(steps + 1):
+            y = ymin + yspan * iy / steps
+            row = []
+            for ix in range(steps + 1):
+                x = xmin + xspan * ix / steps
+                xc = x - 0.7 * t  # advection toward +x
+                h = math.exp(-(xc * xc + y * y) / (2 * sigma * sigma))
+                zs.append(h)
+                row.append((x + xoff, y, h))
+            raw.append(row)
+        mabs = max(zs) or 1.0
+        scale = 1.3 / mabs
+        verts = [[(x, y, z * scale) for x, y, z in row] for row in raw]
+        surf = ObjBuilder(f"panel{p}")
+        surf.add_surface(vertices=verts, material="tracer_mat")
+        obj.add_group(f"panel{p}", "tracer_mat", surf)
+        assignments.append({"group_index": len(assignments) + 1, "material_name": "tracer_mat"})
+    return {
+        "mesh_name": "t7_advect",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": [
+            _mat("base_mat", "diffuse", [0.07, 0.09, 0.12], roughness=0.9),
+            _mat("tracer_mat", "glossy", tracer_color, roughness=0.3),
+        ],
+        "assignments": assignments,
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.3, fov=42),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1024, "height": 1024},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
+            {"kind": "color_family", "target": tracer_color, "hue_tol": 45, "min_fraction": 0.01},
+            {"kind": "shape_profile", "min_rows": 8},
+        ],
+    }
+
+
+def _t7_cloth_drape_contact() -> dict[str, Any]:
+    """PBD cloth sheet draping and tenting over a rigid sphere.
+
+    A small Verlet/PBD solver embedded in the builder (deterministic, seeded
+    only by geometry) produces emergent sag and a contact patch over the
+    sphere — the same grammar as the `mass-spring-cloth-drape` recipe, here
+    promoted to a harness task.
+    """
+    G = 14
+    size = 4.0
+    sp = size / (G - 1)
+    center = (0.0, 0.0, 0.9)
+    R = 1.0
+    pinned = {(0, 0), (0, G - 1), (G - 1, 0), (G - 1, G - 1)}
+    pos = [[[(i - (G - 1) / 2) * sp, (j - (G - 1) / 2) * sp, 1.8] for j in range(G)] for i in range(G)]
+    prev = [[list(pos[i][j]) for j in range(G)] for i in range(G)]
+    gravity = -1.0
+    dt = 0.03
+    damping = 0.98
+
+    def _constrain(a, b, rest):
+        dx = b[0] - a[0]; dy = b[1] - a[1]; dz = b[2] - a[2]
+        d = math.sqrt(dx * dx + dy * dy + dz * dz) or 1e-6
+        corr = (d - rest) / d / 2.0
+        a[0] += dx * corr; a[1] += dy * corr; a[2] += dz * corr
+        b[0] -= dx * corr; b[1] -= dy * corr; b[2] -= dz * corr
+
+    def _collide(p):
+        dx = p[0] - center[0]; dy = p[1] - center[1]; dz = p[2] - center[2]
+        d = math.sqrt(dx * dx + dy * dy + dz * dz) or 1e-6
+        if d < R:
+            s = R / d
+            p[0] = center[0] + dx * s
+            p[1] = center[1] + dy * s
+            p[2] = center[2] + dz * s
+
+    for _ in range(260):
+        for i in range(G):
+            for j in range(G):
+                if (i, j) in pinned:
+                    continue
+                p = pos[i][j]; pr = prev[i][j]
+                v = [(p[k] - pr[k]) * damping for k in range(3)]
+                nxt = [p[k] + v[k] + gravity * dt * dt for k in range(3)]
+                prev[i][j] = p
+                pos[i][j] = nxt
+        for _ in range(3):
+            for i in range(G):
+                for j in range(G):
+                    if i + 1 < G:
+                        _constrain(pos[i][j], pos[i + 1][j], sp)
+                    if j + 1 < G:
+                        _constrain(pos[i][j], pos[i][j + 1], sp)
+        for i in range(G):
+            for j in range(G):
+                if (i, j) in pinned:
+                    continue
+                _collide(pos[i][j])
+
+    verts: list[list[tuple[float, float, float]]] = [
+        [(float(pos[i][j][0]), float(pos[i][j][1]), float(pos[i][j][2])) for j in range(G)]
+        for i in range(G)
+    ]
+    cloth_b = ObjBuilder("cloth")
+    cloth_b.add_surface(vertices=verts, material="cloth_mat")
+    sphere_b = ObjBuilder("sphere")
+    sphere_b.add_ellipsoid(center=center, radii=(R, R, R), material="sphere_mat")
+    obj = CombinedObj("t7_cloth")
+    obj.add_group("cloth", "cloth_mat", cloth_b)
+    obj.add_group("sphere", "sphere_mat", sphere_b)
+    return {
+        "mesh_name": "t7_cloth",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": [
+            _mat("cloth_mat", "glossy", [0.85, 0.2, 0.25], roughness=0.4),
+            _mat("sphere_mat", "diffuse", [0.2, 0.2, 0.22], roughness=0.9),
+        ],
+        "assignments": [
+            {"group_index": 1, "material_name": "cloth_mat"},
+            {"group_index": 2, "material_name": "sphere_mat"},
+        ],
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.4),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1024, "height": 1024},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
+            {"kind": "color_family", "target": [0.85, 0.2, 0.25], "hue_tol": 45, "min_fraction": 0.01},
+            {"kind": "shape_profile", "min_rows": 6},
+        ],
+    }
+
+
+def _t7_particle_splash_fixture() -> dict[str, Any]:
+    """Liquid + foam particle families from a deterministic dam-break splash.
+
+    Particles are generated in-code (seeded) so the task is dependency-free and
+    reproducible. Two material groups (liquid / foam) exercise the particle
+    cloud + material-group grammar that Phase B SPlisHSPlasH adapters reuse.
+    """
+    import random
+    rng = random.Random(20260715)
+    liquid_b = ObjBuilder("liquid")
+    foam_b = ObjBuilder("foam")
+    for _ in range(180):
+        gx = rng.random(); gy = rng.random()
+        x = -3.0 + 2.8 * gx
+        y = -2.0 + 4.0 * gy
+        z = 0.1 + 1.6 * max(0.0, (x + 3.0) / 3.0) + 0.3 * rng.random()
+        liquid_b.add_ellipsoid(center=(x, y, z), radii=(0.12, 0.12, 0.12), material="liquid_mat", segments_u=6, segments_v=4)
+    for _ in range(60):
+        x = rng.uniform(-3.0, 1.2)
+        y = rng.uniform(-2.0, 2.0)
+        z = rng.uniform(1.4, 2.6)
+        foam_b.add_ellipsoid(center=(x, y, z), radii=(0.08, 0.08, 0.08), material="foam_mat", segments_u=6, segments_v=4)
+    obj = CombinedObj("t7_splash")
+    obj.add_group("liquid", "liquid_mat", liquid_b)
+    obj.add_group("foam", "foam_mat", foam_b)
+    return {
+        "mesh_name": "t7_splash",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": [
+            _mat("liquid_mat", "glossy", [0.1, 0.7, 0.85], roughness=0.15, opacity=0.85),
+            _mat("foam_mat", "diffuse", [0.9, 0.95, 1.0], roughness=0.7),
+        ],
+        "assignments": [
+            {"group_index": 1, "material_name": "liquid_mat"},
+            {"group_index": 2, "material_name": "foam_mat"},
+        ],
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.4),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1024, "height": 1024},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
+            {"kind": "color_family", "target": [0.1, 0.7, 0.85], "hue_tol": 45, "min_fraction": 0.01},
+            {"kind": "color_family", "target": [0.9, 0.95, 1.0], "hue_tol": 45, "min_fraction": 0.005},
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -861,6 +1077,7 @@ TIER_TITLES = {
     4: "Multi-object scene graphs — 6-12 meshes, hierarchy, flow",
     5: "Data & math — dense geometry, fields, surfaces",
     6: "Photoreal / stress — high face counts, multi-material families",
+    7: "Physical simulation fixtures — deterministic physics grammar",
 }
 
 ALL_TASKS: list[BenchmarkTask] = [
@@ -882,6 +1099,9 @@ ALL_TASKS: list[BenchmarkTask] = [
     BenchmarkTask(6, "t6_vase_studio", "Photoreal vase studio", "photoreal", "Three vases, glass/ceramic/metal families.", _t6_vase_studio),
     BenchmarkTask(6, "t6_earth_space", "Earth & moon in space", "photoreal-space", "Earth + atmosphere shell + moon.", _t6_earth_space),
     BenchmarkTask(6, "t6_saturn_system", "Saturn & moons", "photoreal-space", "Oblate Saturn + rings + two moons.", _t6_saturn_system),
+    BenchmarkTask(7, "t7_advection_diffusion_panels", "Advection–diffusion panels", "physics-transport", "Four tiled Gaussians advecting + diffusing; peak decays, footprint broadens.", _t7_advection_diffusion_panels),
+    BenchmarkTask(7, "t7_cloth_drape_contact", "Cloth drape contact", "physics-deformable", "PBD cloth draping over a rigid sphere with emergent contact patch.", _t7_cloth_drape_contact),
+    BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture),
 ]
 
 

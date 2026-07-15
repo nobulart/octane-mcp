@@ -1,0 +1,73 @@
+# Material hints; Octane binding is driven by scene.json create_material + assign_material.
+newmtl nb_t0_b0
+Ka 1.0 1.0 1.0
+Kd 0.9500 0.3500 0.3000
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t0_b0
+Ka 1.0 1.0 1.0
+Kd 0.9500 0.3500 0.3000
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0
+newmtl nb_t0_b1
+Ka 1.0 1.0 1.0
+Kd 0.3000 0.7500 0.9500
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t0_b1
+Ka 1.0 1.0 1.0
+Kd 0.3000 0.7500 0.9500
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0
+newmtl nb_t0_b2
+Ka 1.0 1.0 1.0
+Kd 0.5500 0.9500 0.4500
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t0_b2
+Ka 1.0 1.0 1.0
+Kd 0.5500 0.9500 0.4500
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0
+newmtl nb_t1_b0
+Ka 1.0 1.0 1.0
+Kd 0.8650 0.4450 0.4100
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t1_b0
+Ka 1.0 1.0 1.0
+Kd 0.8650 0.4450 0.4100
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0
+newmtl nb_t1_b1
+Ka 1.0 1.0 1.0
+Kd 0.4100 0.7250 0.8650
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t1_b1
+Ka 1.0 1.0 1.0
+Kd 0.4100 0.7250 0.8650
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0
+newmtl nb_t1_b2
+Ka 1.0 1.0 1.0
+Kd 0.5850 0.8650 0.5150
+Ks 0.5 0.5 0.5
+Ns 41.6
+d 1.0
+newmtl nb_path_t1_b2
+Ka 1.0 1.0 1.0
+Kd 0.5850 0.8650 0.5150
+Ks 0.5 0.5 0.5
+Ns 38.4
+d 1.0

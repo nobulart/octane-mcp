@@ -2,6 +2,37 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
+> **Status (2026-07-15):** Phase A implemented + offline-verified; Tier 7 benchmark tasks added; first two physics recipes native-promoted.
+> - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
+>   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
+>   OBJ/MTL, stdlib `preview.png`, READMEs.
+> - `scripts/physics_fixture_io.py` + `tests/test_physics_fixture_io.py` provide
+>   `.npz`/`.csv` loaders (NumPy fast path + stdlib fallback; 10 unit tests pass).
+> - `examples/fixtures/README.md` + a committed `particles/dam-break-small.csv`
+>   (1500 particles, 2 phases) establish the fixture boundary.
+> - `benchmarks/spec.py` now has **Tier 7** (3 tasks: `t7_advection_diffusion_panels`,
+>   `t7_cloth_drape_contact`, `t7_particle_splash_fixture`) — deterministic physics
+>   grammar. Registry + `TIER_TITLES[7]` added; `test_benchmarks` count 18→21.
+> - `docs/recipe-library.md`, `docs/benchmark-suite.md`, and this file updated.
+> - Offline suite green: `test_verify_recipes` (total 38 / contract_ok 37),
+>   `test_recipes`, `test_benchmarks` (21 tasks), `test_physics_fixture_io` — 43 tests total.
+> - **Phase B started:** B1 (SPlisHSPlasH dam-break adapter) is landed + offline-verified.
+>   `scripts/gen_splishsplash_recipe.py` consumes the committed fixture
+>   (`examples/fixtures/particles/dam-break-small/dam-break-small.csv`, 1500 particles)
+>   via `physics_fixture_io.py` with NO runtime SPlisHSPlasH dependency, emits a
+>   contract-clean recipe (`examples/recipes/dam-break-splash/`). Provenance is
+>   embedded in the `simulation` block. Covered by `tests/test_splishsplash_adapter.py`.
+> - Full offline suite green (44 tests; 1 live-gated skip). `test_verify_recipes`
+>   counts bumped 38→39 / 37→38 (the 1 intentional failure stays `earth-moon-space`).
+> - **Native render status:** Octane bridge/TCC/Scripts-menu issues are cleared for
+>   this host. `mass-spring-cloth-drape` and `dam-break-splash` were rendered via
+>   `benchmarks.verify_recipes --live --copy-back --drain-timeout 300`, passed
+>   pixel acceptance, were visually inspected, and now have promoted
+>   `octane-preview.png` files with `native_octane_verified=true`.
+> - **Next:** (a) promote the remaining Phase A recipes and/or Tier 7 benchmark
+>   tasks; (b) B2–B5 adapters (Oceananigans/Genesis/MPIPyMHD) following the same
+>   fixture-first pattern.
+
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
 
 **Architecture:** Keep OctaneX as the final visual renderer and the benchmark harness as the pixel-gated regression layer. Simulation libraries generate bounded, deterministic frame/state artifacts outside Octane, then thin adapter scripts convert those artifacts into combined OBJ geometry, material groups, scene metadata, preview PNGs, and optional animation frames. No recipe should depend on a long live simulation during normal verification; every checked-in recipe gets a small deterministic fixture.
@@ -297,7 +328,7 @@ Minimum live checks before claiming native success:
 
 ```bash
 PYTHONPATH= uv run octanex-mcp doctor
-OCTANEX_LIVE=1 PYTHONPATH= uv run python scripts/first_render_recipe.py <slug> --copy-back --drain-timeout 180
+OCTANEX_LIVE=1 PYTHONPATH=scripts:. uv run python -m benchmarks.verify_recipes --live --copy-back --slug <slug> --drain-timeout 300
 PYTHONPATH= uv run python -m unittest tests.test_verify_recipes -v
 ```
 

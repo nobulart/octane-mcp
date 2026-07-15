@@ -1,0 +1,527 @@
+{
+  "slug": "rigid-stack-contact-forces",
+  "title": "Rigid Stack Contact Forces",
+  "category": "Physical simulation / rigid bodies",
+  "domain": "Physics simulation",
+  "purpose": "A settled stack of blocks with contact-force glyphs between layers. The downward arrows thicken and shift red\u2192yellow as load increases toward the base \u2014 the static load path. Deterministic geometric fixture; arrow scale encodes the computed contact magnitude.",
+  "prompt": "Visualise a stack of rigid blocks with contact-force arrows showing the load path.",
+  "camera": {
+    "position": [
+      10.313739,
+      -12.319188,
+      10.95829
+    ],
+    "target": [
+      0.0,
+      0.0,
+      2.65
+    ],
+    "fov": 40.0
+  },
+  "materials": {
+    "stack_ground": {
+      "name": "stack_ground",
+      "kind": "glossy",
+      "color": [
+        0.1,
+        0.11,
+        0.13
+      ],
+      "roughness": 0.6
+    },
+    "stack_block_0": {
+      "name": "stack_block_0",
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.58,
+        0.62
+      ],
+      "roughness": 0.4
+    },
+    "stack_block_1": {
+      "name": "stack_block_1",
+      "kind": "glossy",
+      "color": [
+        0.5,
+        0.55,
+        0.62
+      ],
+      "roughness": 0.4
+    },
+    "stack_block_2": {
+      "name": "stack_block_2",
+      "kind": "glossy",
+      "color": [
+        0.45,
+        0.55,
+        0.6
+      ],
+      "roughness": 0.4
+    },
+    "stack_block_3": {
+      "name": "stack_block_3",
+      "kind": "glossy",
+      "color": [
+        0.4,
+        0.52,
+        0.58
+      ],
+      "roughness": 0.4
+    },
+    "stack_block_4": {
+      "name": "stack_block_4",
+      "kind": "glossy",
+      "color": [
+        0.35,
+        0.5,
+        0.55
+      ],
+      "roughness": 0.4
+    },
+    "contact_force_0": {
+      "name": "contact_force_0",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.3,
+        0.12
+      ],
+      "roughness": 0.3
+    },
+    "contact_force_1": {
+      "name": "contact_force_1",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.41,
+        0.12
+      ],
+      "roughness": 0.3
+    },
+    "contact_force_2": {
+      "name": "contact_force_2",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.52,
+        0.12
+      ],
+      "roughness": 0.3
+    },
+    "contact_force_3": {
+      "name": "contact_force_3",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.63,
+        0.12
+      ],
+      "roughness": 0.3
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/rigid-stack/scene.obj",
+        "format": "obj",
+        "name": "rigid_stack"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_block_0",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.58,
+          0.62
+        ],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_block_1",
+        "kind": "glossy",
+        "color": [
+          0.5,
+          0.55,
+          0.62
+        ],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_block_2",
+        "kind": "glossy",
+        "color": [
+          0.45,
+          0.55,
+          0.6
+        ],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_block_3",
+        "kind": "glossy",
+        "color": [
+          0.4,
+          0.52,
+          0.58
+        ],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_block_4",
+        "kind": "glossy",
+        "color": [
+          0.35,
+          0.5,
+          0.55
+        ],
+        "roughness": 0.4
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "stack_ground",
+        "kind": "glossy",
+        "color": [
+          0.1,
+          0.11,
+          0.13
+        ],
+        "roughness": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "contact_force_0",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.3,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "contact_force_1",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.41,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "contact_force_2",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.52,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "contact_force_3",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.63,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_block_0",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_block_1",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_block_2",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_block_3",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_block_4",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "stack_ground",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "contact_force_0",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "contact_force_1",
+        "group_index": 8
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "contact_force_2",
+        "group_index": 9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "rigid_stack",
+        "material_name": "contact_force_3",
+        "group_index": 10
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          10.313739,
+          -12.319188,
+          10.95829
+        ],
+        "target": [
+          0.0,
+          0.0,
+          2.65
+        ],
+        "fov": 40.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "/Users/craig/octanex-mcp/examples/recipes/rigid-stack-contact-forces/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "analytic (static load path)",
+    "fixture": "5-block stack, linear load model",
+    "physical_variables": [
+      "contact_force"
+    ],
+    "units": {
+      "length": "m",
+      "force": "N (arbitrary scale)"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 1.0,
+      "vector_scale": 1.0
+    },
+    "time": {
+      "frames": 1,
+      "t_seconds": 0.0
+    },
+    "null_model": "single block: no inter-block contacts",
+    "limitations": [
+      "linear load model, no friction/torque",
+      "arrows are load proxies, not stress tensors"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "Five stacked blocks are visible with vertical alignment.",
+    "Downward contact arrows between blocks thicken toward the base (red\u2192yellow).",
+    "Each usemtl group has explicit create_material + assign_material(group_index).",
+    "Camera frames the full stack with margin."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge \u2014 block + arrow colours need explicit materials.",
+    "Arrows are tube geometry, not OBJ `l` lines (which Octane can drop).",
+    "The load model is linear/static; do not claim dynamic or frictional contact."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/rigid-stack-contact-forces/preview.png",
+    "candidate_image": "examples/recipes/rigid-stack-contact-forces/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "physical subject readability",
+      "material/color families",
+      "geometry carrying the physical claim",
+      "framing",
+      "lighting"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              10.313739,
+              -12.319188,
+              10.95829
+            ],
+            "target": [
+              0.0,
+              0.0,
+              2.65
+            ],
+            "fov": 40.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              7.2196172999999995,
+              -8.6234316,
+              7.670802999999999
+            ],
+            "target": [
+              0.0,
+              0.0,
+              2.65
+            ],
+            "fov": 40.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              13.4078607,
+              -16.0149444,
+              14.245777
+            ],
+            "target": [
+              0.0,
+              0.0,
+              2.65
+            ],
+            "fov": 40.0
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              10.313739,
+              -10.319188,
+              10.95829
+            ],
+            "target": [
+              0.0,
+              0.0,
+              2.65
+            ],
+            "fov": 40.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "material families visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/rigid-stack-contact-forces/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (physical-simulation Phase A)"
+}

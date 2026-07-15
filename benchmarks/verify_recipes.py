@@ -255,6 +255,19 @@ def run_recipe(
                 p["quality"] = quality
     commands = [c for c in commands if not c.get("_drop")]
 
+    # ALWAYS flush the shared/persistent queue before every live render
+    # (unconditional — the autonomous steward and parallel agents write to the
+    # same queue/, so it refills silently between sessions; never skip even if
+    # it looks empty). flush_queue MOVEs files into a dated backup dir (never
+    # deletes), so the operation is recoverable. Do this BEFORE writing this
+    # recipe's commands; flushing after queueing deletes the render job itself.
+    if not dry_run and drain and not no_flush:
+        from octanex_mcp.bridge import flush_queue
+
+        flush_res = flush_queue(ws)
+        if flush_res["flushed"]:
+            run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
+
     for idx, cmd in enumerate(commands):
         write_command(str(cmd["op"]), dict(cmd.get("payload") or {}), ws)
     run.queued = len(commands)
@@ -270,15 +283,6 @@ def run_recipe(
         run.duration_seconds = time.time() - start
         return run
 
-    # ALWAYS flush the shared/persistent queue before every live render
-    # (unconditional — the autonomous steward and parallel agents write to the
-    # same queue/, so it refills silently between sessions; never skip even if
-    # it looks empty). flush_queue MOVEs files into a dated backup dir (never
-    # deletes), so the operation is recoverable.
-    from octanex_mcp.bridge import flush_queue
-    flush_res = flush_queue(ws)
-    if flush_res["flushed"]:
-        run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
     # Delete any pre-existing preview so acceptance guards on a FRESH mtime,
     # never a stale frame left by a prior session (which would look like a
     # successful render without actually running).

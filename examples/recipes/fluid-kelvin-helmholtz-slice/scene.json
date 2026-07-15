@@ -1,0 +1,342 @@
+{
+  "slug": "fluid-kelvin-helmholtz-slice",
+  "title": "Kelvin\u2013Helmholtz Shear-Layer Slice",
+  "category": "Physical simulation / fluid dynamics",
+  "domain": "Physics simulation",
+  "purpose": "Show shear instability: two opposed horizontal layers (upper/lower tracer) roll into counter-rotating vortex tubes at the interface, the classic Kelvin\u2013Helmholtz billow. Built from a deterministic analytic tanh/sin tracer field plus interface ribbons \u2014 no live solver required.",
+  "prompt": "Visualise a Kelvin\u2013Helmholtz shear-layer instability slice with rolled-up vortices.",
+  "camera": {
+    "position": [
+      22.04428,
+      -26.330667,
+      17.657892
+    ],
+    "target": [
+      0.0,
+      0.0,
+      -0.1
+    ],
+    "fov": 42.0
+  },
+  "materials": {
+    "kh_base": {
+      "name": "kh_base",
+      "kind": "glossy",
+      "color": [
+        0.07,
+        0.08,
+        0.1
+      ],
+      "roughness": 0.6
+    },
+    "kh_tracer": {
+      "name": "kh_tracer",
+      "kind": "glossy",
+      "color": [
+        0.12,
+        0.55,
+        0.92
+      ],
+      "roughness": 0.35
+    },
+    "kh_vort_up": {
+      "name": "kh_vort_up",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.45,
+        0.12
+      ],
+      "roughness": 0.3
+    },
+    "kh_vort_dn": {
+      "name": "kh_vort_dn",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.78,
+        0.12
+      ],
+      "roughness": 0.3
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/fluid-kh-slice/scene.obj",
+        "format": "obj",
+        "name": "fluid_kh_slice"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "kh_base",
+        "kind": "glossy",
+        "color": [
+          0.07,
+          0.08,
+          0.1
+        ],
+        "roughness": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "kh_tracer",
+        "kind": "glossy",
+        "color": [
+          0.12,
+          0.55,
+          0.92
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "kh_vort_up",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.45,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "kh_vort_dn",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.78,
+          0.12
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "fluid_kh_slice",
+        "material_name": "kh_base",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "fluid_kh_slice",
+        "material_name": "kh_tracer",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "fluid_kh_slice",
+        "material_name": "kh_vort_up",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "fluid_kh_slice",
+        "material_name": "kh_vort_dn",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          22.04428,
+          -26.330667,
+          17.657892
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.1
+        ],
+        "fov": 42.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "/Users/craig/octanex-mcp/examples/recipes/fluid-kelvin-helmholtz-slice/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 256,
+        "min_samples": 24,
+        "timeout_seconds": 14
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "analytic",
+    "fixture": "deterministic tanh/sin tracer (N=96 grid)",
+    "physical_variables": [
+      "tracer_concentration",
+      "vorticity"
+    ],
+    "units": {
+      "length": "m",
+      "time": "s"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 1.6,
+      "vector_scale": 0.25
+    },
+    "time": {
+      "frame": 0,
+      "t_seconds": 0.0
+    },
+    "null_model": "single flat interface with zero displacement amplitude",
+    "limitations": [
+      "analytic tracer, not a live Navier\u2013Stokes solve",
+      "2D slice extruded to a heightfield + interface ribbons"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the REAL native Octane render (standard tier).",
+  "quality_checklist": [
+    "Two colour families are visible: blue tracer heightfield and orange/yellow interface ribbons.",
+    "The interface reads as rolled/sinusoidal, not a flat plane.",
+    "Each usemtl group has an explicit create_material + assign_material(group_index).",
+    "Camera frames the full 12\u00d712 slice with margin."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge; the blue/orange split must come from explicit create_material + assign_material commands.",
+    "The vortex roll-up is a heightfield + ribbon cue, not a true 3D velocity field \u2014 keep the analytic note in the README.",
+    "Ribbons use tube/arrow geometry, not OBJ `l` lines (which Octane can drop)."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/fluid-kelvin-helmholtz-slice/preview.png",
+    "candidate_image": "examples/recipes/fluid-kelvin-helmholtz-slice/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "physical subject readability",
+      "material/color families",
+      "geometry carrying the physical claim",
+      "framing",
+      "lighting"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              22.04428,
+              -26.330667,
+              17.657892
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -0.1
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              15.430995999999999,
+              -18.431466899999997,
+              12.3605244
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -0.1
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              28.657564,
+              -34.2298671,
+              22.9552596
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -0.1
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "elevated angle",
+          "camera": {
+            "position": [
+              22.04428,
+              -24.330667,
+              17.657892
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -0.1
+            ],
+            "fov": 42.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "subject matches intent",
+      "material families visually distinct",
+      "framing acceptable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/fluid-kelvin-helmholtz-slice/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (physical-simulation Phase A)"
+}
