@@ -36,8 +36,15 @@
 >   `t5_math_surface_complex`, `t5_wave_interference`, `t6_earth_space`,
 >   `t6_saturn_system`) were removed from active `ALL_TASKS` rather than carried as
 >   stale gates.
-> - **Next:** B3–B5 adapters (SPlisHSPlasH/Genesis/MPIPyMHD) following the same
->   fixture-first pattern.
+> - **Real-library smoke layer added:** `scripts/run_physics_real_library_smokes.py`
+>   records actual local simulator/runtime status alongside fixture-first tests.
+>   Latest documented run: `docs/physics-real-library-smokes.md` — Oceananigans.jl
+>   passed a real 5-step CPU `ShallowWaterModel`; SPlisHSPlasH, Genesis, and
+>   MPIPyMHD are source-present but blocked by concrete local dependency/configure
+>   issues.
+> - **Next:** B3–B5 adapters (SPlisHSPlasH/Genesis/MPIPyMHD) should keep the same
+>   fixture-first contract tests and include/refresh matching real-library smoke
+>   evidence when the corresponding runtime is unblocked.
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
 
@@ -106,6 +113,12 @@ These require no external simulator and should land first because they harden th
 ### Phase B: Local-source-backed fixture adapters
 
 These connect the named local libraries to OctaneX without making core tests depend on their full runtime.
+
+Real-library status is tracked separately in
+[`physics-real-library-smokes.md`](physics-real-library-smokes.md). New physics
+adapters should include both: (1) fixture-first unit/contract tests that run in
+the normal suite, and (2) an optional real-library smoke result that records the
+actual local simulator import/configure/run status.
 
 | Priority | Slug | Source | Input fixture | Scene | Adapter output |
 | --- | --- | --- | --- | --- | --- |
