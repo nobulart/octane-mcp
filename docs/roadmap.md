@@ -1264,11 +1264,12 @@ injecting Homebrew `minizip`'s nested include dir fixed the `unzip.h` build bloc
 `luisa-render-cli -h` reported `metal`, and a tiny inline-mesh scene rendered to a
 non-blank PNG. Research note: `docs/luisa-render-backend-investigation.md`.
 
-**Recommended next move (2026-07-15):** continue WP15 by codifying the successful
-LuisaRender smoke as a reproducible `scripts/spike_luisa_scene.py` before production
-adapter work. It should create a temp `.luisa` inline-mesh scene, run
-`luisa-render-cli -b metal`, convert EXR→PNG, compute pixel stats, and only then
-graduate to translating one simple `BenchmarkTask`.
+**Recommended next move (2026-07-15):** continue WP15 by translating one simple
+`BenchmarkTask` into `.luisa` using the now-reproducible
+`scripts/spike_luisa_scene.py` smoke path before production adapter work. The spike
+script already creates a temp `.luisa` inline-mesh scene, runs
+`luisa-render-cli -b metal`, converts EXR→PNG, and computes pixel stats; the next
+gate is proving benchmark-spec geometry/material intent can travel the same path.
 
 ---
 

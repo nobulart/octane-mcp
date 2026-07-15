@@ -253,8 +253,8 @@ Verdict gate: colour-family checks detect at least two expected material familie
 
 1. **Keep three.js/WebGL as the realtime Canvas priority.** LuisaRender does not replace the immediate live interaction need.
 2. **Add LuisaRender as a candidate quality backend in the backend abstraction docs.** It belongs beside Mitsuba/OSPRay, not beside WebGL.
-3. **Codify the successful build/runtime smoke as a repo-local spike script before writing production adapter code.** The local checkout builds when Homebrew minizip's nested include dir is injected.
-4. **Implement `scripts/spike_luisa_scene.py` first**, not `src/octanex_mcp/backends/luisa_backend.py`. Reproduce scene generation, CLI invocation, EXR→PNG conversion, and pixel QA from a clean temp directory.
+3. **Codify the successful build/runtime smoke as a repo-local spike script before writing production adapter code.** Done: `scripts/spike_luisa_scene.py` writes the `.luisa` scene, runs `luisa-render-cli -b metal`, converts EXR→PNG, and fails nonzero on blank/flat pixel stats.
+4. **Translate one simple `BenchmarkTask` next**, not `src/octanex_mcp/backends/luisa_backend.py`. Reuse the spike script's scene-emission and PNG-stat primitives to prove one benchmark can travel through the Luisa path.
 5. **Only after one BenchmarkTask renders**, promote the adapter into `src/octanex_mcp/backends/` with tests around scene-file generation, not live rendering.
 
 ---
@@ -274,4 +274,4 @@ Verdict gate: colour-family checks detect at least two expected material familie
 
 LuisaRender is worth a spike. It would not replace Octane X as an immediate drop-in, and it would not solve the realtime Canvas problem. But it could become a cleaner local quality backend with a normal CLI, Metal support, reproducible scene files, and no AppleScript/TCC dependency.
 
-The first smoke has now passed: the CLI builds, `-h` reports Metal, and a minimal `.luisa` scene rendered to EXR and converted to a non-blank PNG. The next concrete step is still **not** production adapter architecture. It is to codify the smoke as a small repo-local spike script, then translate one simple `BenchmarkTask` into `.luisa` and run the same EXR→PNG→pixel-QA path reproducibly.
+The first smoke has now passed and is codified in `scripts/spike_luisa_scene.py`: the CLI builds, `-h` reports Metal, and a minimal `.luisa` scene renders to EXR, converts to PNG, and passes non-blank pixel statistics. The next concrete step is still **not** production adapter architecture. It is to translate one simple `BenchmarkTask` into `.luisa` and run the same EXR→PNG→pixel-QA path reproducibly.

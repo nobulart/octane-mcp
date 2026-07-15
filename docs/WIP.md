@@ -49,11 +49,11 @@ docs in this commit.
 6. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
 7. **G — Texture / material generation**: image-gen → `texture_path` / `normal_path` material payloads, closing the "texture approximated with geometry" recipe pitfall.
 8. **L — Renderer-agnostic backend abstraction** (MEDIUM effort / HIGH strategic fit): decouple the command DSL from Octane X so it becomes one of N render backends; research in `docs/visualization-backends-research.md`. *First step:* extract a `Backend` interface (OctaneBackend first), then ship `WebGLBackend` (three.js in Agentic Canvas) as the Phase-1 realtime + shareable win.
-9. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `docs/luisa-render-backend-investigation.md` now records a passed ad-hoc smoke: Homebrew `minizip` include path fixes the build, `luisa-render-cli -h` reports `metal`, and a minimal `.luisa` inline-mesh scene rendered through `-b metal` to EXR→PNG with non-blank pixel stats. *Next step:* codify this as `scripts/spike_luisa_scene.py`, then translate one simple `BenchmarkTask`.
+9. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `scripts/spike_luisa_scene.py` now codifies the smoke: it writes a minimal `.luisa` inline-mesh scene, runs `luisa-render-cli -b metal`, converts EXR→PNG, and fails nonzero on blank/flat pixel stats. *Next step:* translate one simple `BenchmarkTask` through the same path.
 
 ## Recommended next move
 
-Continue **N** by turning the successful ad-hoc LuisaRender smoke into a reproducible repo-local spike script. Keep **I/J** as the reliability spine for live Octane work, and keep **L/WebGLBackend** as the realtime Canvas path; LuisaRender is the offline quality tier, not the live viewport.
+Continue **N** by translating one simple `BenchmarkTask` into `.luisa` using the now-reproducible smoke script as the reference path. Keep **I/J** as the reliability spine for live Octane work, and keep **L/WebGLBackend** as the realtime Canvas path; LuisaRender is the offline quality tier, not the live viewport.
 
 ## PDF Consolidation (docs/3DXM/ — 3DXM Virtual Math Museum)
 
@@ -74,6 +74,7 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 
 - Today — docs: add LuisaRender backend investigation and wire it into WP15 / WIP.
 - Today — spike: LuisaRender CLI built with Homebrew `minizip` include path and rendered a minimal Metal `.luisa` scene to non-blank PNG.
+- Today — spike: add `scripts/spike_luisa_scene.py` plus unittest coverage for scene emission and stdlib PNG stats.
 - Today — docs: add physical-simulation recipe suite plan for harness repertoire expansion.
 - Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).
 - Today — fix(lua): oneshot↔persistent `handle_assign_material` parity (added `request_render_restart` + group-index suffix in oneshot).
