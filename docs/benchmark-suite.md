@@ -168,7 +168,7 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 | 7 | `t7_cloth_drape_contact` | ⏳ pending native | offline-verified; PBD cloth tenting over sphere. |
 | 7 | `t7_particle_splash_fixture` | ⏳ pending native | offline-verified; seeded liquid + foam families. |
 
-**18/18 Tier 1–6 tasks render natively and pass pixel acceptance. Tier 7 (3 tasks) is offline-verified and pending native render (blocked on Octane Accessibility/TCC from this session).**
+**18/18 Tier 1–6 tasks render natively and pass pixel acceptance. Tier 7 (3 tasks) is offline-verified and pending native benchmark-task render; the bridge/TCC blocker is resolved, but recipe promotion is tracked separately from benchmark-task verification.**
 
 **Lessons (also in `docs/recipe-book.md`):**
 * **Deferred render start is the current protection against render-restart

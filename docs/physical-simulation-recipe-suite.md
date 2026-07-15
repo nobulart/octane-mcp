@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
-> **Status (2026-07-15):** Phase A implemented + offline-verified; Tier 7 benchmark tasks added; first two physics recipes native-promoted.
+> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks added + offline-verified; Phase B B1 native-promoted.
 > - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
 >   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
 >   OBJ/MTL, stdlib `preview.png`, READMEs.
@@ -14,9 +14,9 @@
 >   `t7_cloth_drape_contact`, `t7_particle_splash_fixture`) — deterministic physics
 >   grammar. Registry + `TIER_TITLES[7]` added; `test_benchmarks` count 18→21.
 > - `docs/recipe-library.md`, `docs/benchmark-suite.md`, and this file updated.
-> - Offline suite green: `test_verify_recipes` (total 38 / contract_ok 37),
->   `test_recipes`, `test_benchmarks` (21 tasks), `test_physics_fixture_io` — 43 tests total.
-> - **Phase B started:** B1 (SPlisHSPlasH dam-break adapter) is landed + offline-verified.
+> - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
+>   (21 tasks), `test_physics_fixture_io`, and `test_splishsplash_adapter`.
+> - **Phase B started:** B1 (SPlisHSPlasH dam-break adapter) is landed, offline-verified, and native-promoted.
 >   `scripts/gen_splishsplash_recipe.py` consumes the committed fixture
 >   (`examples/fixtures/particles/dam-break-small/dam-break-small.csv`, 1500 particles)
 >   via `physics_fixture_io.py` with NO runtime SPlisHSPlasH dependency, emits a

@@ -85,11 +85,11 @@ recipe depends on a long live solver during normal verification.
 
 | Slug | Physical claim | Geometry | Acceptance focus |
 | --- | --- | --- | --- |
-| `fluid-kelvin-helmholtz-slice` | shear instability rolls into counter-rotating vortices | coloured tracer heightfield + interface ribbons | two colour families; non-flat roll-up shape |
-| `advection-diffusion-pulse` | diffusion broadens and lowers a tracer peak | four tiled heightfields | left→right peak-height decay + visible panels |
+| `fluid-kelvin-helmholtz-slice` | shear instability rolls into counter-rotating vortices | coloured tracer heightfield + interface ribbons | ✅ native Octane promoted 2026-07-15; two colour families; non-flat roll-up shape |
+| `advection-diffusion-pulse` | diffusion broadens and lowers a tracer peak | four tiled heightfields | ✅ native Octane promoted 2026-07-15; left→right peak-height decay + visible panels |
 | `mass-spring-cloth-drape` | gravity + constraints produce sag and contact tenting | triangulated cloth mesh + rigid sphere | ✅ native Octane promoted 2026-07-15; cloth above/around sphere; silhouette rows |
-| `rigid-stack-contact-forces` | load transfers down a settled stack | boxes + force arrows + contact patches | stacked vertical bounds + red/yellow contact families |
-| `nbody-chaotic-divergence` | sensitive dependence creates diverging paths | tube/ribbon trajectories + endpoint spheres | two path colours diverge from a common start |
+| `rigid-stack-contact-forces` | load transfers down a settled stack | boxes + force arrows + contact patches | ✅ native Octane promoted 2026-07-15; stacked vertical bounds + red/yellow contact families |
+| `nbody-chaotic-divergence` | sensitive dependence creates diverging paths | tube/ribbon trajectories + endpoint spheres | ✅ native Octane promoted 2026-07-15; two path colours diverge from a common start |
 
 Each recipe emits `scene.obj`, `scene.mtl`, `scene.json` (with the optional
 `simulation` metadata block), a stdlib-generated `preview.png`, and a `README.md`.
@@ -111,10 +111,9 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
 
 > **Honesty rule:** `native_octane_verified` stays `false` until a fresh native
 > Octane preview is promoted. The committed `preview.png` is a lightweight
-> reference raster, not a native render. As of 2026-07-15,
-> `mass-spring-cloth-drape` and `dam-break-splash` have promoted native
-> `octane-preview.png` renders; the remaining Phase A/B recipes still require
-> live promotion before setting `native_octane_verified=true`.
+> reference raster, not a native render. As of 2026-07-15, all five Phase A
+> recipes plus the Phase B `dam-break-splash` adapter have promoted native
+> `octane-preview.png` renders.
 
 ## Recipe registry tools
 
