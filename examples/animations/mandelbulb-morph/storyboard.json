@@ -1,0 +1,47 @@
+{
+  "slug": "mandelbulb-morph",
+  "title": "Mandelbulb Evolutionary Morph",
+  "kind": "animation",
+  "fps": 24,
+  "duration_seconds": 10,
+  "frames": 240,
+  "canvas": {"width": 800, "height": 800},
+  "samples_per_frame": 500,
+  "subject": "Mandelbulb fractal (orbit-trap isosurface)",
+  "parameter_curve": {
+    "power": {"from": 6.0, "to": 11.0, "interp": "linear", "direction": "one_way"},
+    "radius": {"from": 2.2, "to": 3.2, "interp": "linear"},
+    "camera_azimuth_deg": {"from": 0, "to": 330, "interp": "linear"},
+    "camera_radius": {"from": 11.0, "to": 7.0, "interp": "linear"},
+    "camera_height": {"from": 4.5, "to": 2.8, "interp": "linear"}
+  },
+  "materials": {
+    "type": "glossy",
+    "bands": 7,
+    "palette": "rainbow_red_to_violet",
+    "roughness": 0.1,
+    "clearcoat": 0.5,
+    "ior": 1.45
+  },
+  "lighting": "soft_studio",
+  "generator": "scripts/gen_mandelbulb.py",
+  "driver": "scripts/anim_mandelbulb_morph.py",
+  "repair_one_frame": "scripts/queue_one_frame.py",
+  "commands_per_frame": 18,
+  "total_commands": 4320,
+  "mesh_res": 140,
+  "mesh_footprint_gb": 2.7,
+  "verification": {
+    "frames_present": 240,
+    "pixel_qa_saturation_pct": {"frame_0000": 11.5, "frame_0120": 25.9, "frame_0239": 79.5},
+    "dominant_hues": {"frame_0000": 3, "frame_0120": 6, "frame_0239": 10},
+    "vision": "frame_0000 = moderately-lobed glossy bulb (power 6); frame_0239 = dense spiky/irregular fractal (power 11); both fully framed and multicoloured"
+  },
+  "deliverables": {
+    "mp4": "animation.mp4",
+    "gif": "animation.gif",
+    "preview_frames": "frames/ (16 representative)",
+    "sample_objs": "obj_frames/ (power 6 / 8.5 / 11)"
+  },
+  "notes": "Full 240-frame PNG + OBJ sets (2.7 GB) not committed (no git-lfs). Regenerate via scripts/anim_mandelbulb_morph.py."
+}

@@ -16,6 +16,9 @@ The MCP does not yet expose a native Octane timeline API. Until it does, the rel
   - `frames/*.png` lightweight deterministic preview frames;
   - `obj_frames/*.obj` reusable scene states for Octane re-rendering;
   - `storyboard.json` for agents.
+- [`mandelbulb-morph/`](mandelbulb-morph/) — Mandelbulb power 6→11 evolutionary
+  sweep with slow orbit + dolly-in (240 frames, 800×800, glossy rainbow bands);
+  `animation.mp4` / `animation.gif` + sample OBJs and a regenerable driver.
 
 ## Good animation targets
 
