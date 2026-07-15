@@ -1,0 +1,58 @@
+{
+  "slug": "rubber-duck",
+  "title": "Rubber Duck",
+  "category": "Product / prop studio",
+  "purpose": "Render a stylised rubber duck: a fat yellow body, yellow head merging into the body, an up-swept tail, an orange beak protruding forward, two black eyes, and a dark matte floor for grounding, under soft studio lighting.",
+  "prompt": "Visualise a rubber duck",
+  "camera": {
+    "position": [2.9999, 3.2757, 5.792],
+    "target": [0.0, 0.95, 0.15],
+    "fov": 38.0
+  },
+  "materials": {
+    "mat_body": {"name": "mat_body", "kind": "glossy", "color": [0.97, 0.82, 0.07], "roughness": 0.22},
+    "mat_beak": {"name": "mat_beak", "kind": "glossy", "color": [0.96, 0.42, 0.03], "roughness": 0.30},
+    "mat_eye": {"name": "mat_eye", "kind": "glossy", "color": [0.02, 0.02, 0.02], "roughness": 0.10},
+    "mat_floor": {"name": "mat_floor", "kind": "diffuse", "color": [0.03, 0.03, 0.045], "roughness": 0.92}
+  },
+  "commands": [
+    {"op": "import_geometry", "payload": {"path": "examples/recipes/rubber-duck/scene.obj", "format": "obj", "name": "rubber_duck"}},
+    {"op": "create_material", "payload": {"name": "mat_body", "kind": "glossy", "color": [0.97, 0.82, 0.07], "roughness": 0.22}},
+    {"op": "create_material", "payload": {"name": "mat_beak", "kind": "glossy", "color": [0.96, 0.42, 0.03], "roughness": 0.30}},
+    {"op": "create_material", "payload": {"name": "mat_eye", "kind": "glossy", "color": [0.02, 0.02, 0.02], "roughness": 0.10}},
+    {"op": "create_material", "payload": {"name": "mat_floor", "kind": "diffuse", "color": [0.03, 0.03, 0.045], "roughness": 0.92}},
+    {"op": "assign_material", "payload": {"object_name": "rubber_duck", "material_name": "mat_body"}},
+    {"op": "assign_material", "payload": {"object_name": "rubber_duck", "material_name": "mat_beak"}},
+    {"op": "assign_material", "payload": {"object_name": "rubber_duck", "material_name": "mat_eye"}},
+    {"op": "assign_material", "payload": {"object_name": "rubber_duck", "material_name": "mat_floor"}},
+    {"op": "set_camera", "payload": {"position": [2.9999, 3.2757, 5.792], "target": [0.0, 0.95, 0.15], "fov": 38.0}},
+    {"op": "set_lighting", "payload": {"preset": "soft_studio"}},
+    {"op": "save_preview", "payload": {"path": "examples/recipes/rubber-duck/octane-preview.png", "width": 1280, "height": 1280, "samples": 600, "min_samples": 64, "timeout_seconds": 40, "max_render_time": 32}}
+  ],
+  "acceptance": [
+    {"kind": "non_empty", "min_mean_dev": 2.0, "min_nonbg": 2.0},
+    {"kind": "review_ok", "fail_on": ["mostly near-white", "very low contrast", "all objects white", "no yellow body visible"]}
+  ],
+  "preview_note": "octane-preview.png is the native Octane X render from 2026-07-15 after the material-binding fix (the assign handler now passes material_name as the pin-match hint; previously all parts rendered white). Pixel QA: 1280x1280, 272,683 bytes, foreground 54.9%, contrast 91.3, likely_blank=false. Central-region sample: ~5.8% clearly-yellow body pixels + 27.6% warm midtones. Bridge log shows 'material mat_body -> pin mat_body' etc. for all four materials.",
+  "quality_checklist": [
+    "The duck reads as a duck at thumbnail size: rounded body, head, beak, eyes, tail.",
+    "The body and head are yellow (glossy), the beak is orange, the eyes are black.",
+    "Explicit create_material + assign_material commands bind every OBJ usemtl group by MATERIAL NAME (not group_index).",
+    "A dark matte floor grounds the shot and gives the duck a contact shadow.",
+    "Camera is a front-three-quarter hero with the duck filling roughly one-third to one-half the frame."
+  ],
+  "known_pitfalls": [
+    "The assign_material bridge handler MUST pass material_name as the pin-match hint; without it the mesh pins (named after the OBJ usemtl group) never match and every part renders white.",
+    "OBJ/MTL colours are only hints; Octane colour correctness depends on the explicit create_material + assign_material commands in scene.json.",
+    "Per-vertex colours baked into the OBJ are NOT honoured by the Octane X OBJ importer on this build (usedColor stays white), so named-material binding is the only reliable colour path."
+  ],
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/rubber-duck/octane-preview.png",
+    "iteration_dir": "examples/recipes/rubber-duck/iterations",
+    "bundled_assets": ["scene.obj", "scene.mtl", "scene.json", "octane-preview.png"],
+    "status": "native_candidate_available"
+  },
+  "native_octane_verified": true,
+  "status": "native_octane_verified (2026-07-15, material-binding fix applied)"
+}

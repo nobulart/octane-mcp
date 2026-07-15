@@ -159,11 +159,14 @@ def write_command(op: str, payload: Optional[Dict[str, Any]] = None, workspace: 
     tmp_path.write_text(text)
     os.replace(tmp_path, final_path)
 
-    # Also publish to inbox for hermes_bridge.lua
-    inbox_tmp = workspace.root / ".inbox.json.tmp"
-    inbox_path = workspace.root / "inbox.json"
-    inbox_tmp.write_text(text)
-    os.replace(inbox_tmp, inbox_path)
+    # Publish to inbox for hermes_bridge.lua. The bridge drains `queue/`
+    # first; if `queue/` is missed (e.g. a transient container-FS stall
+    # while the drain's `ls` runs) it falls back to INBOX. A SINGLE
+    # overwritten inbox.json would then carry ONLY the last command, so we
+    # write one distinct per-command inbox file instead. The bridge
+    # (v2) already scans INBOX via a directory listing of inbox_*.json.
+    inbox_path = workspace.root / f"inbox_{command_id}.json"
+    inbox_path.write_text(text)
 
     return {
         "queued": True,
@@ -173,7 +176,11 @@ def write_command(op: str, payload: Optional[Dict[str, Any]] = None, workspace: 
         "inbox_path": str(inbox_path),
         "schema_version": SCHEMA_VERSION,
         "validation": {"ok": validation.ok, "errors": validation.errors, "warnings": validation.warnings, "error_details": validation.error_details},
-        "status": read_status(workspace),
+        # NOTE: deliberately do NOT block on read_status() here. A stalled
+        # container FS made that read hang indefinitely (blocking the whole
+        # queue), and status is only diagnostic. Callers that need it should
+        # read it themselves.
+        "status": None,
     }
 
 

@@ -1039,7 +1039,13 @@ local function handle_assign_material(cmd)
             append_log("MESH_PINS(" .. tostring(pc) .. "): " .. table.concat(parts, " | "))
         end
     end)
-    local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
+    -- Pass the material NAME as the name-hint so connect_material_to_mesh_pins
+    -- can match the mesh's material-input pin by name (the pins are named after
+    -- the OBJ usemtl group, e.g. "mat_body"). group_index alone is unreliable:
+    -- the mesh exposes ONE pin per UNIQUE material, not per OBJ group, so a
+    -- 1-based group sequence rarely lands on the right pin. Without the name
+    -- hint the binding silently fails ("NO matching pin") and renders white.
+    local connected = connect_material_to_mesh_pins(mesh, mat, group_index, cmd.material_name)
     if connected then
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))

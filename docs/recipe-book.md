@@ -1507,3 +1507,27 @@ geometry, the launcher `-2741` bug, and TCC.
 - `assign_material` bridge path should be fixed (or vertex colours made the default) so colour is controllable from the command layer.
 - Could add a thin crema ring / steam wisps for extra realism.
 - The cup body reads cool-white; warm it slightly (color ~[0.93,0.90,0.83]) if a warmer "ceramic" look is wanted.
+
+## Rubber duck (yellow body, orange beak, dark floor)
+
+- **Outcome:** success
+- **Recorded:** 2026-07-15 09:27 UTC
+- **Context:** Render a recognizable rubber duck from a generated OBJ. First attempt rendered an empty white frame (FS stall dropped the queue), then the second attempt produced correct geometry but ALL parts rendered white — the material-binding bug.
+
+### Steps
+- Built a single combined OBJ (`scripts/gen_rubber_duck.py`): fat yellow body ellipsoid, yellow head sphere, up-swept tail ellipsoid, forward orange beak ellipsoid, two black eye spheres, and a dark matte floor as the LAST group. One `o`/`g` per `usemtl` material group.
+- Queued import_geometry + one create_material per unique material (mat_body/mat_beak/mat_eye/mat_floor) + one assign_material per material (matched by `material_name`) + camera + soft_studio lighting + save_preview.
+- Clicked `hermes_bridge_oneshot.generated` once to drain the whole queue (cold-relaunch Octane between regenerations to avoid stale in-memory nodes).
+
+### Signals / evidence
+- Bridge log this run shows the success signature for all four materials: `material mat_body -> pin mat_body`, `mat_beak -> pin mat_beak`, `mat_eye -> pin mat_eye`, `mat_floor -> pin mat_floor`.
+- Pixel QA: 1280x1280, 272,683 bytes, foreground 54.9%, contrast 91.3, likely_blank=false. Central-region sampling: ~5.8% clearly-yellow body pixels + 27.6% warm midtones (previously 0% yellow / all white).
+- Recipe bundled: `examples/recipes/rubber-duck/{scene.obj,scene.mtl,scene.json,octane-preview.png,README.md}`. Library validation: `rubber-duck` ok.
+
+### Root-cause fix (materials rendered white)
+- `handle_assign_material` in `hermes_bridge_oneshot_v2.lua` / `hermes_bridge_persistent_v1.lua` called `connect_material_to_mesh_pins(mesh, mat, group_index)` WITHOUT passing the material name. The mesh exposes ONE pin per UNIQUE `usemtl` material (named e.g. `mat_body`), so matching requires the name hint; with only `group_index` (nil here) it found no target and logged `material nil -> NO matching pin`, leaving the default white material. Fixed by passing `cmd.material_name` as the 4th arg (`mat_name_hint`). Applied to BOTH bridge templates and regenerated via `octanex-mcp init`; parity check 7/7 OK.
+- SECONDARY fix: `write_command` previously blocked on a `read_status()` call that hung when the container FS stalled; removed it. Also changed the INBOX publish from a single overwritten `inbox.json` to distinct `inbox_<id>.json` files and taught the drain to scan `inbox_*.json`, so a missed `queue/` glob still carries every command.
+
+### Follow-ups
+- Per-vertex colours baked into the OBJ are NOT honoured by the Octane X OBJ importer on this build (usedColor stays white), so name-based `assign_material` is the only reliable colour path. Keep the explicit create_material + assign_material commands.
+- If a part still renders white, grep `bridge.log` for `material <name> -> NO matching pin` (bad) vs `-> pin <name>` (good).

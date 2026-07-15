@@ -1,0 +1,20 @@
+# Material hints; Octane binding is driven by scene.json create_material + assign_material.
+newmtl mat_body
+Kd 0.9700 0.8200 0.0700
+Ks 0.4500 0.4500 0.4500
+Ns 40
+
+newmtl mat_beak
+Kd 0.9600 0.4200 0.0300
+Ks 0.4500 0.4500 0.4500
+Ns 40
+
+newmtl mat_eye
+Kd 0.0200 0.0200 0.0200
+Ks 0.4500 0.4500 0.4500
+Ns 80
+
+newmtl mat_floor
+Kd 0.0300 0.0300 0.0450
+Ks 0.0800 0.0800 0.0800
+Ns 40

@@ -1018,7 +1018,13 @@ local function handle_assign_material(cmd)
             append_log("MESH_PINS(" .. tostring(pc) .. "): " .. table.concat(parts, " | "))
         end
     end)
-    local connected = connect_material_to_mesh_pins(mesh, mat, group_index)
+    -- Pass the material NAME as the name-hint so connect_material_to_mesh_pins
+    -- can match the mesh's material-input pin by name (the pins are named after
+    -- the OBJ usemtl group, e.g. "mat_body"). group_index alone is unreliable:
+    -- the mesh exposes ONE pin per UNIQUE material, not per OBJ group, so a
+    -- 1-based group sequence rarely lands on the right pin. Without the name
+    -- hint the binding silently fails ("NO matching pin") and renders white.
+    local connected = connect_material_to_mesh_pins(mesh, mat, group_index, cmd.material_name)
     if connected then
         local refreshed, refresh_msg = request_render_restart(64, nil, nil, false)
         append_log("post-material render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
@@ -1637,10 +1643,31 @@ if processed > 0 then
 end
 
 if processed == 0 then
-    local raw = read_file(INBOX)
-    if raw and raw ~= "" then
-        process_raw_command(raw, INBOX, "inbox")
-        processed = processed + 1
+    -- INBOX fallback. Hermes now writes ONE distinct file per command
+    -- (inbox_<id>.json) instead of overwriting a single inbox.json, so
+    -- a missed `queue/` glob (e.g. a transient container-FS stall
+    -- during the drain's `ls`) still carries EVERY command here, not
+    -- just the last one. Scan both the per-command files and the
+    -- legacy single inbox.json.
+    local inbox_files = {}
+    local listing_path = ROOT .. "/inbox_listing.txt"
+    os.execute("ls -1 '" .. (ROOT:gsub("'", "'\\''")) .. "'/inbox_*.json 2>/dev/null > '" .. (listing_path:gsub("'", "'\\''")) .. "'")
+    local il = read_file(listing_path)
+    if il then
+        for line in il:gmatch("[^\r\n]+") do
+            table.insert(inbox_files, line)
+        end
+    end
+    if file_exists(INBOX) then
+        table.insert(inbox_files, INBOX)
+    end
+    for _, inbox_path in ipairs(inbox_files) do
+        local raw = read_file(inbox_path)
+        if raw and raw ~= "" then
+            process_raw_command(raw, inbox_path, "inbox")
+            processed = processed + 1
+            if file_exists(inbox_path) then os.remove(inbox_path) end
+        end
     end
 end
 
