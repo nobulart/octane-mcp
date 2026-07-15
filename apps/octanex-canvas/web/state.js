@@ -42,6 +42,8 @@ export const dom = {
   snapToggle: document.getElementById("snap-toggle"),
   octaneBtn: document.getElementById("octane-render"),
   octanePie: document.querySelector("#octane-render .ox-pie-progress"),
+  commitBtn: document.getElementById("octane-commit"),
+  forkBtn: document.getElementById("octane-fork"),
   tasks: document.getElementById("tasks"),
   dotFront: document.getElementById("dot-front"),
   dotBack: document.getElementById("dot-back"),

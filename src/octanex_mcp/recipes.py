@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -157,6 +159,88 @@ def load_recipe(slug: str, recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:
     meta = _metadata(recipe_dir, data)
     commands = _resolved_commands(data, repo_root=recipes_root.parents[1])
     return {**meta, "commands": commands, "raw": data}
+
+
+def _scene_to_recipe_payload(scene: Mapping[str, Any], slug: str, *, title: str | None = None) -> dict[str, Any]:
+    """Serialize a canvas.scene.v1 scene into a recipe scene.json payload.
+
+    Keeps the canvas objects/materials/camera verbatim (so the recipe can be
+    rebuilt in the WebGL viewport later) and wraps them with the recipe
+    bookkeeping fields recipe_index/_metadata expect.
+    """
+    safe_slug = _safe_slug(slug)
+    now = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "slug": safe_slug,
+        "title": title or safe_slug.replace("-", " ").title(),
+        "schema_version": str(scene.get("schema_version") or "canvas.scene.v1"),
+        "purpose": "Committed from OctaneX Canvas",
+        "objects": scene.get("objects") or [],
+        "materials": scene.get("materials") or [],
+        "camera": scene.get("camera") or {},
+        "environment": scene.get("environment") or {},
+        "provenance": {
+            "source": "canvas-commit",
+            "committed_at": now,
+            "scene_id": scene.get("scene_id"),
+        },
+        "native_octane_verified": False,
+    }
+    return payload
+
+
+def _safe_slug(slug: str) -> str:
+    s = str(slug).strip().lower()
+    s = re.sub(r"[^a-z0-9_-]", "-", s)   # non-slug chars -> dash
+    s = re.sub(r"-{2,}", "-", s)            # collapse dash runs
+    s = s.strip("-") or "untitled"          # no leading/trailing dashes
+    return s
+
+
+def save_recipe(
+    scene: Mapping[str, Any],
+    slug: str,
+    *,
+    mode: str = "commit",
+    title: str | None = None,
+    recipes_root: Path = RECIPES_ROOT,
+) -> dict[str, Any]:
+    """Persist a canvas scene into the recipebook.
+
+    mode="commit" upserts by slug (overwrites an existing recipe of that name).
+    mode="fork" writes a NEW unique slug derived from the requested one and
+    never overwrites an existing recipe.
+
+    Returns the resolved slug, written path, and whether it was created fresh.
+    """
+    base = _safe_slug(slug)
+    existing = {d.name for d in _recipe_dirs(recipes_root)}
+    if mode == "fork":
+        candidate = base
+        if candidate in existing:
+            # base exists -> first free slot is base-1, then base-2, ...
+            # (do NOT start at n=1 and skip base-1 — see bug in prior rev)
+            n = 1
+            candidate = f"{base}-{n}"
+            while candidate in existing:
+                n += 1
+                candidate = f"{base}-{n}"
+        slug = candidate
+    else:
+        slug = base
+    recipe_dir = recipes_root / slug
+    created = not recipe_dir.exists()
+    recipe_dir.mkdir(parents=True, exist_ok=True)
+    payload = _scene_to_recipe_payload(scene, slug, title=title)
+    (recipe_dir / "scene.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ok": True,
+        "slug": slug,
+        "mode": mode,
+        "path": str(recipe_dir / "scene.json"),
+        "created": created,
+        "title": payload["title"],
+    }
 
 
 def recipe_to_canvas_scene(slug: str, recipes_root: Path = RECIPES_ROOT) -> dict[str, Any]:

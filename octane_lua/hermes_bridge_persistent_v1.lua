@@ -784,9 +784,10 @@ local function render_stat_number(stats, key)
     return tonumber(stats[key]) or 0
 end
 
-local function wait_for_render_ready(min_samples, timeout_seconds)
+local function wait_for_render_ready(min_samples, timeout_seconds, samples_target)
     min_samples = tonumber(min_samples) or 16
     timeout_seconds = tonumber(timeout_seconds) or 10
+    samples_target = tonumber(samples_target) or 64
     if not (octane and octane.render and octane.render.getRenderResultStatistics) then
         return true, "render statistics unavailable; continuing"
     end
@@ -801,6 +802,12 @@ local function wait_for_render_ready(min_samples, timeout_seconds)
             local info = render_stat_number(stats, "infoSamplesPerPixel")
             local pending = stats.hasPendingUpdates == true
             local state = tostring(stats.renderState)
+            -- Live progress: publish samples_done so the Canvas ring can fill
+            -- during the render (not just at the end). Use whichever pass has
+            -- advanced furthest as the done count; the target is cmd.samples.
+            local done = math.max(beauty, info)
+            write_status("processing", "rendering " .. tostring(done) .. "/" .. tostring(samples_target),
+                { render_stage = "rendering", samples_done = done, samples_target = samples_target })
             last = "beauty=" .. tostring(beauty) .. " info=" .. tostring(info) .. " pending=" .. tostring(pending) .. " state=" .. state
             if (beauty >= min_samples or info >= min_samples) and not pending then
                 append_log("render ready for preview: " .. last)
@@ -1280,7 +1287,7 @@ local function handle_save_preview(cmd)
     local refreshed, refresh_msg = request_render_restart(cmd.samples or 64, cmd.width or DEFAULT_WIDTH, cmd.height or DEFAULT_HEIGHT, true, cmd.max_render_time)
     append_log("pre-save render refresh ok=" .. tostring(refreshed) .. " msg=" .. tostring(refresh_msg))
     if not refreshed then return false, tostring(refresh_msg) end
-    local ready, ready_msg = wait_for_render_ready(cmd.min_samples or 16, cmd.timeout_seconds or 10)
+    local ready, ready_msg = wait_for_render_ready(cmd.min_samples or 16, cmd.timeout_seconds or 10, cmd.samples or 64)
     append_log("pre-save render readiness ok=" .. tostring(ready) .. " msg=" .. tostring(ready_msg))
     write_status("processing", "rendering preview", { render_stage = "rendering", samples_target = cmd.samples or 64 })
 

@@ -56,20 +56,21 @@ class TestRecipeContractOffline(TestCase):
     def test_verify_recipe_library_dry_run_counts(self):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
-        self.assertEqual(report["total"], 32)
-        # 31/32 recipe dirs pass the offline contract. `earth-moon-space` is the
+        self.assertEqual(report["total"], 33)
+        # 32/33 recipe dirs pass the offline contract. `earth-moon-space` is the
         # remaining intentional exception (no checked-in preview). `earth-hemisphere`
-        # is regenerable (large OBJ gitignored for size; rebuilt via the committed
-        # scripts/gen_earth_hemisphere.py) and is therefore accepted with a warning,
-        # not a contract failure — so the suite stays green on a clean checkout.
-        self.assertEqual(report["contract_ok"], 31, report)
+        # may be present as a checked-in/generated OBJ in this working tree or absent
+        # as a regenerable large asset on a clean checkout; either state should pass.
+        self.assertEqual(report["contract_ok"], 32, report)
         self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, ["earth-moon-space"], report)
-        # The regenerable recipe must still warn (not silently pass cleanly).
+        # If the large Earth OBJ is absent, the regenerable recipe must warn rather
+        # than silently passing cleanly. If the OBJ is present, no warning is needed.
         hemi = next(r for r in report["recipes"] if r["slug"] == "earth-hemisphere")
         self.assertTrue(hemi["contract_ok"], report)
-        self.assertTrue(any("regenerable" in w for w in hemi["contract_warnings"]), report)
+        if not (RECIPES / "earth-hemisphere" / "scene.obj").exists():
+            self.assertTrue(any("regenerable" in w for w in hemi["contract_warnings"]), report)
 
     def test_verify_recipe_library_single_slug(self):
         report = verify_recipe_library(dry_run=True, slug="data-bars")

@@ -16,7 +16,8 @@ import {
   submitIntent, showSelection, clearSelection,
   openPalette, openInspector, snapAndSend,
   loadModels, onModelChange, loadVox, onVoxToggle,
-  loadTranscript, toggleLog, renderToOctane,
+  loadTranscript, toggleLog, renderToOctane, cancelOctaneRender,
+  commitRecipe, forkRecipe,
 } from "./agent.js";
 
 // Live WebGL scene (Phase 2)
@@ -105,4 +106,13 @@ if (dom.transcriptClose) dom.transcriptClose.addEventListener("click", () => {
   dom.logToggle.setAttribute("aria-pressed", "false");
 });
 if (dom.snapToggle) dom.snapToggle.addEventListener("click", snapAndSend);
-if (dom.octaneBtn) dom.octaneBtn.addEventListener("click", () => renderToOctane());
+if (dom.octaneBtn) dom.octaneBtn.addEventListener("click", () => {
+  // While a render is in flight, the button cancels it instead of restarting.
+  if (state.octaneRendering) {
+    cancelOctaneRender();
+  } else {
+    renderToOctane();
+  }
+});
+if (dom.commitBtn) dom.commitBtn.addEventListener("click", () => commitRecipe());
+if (dom.forkBtn) dom.forkBtn.addEventListener("click", () => forkRecipe());

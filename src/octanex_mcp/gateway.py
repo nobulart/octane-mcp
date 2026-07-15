@@ -63,7 +63,7 @@ from octanex_mcp.bridge_control import octane_process_status, reset_octane_scene
 from octanex_mcp.scheduler import DispatchLoop
 from octanex_mcp.canvas_scene import plan_scene, patch_object, patch_scene
 from octanex_mcp.backends import WebGLBackend, build_scene
-from octanex_mcp.recipes import load_recipe, recipe_to_canvas_scene, RECIPES_ROOT
+from octanex_mcp.recipes import load_recipe, recipe_to_canvas_scene, save_recipe, RECIPES_ROOT
 from octanex_mcp import hermes_config
 
 WEB_DIR_DEFAULT = Path(__file__).resolve().parents[2] / "apps" / "octanex-canvas" / "web"
@@ -518,7 +518,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(hermes_config.get_vox())
             return
         if path == "/status":
-            self._send_json(read_status())
+            # status.json lives in the Octane container FS, which can block on
+            # read while the bridge writes it (every ~0.5s during a render). A
+            # blocking read would hang this request (HTTP 000) and starve the
+            # FAB's progress poll. Read it in a guard thread with a short
+            # timeout so /status always answers promptly.
+            self._send_json(_read_status_safe())
             return
         if path == "/preview":
             progressive = qs.get("progressive", ["0"])[0] == "1"
@@ -670,32 +675,119 @@ class Handler(BaseHTTPRequestHandler):
             if not _canvas_scene:
                 self._send_json({"ok": False, "error": "no scene built yet"}, code=404)
                 return
+
+            # Camera inheritance: the browser FAB hands the live WebGL
+            # viewport camera as a `camera` override. Stamp it onto the
+            # scene so queue_scene_plan emits THIS camera (the last
+            # set_camera in the queue) instead of the scene's stored
+            # default — otherwise the default overrides the user's view.
+            if isinstance(payload.get("camera"), Mapping):
+                _canvas_scene["camera"] = dict(payload["camera"])
+            # Canvas uses hex colors (WebGL-friendly subset); the Octane
+            # bridge expects RGB arrays. Convert at the boundary so the
+            # live scene the browser owns stays untouched.
+            plan = _octane_ready_plan(_canvas_scene)
+
+            # Run the drain + render in a background thread so this request
+            # returns immediately. The bridge writes live progress
+            # (samples_done/samples_target/render_stage) to status.json during
+            # the render, which the browser polls via /status — so the FAB
+            # ring fills in real time instead of only after the render ends.
+            # A module-level lock serializes renders (one Octane at a time).
+            # Run the drain + render in a background thread so this request
+            # returns immediately. The bridge writes live progress
+            # (samples_done/samples_target/render_stage) to status.json during
+            # the render, which the browser polls via /status — so the FAB
+            # ring fills in real time instead of only after the render ends.
+            # A module-level lock serializes renders (one Octane at a time).
+            # flush + queue happen ONCE, inside the lock, so a concurrent
+            # render (or an external octane_flush_queue) can never move away
+            # the commands we just queued before the bridge drains them.
+            queued_result: dict[str, Any] = {}
+            from concurrent.futures import Future
+            result_slot: Future[dict[str, Any]] = Future()
+
+            def _drain_and_render() -> None:
+                with _render_lock:
+                    try:
+                        flush_queue(Workspace(), backup=True)
+                        q = queue_scene_plan(plan, workspace=Workspace())
+                        queued_result.update(q)
+                        run_bridge_script("oneshot", dry_run=bool(payload.get("dry_run", False)))
+                    except Exception as exc:  # noqa: BLE001 - log, don't crash the thread
+                        print("to-octane render error: " + str(exc))
+                    finally:
+                        result_slot.set_result(queued_result)
+
+            threading.Thread(target=_drain_and_render, name="octane-render", daemon=True).start()
+            # Wait briefly for the worker to flush+queue so we can return an
+            # accurate scene_id / command count. The bridge render itself runs
+            # uninterrupted in the background.
             try:
-                # Camera inheritance: the browser FAB hands the live WebGL
-                # viewport camera as a `camera` override. Stamp it onto the
-                # scene so queue_scene_plan emits THIS camera (the last
-                # set_camera in the queue) instead of the scene's stored
-                # default — otherwise the default overrides the user's view.
-                if isinstance(payload.get("camera"), Mapping):
-                    _canvas_scene["camera"] = dict(payload["camera"])
-                # Canvas uses hex colors (WebGL-friendly subset); the Octane
-                # bridge expects RGB arrays. Convert at the boundary so the
-                # live scene the browser owns stays untouched.
-                plan = _octane_ready_plan(_canvas_scene)
-                flush_queue(Workspace(), backup=True)
-                queued = queue_scene_plan(plan, workspace=Workspace())
-                bridge = run_bridge_script("oneshot", dry_run=bool(payload.get("dry_run", False)))
-                result = {"ok": bool(queued.get("queued_commands") and bridge.get("ok")),
-                          "scene_id": queued.get("scene_id"),
-                          "queued_commands": len(queued.get("queued_commands") or []),
-                          "bridge": bridge}
-            except Exception as exc:  # noqa: BLE001 - surface any handoff failure
+                queued = result_slot.result(timeout=10)
+            except Exception:
+                queued = {}
+            self._send_json(
+                {"ok": True, "async": True, "scene_id": queued.get("scene_id"),
+                 "queued_commands": len(queued.get("queued_commands") or []),
+                 "message": "render started; poll /status for progress"},
+                code=202,
+            )
+            return
+        if path == "/canvas/cancel":
+            # Cancel the in-flight Octane render. The browser FAB calls this
+            # when the user clicks the active render button. pause_render tells
+            # Octane to stop; the bridge then lands whatever frame exists.
+            try:
+                from octanex_mcp.bridge import write_command
+                res = write_command("pause_render", {})
+                self._send_json({"ok": True, "paused": res.get("queued", False)}, code=200)
+            except Exception as exc:  # noqa: BLE001
+                self._send_json({"ok": False, "error": str(exc)}, code=500)
+            return
+        if path == "/canvas/commit":
+            # Persist the live canvas scene into the recipebook under a slug.
+            # Upserts by slug (overwrites an existing recipe of that name).
+            slug = (payload.get("slug") or "").strip()
+            scene = payload.get("scene") or _canvas_scene
+            if not slug:
+                self._send_json({"ok": False, "error": "slug required"}, code=400)
+                return
+            if not isinstance(scene, Mapping):
+                self._send_json({"ok": False, "error": "no scene to commit"}, code=422)
+                return
+            try:
+                out = save_recipe(scene, slug, mode="commit", title=payload.get("title"))
+            except Exception as exc:  # noqa: BLE001
                 self._send_json({"ok": False, "error": str(exc)}, code=500)
                 return
-            if not result["ok"]:
-                self._send_json(result, code=502)
+            self._send_json({"ok": True, **out}, code=200)
+            return
+        if path == "/canvas/fork":
+            # Save the live canvas scene as a NEW recipe (never overwrites) and
+            # return a fresh scene seed so the canvas can start a new session
+            # from it without mutating the original.
+            slug = (payload.get("slug") or "fork").strip()
+            scene = payload.get("scene") or _canvas_scene
+            if not isinstance(scene, Mapping):
+                self._send_json({"ok": False, "error": "no scene to fork"}, code=422)
                 return
-            self._send_json(result, code=200)
+            try:
+                out = save_recipe(scene, slug, mode="fork", title=payload.get("title"))
+            except Exception as exc:  # noqa: BLE001
+                self._send_json({"ok": False, "error": str(exc)}, code=500)
+                return
+            # Seed a fresh session scene from the committed objects so the user
+            # can diverge without touching the source recipe.
+            seed = {
+                "schema_version": scene.get("schema_version", "canvas.scene.v1"),
+                "scene_id": out["slug"],
+                "objects": scene.get("objects", []),
+                "materials": scene.get("materials", []),
+                "camera": scene.get("camera", {}),
+                "environment": scene.get("environment", {}),
+            }
+            self._send_json({"ok": True, **out, "seed_scene": seed}, code=200)
             return
         if path == "/config/models":
             # Set the Hermes Agent harness model that powers the agentic
@@ -865,6 +957,28 @@ def make_server(host: str = "127.0.0.1", port: int = 8731) -> ThreadingHTTPServe
 # hand-rolled drain) — so the engine is never double-driven even if both run.
 _dispatch_loop: Optional[DispatchLoop] = None
 _dispatch_lock = threading.Lock()
+# Serializes Octane renders kicked off via /canvas/to-octane (one engine at a time).
+_render_lock = threading.Lock()
+
+
+def _read_status_safe(timeout_seconds: float = 1.5) -> dict:
+    """Read Octane status.json without blocking the request thread.
+
+    The file lives in the Octane container FS and can stall on read while the
+    bridge rewrites it during a render. Guard the read in a worker thread and
+    fall back to a minimal status object on timeout so /status always answers.
+    """
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(read_status)
+        try:
+            return fut.result(timeout=timeout_seconds)
+        except concurrent.futures.TimeoutError:
+            return {"render_stage": "unknown", "error": "status.json read timed out",
+                    "hint": "Octane container FS read stalled; progress may lag"}
+        except Exception as exc:  # noqa: BLE001
+            return {"render_stage": "unknown", "error": f"status read failed: {exc}"}
 
 
 def start_dispatch_daemon(
