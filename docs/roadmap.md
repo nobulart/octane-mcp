@@ -878,10 +878,12 @@ Decouple the existing scene-graph command DSL from Octane X so Octane becomes on
 of N render backends behind a common interface. This retires the single-renderer
 coupling (and the macOS AppleScript/TCC fragility that WP10–WP14 cannot fix from
 inside the Octane bridge) and opens realtime/shareable channels (WebGL) plus open
-photoreal / quality tiers (Blender, Mitsuba) without rewriting octanex-mcp.
+photoreal / quality tiers (Blender, Mitsuba, OSPRay, LuisaRender) without rewriting
+octanex-mcp.
 
 Research basis: `docs/visualization-backends-research.md` (candidate survey +
-recommendation).
+recommendation) and `docs/luisa-render-backend-investigation.md` (local LuisaRender
+Metal/CLI feasibility spike).
 
 ## Files to inspect first
 - `src/octanex_mcp/server.py` (command dispatch)
@@ -889,6 +891,7 @@ recommendation).
 - `octane_lua/hermes_bridge_oneshot_v2.lua` (current Octane handler)
 - `apps/octanex-canvas/` (WKWebView host — today a PNG viewer, not a renderer)
 - `docs/visualization-backends-research.md`
+- `docs/luisa-render-backend-investigation.md`
 
 ## Current state
 - Pipeline: generator → OBJ → MCP command queue → Octane Lua bridge → Octane X →
@@ -897,6 +900,9 @@ recommendation).
   itself render.
 - Octane is reached only via UI-scripted AppleScript (TCC on the agent-runtime
   python) — the project's largest fragility source.
+- LuisaRender is a plausible quality-tier alternative: local source configures for
+  Metal and exposes a normal CLI/scene-file model, but the local build currently
+  stops before `luisa-render-cli` because bundled Assimp cannot find `unzip.h`.
 
 ## Tasks
 1. Define a `Backend` protocol in `src/octanex_mcp/backends/` with `build(scene)`,
@@ -912,8 +918,11 @@ recommendation).
 5. Implement `BlenderBackend` (Phase 3) as an open photoreal option via `bpy` /
    BlenderMCP; isolate it behind a process boundary so GPL `bpy` never enters the
    BSL core package.
-6. Implement `QualityBackend` (Phase 4) via Mitsuba 3 / OSPRay for research-grade
-   reproducible renders where Octane is undesirable.
+6. Implement `QualityBackend` (Phase 4) via Mitsuba 3 / OSPRay / LuisaRender for
+   research-grade reproducible renders where Octane is undesirable. For LuisaRender,
+   start with a spike: fix the `unzip.h` build blocker, render one minimal `.luisa`
+   scene with `luisa-render-cli -b metal`, convert EXR to PNG, and feed the same
+   pixel/vision review path.
 7. Fold Open3D/PyVista/trimesh into the generator layer as backend-agnostic
    geometry sources (already partially present via the `science` extra).
 
@@ -923,9 +932,13 @@ recommendation).
 - `Backend` interface is covered by tests with an in-memory fake backend.
 - `WebGLBackend` renders a Data/Math scene live in the canvas and produces a PNG
   snapshot comparable to the Octane preview for the same DSL input.
-- Blender/Mitsuba integrations import no copyleft code into the core package;
-  license boundaries are explicit.
+- Blender/Mitsuba/LuisaRender integrations import no copyleft code into the core
+  package; license boundaries are explicit. LuisaRender is BSD-3, but keep it behind
+  a subprocess boundary like other renderer binaries.
 - The pixel/structure-before-vision verification rule holds for every backend.
+- A LuisaRender smoke scene can be generated, rendered through Metal, tonemapped to
+  PNG, and reviewed by the existing acceptance path before production adapter work
+  starts.
 
 ## Suggested verification
 ```bash
@@ -1073,11 +1086,14 @@ Focus:
 - `src/octanex_mcp/backends/` package + `Backend` protocol
 - `OctaneBackend` refactor of current handling (no behavior change)
 - `WebGLBackend` (three.js in Agentic Canvas) as Phase-1 implementation
+- `QualityBackend` spike path for LuisaRender: `.luisa` scene generation,
+  `luisa-render-cli -b metal`, EXR→PNG conversion, and existing pixel QA
 - tests with an in-memory fake backend
 
 Stop when the DSL dispatches to a backend interface, Octane remains the first
 implementation with identical behavior, and a WebGL channel renders a live
-Data/Math scene to PNG inside the existing canvas.
+Data/Math scene to PNG inside the existing canvas. LuisaRender remains gated until
+the local CLI builds and a minimal Metal smoke render produces a reviewed PNG.
 
 ---
 
@@ -1235,6 +1251,24 @@ retires the single-renderer coupling (and the AppleScript/TCC fragility) that
 WP10–WP14 cannot fix from inside the Octane bridge. Phase-1 `WebGLBackend` is the
 one addition that pays back across the Data/Math/Geo grammars; do it before
 adding further backends.
+
+**Brainstorm update (2026-07-15 — LuisaRender quality-backend spike):** LuisaRender
+graduates from a survey mention to a concrete WP15 candidate. Local evidence shows a
+BSD-3, scene-file/CLI renderer with a macOS Metal backend and useful `Mesh`,
+`InlineMesh`, `Pinhole`, `Color` film, and `Matte`/`Plastic`/`Glass`/`Metal` nodes.
+It is **not** a realtime Canvas backend and should not be mapped command-by-command
+from the Octane queue. Treat it as a QualityBackend spike: compile renderer-neutral
+recipe state into `.luisa`, run `luisa-render-cli -b metal`, convert EXR output to
+PNG, then use the existing pixel/vision review path. Current blocker is operational,
+not architectural: the local build configures for Metal but fails in bundled Assimp
+because `unzip.h` is missing. Research note:
+`docs/luisa-render-backend-investigation.md`.
+
+**Recommended next move (2026-07-15):** start WP15 with the LuisaRender smoke spike in
+parallel with the WebGLBackend planning, but keep production adapter work gated until
+the CLI builds and one minimal `.luisa` scene renders through Metal. First task: fix
+the `unzip.h` build dependency, run `luisa-render-cli -h`, render a tiny inline-mesh
+scene, and prove EXR→PNG→pixel-QA before touching `src/octanex_mcp/backends/`.
 
 ---
 

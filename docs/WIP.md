@@ -1,8 +1,9 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-14**
-against HEAD `be2ad42`.
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-15**
+against HEAD `29989a2` plus the local LuisaRender/physical-simulation planning
+docs in this commit.
 
 ## 2026-07-14 fix-log (this steward)
 
@@ -33,8 +34,8 @@ against HEAD `be2ad42`.
 | Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=64`, `samples_target=64`, `last_event=save_preview preview saved .../renders/octane-preview.png`. Bridge module `hermes_bridge_oneshot_v2.lua` in one-shot mode. |
 | Recipe library | **32 recipe dirs**. Offline contract **31/32 OK** — only `earth-moon-space` fails (no checked-in preview). `earth-hemisphere` is intentionally regenerable: its large `scene.obj` is gitignored (size-limited Mac Studio copy) and rebuilt via the committed `scripts/gen_earth_hemisphere.py`, so the offline contract accepts it (warning, not failure). Both `recipes.py:validate_recipe_library` and `benchmarks/verify_recipes.py` use the shared `_is_regenerable_recipe` (`octanex_mcp/recipes.py`) — keep them in sync. `native_octane_verified` counts pending live sweep. |
 | Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
-| Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. |
-| Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
+| Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. New planning docs: `docs/physical-simulation-recipe-suite.md` and `docs/luisa-render-backend-investigation.md`. |
+| Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction with LuisaRender QualityBackend spike, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
 
 **Bottom line:** the repo has grown into a working visual workbench with 30 recipe dirs and a live bridge, but the current closure risk is documentation/test drift after rapid recipe additions. This sweep consolidates that drift and keeps the remaining gaps explicit instead of silently promoting unverified renders.
 
@@ -48,10 +49,11 @@ against HEAD `be2ad42`.
 6. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
 7. **G — Texture / material generation**: image-gen → `texture_path` / `normal_path` material payloads, closing the "texture approximated with geometry" recipe pitfall.
 8. **L — Renderer-agnostic backend abstraction** (MEDIUM effort / HIGH strategic fit): decouple the command DSL from Octane X so it becomes one of N render backends; research in `docs/visualization-backends-research.md`. *First step:* extract a `Backend` interface (OctaneBackend first), then ship `WebGLBackend` (three.js in Agentic Canvas) as the Phase-1 realtime + shareable win.
+9. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `docs/luisa-render-backend-investigation.md` shows LuisaRender is plausible but currently blocked by bundled Assimp failing to find `unzip.h`. *First step:* fix the local build dependency, run `luisa-render-cli -h`, render a minimal `.luisa` inline-mesh scene through `-b metal`, convert EXR→PNG, and pass existing pixel QA.
 
 ## Recommended next move
 
-Do **I** first because handler-generation and registry-backed reporting prevent whole classes of future bridge regressions. Run **J** alongside every live render task. Start **M** as the math-gallery unblocker once one clean implicit recipe pass has been reviewed, then use **K/L** for the user-facing multi-backend surface.
+Do **N** now as the smallest concrete start on WP15: it answers whether LuisaRender is a real local quality backend before we design around it. Keep **I/J** as the reliability spine for live Octane work, and keep **L/WebGLBackend** as the realtime Canvas path; LuisaRender is the offline quality tier, not the live viewport.
 
 ## PDF Consolidation (docs/3DXM/ — 3DXM Virtual Math Museum)
 
@@ -70,6 +72,8 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 
 ## Done recently
 
+- Today — docs: add LuisaRender backend investigation and wire it into WP15 / WIP.
+- Today — docs: add physical-simulation recipe suite plan for harness repertoire expansion.
 - Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).
 - Today — fix(lua): oneshot↔persistent `handle_assign_material` parity (added `request_render_restart` + group-index suffix in oneshot).
 - `4de64d1` — canvas: remove duplicate setViewMode def in app.js.

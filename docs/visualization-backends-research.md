@@ -152,18 +152,27 @@ scene-graph DSL from the renderer**, so Octane becomes one of N backends.
 - **Integration sketch:** A `GeoBackend` that targets CesiumJS/deck.gl inside the WebGL
   canvas, fed by the existing `shapely`/`geopandas`/`pyproj` generators.
 
-### G. Open path tracers (Mitsuba 3, OSPRay / Intel OIDN) — quality-tier Octane replacement
+### G. Open path tracers (Mitsuba 3, OSPRay, LuisaRender / Intel OIDN) — quality-tier Octane replacement
 - **What:** `Mitsuba 3` (Python-driven, differentiable, spectral/path tracing),
-  `OSPRay` (Intel, large-scene scientific ray tracing), `Intel OIDN` (denoiser).
+  `OSPRay` (Intel, large-scene scientific ray tracing), `LuisaRender` (BSD-3,
+  CLI-driven Monte Carlo renderer with a macOS Metal backend), `Intel OIDN`
+  (denoiser).
 - **Fit:** If the goal is Octane-quality GI *without* the Otoy binary or BSL license.
   Mitsuba 3 is scriptable end-to-end from Python — ideal for research-grade,
   reproducible renders.
-- **Pros:** Open source; reproducible/parameterized; differentiable (research edge);
-  no macOS-sandbox bridge needed.
+- **Pros:** Open source; reproducible/parameterized; differentiable (Mitsuba
+  research edge); no macOS-sandbox bridge needed. LuisaRender is especially
+  interesting here because it is a normal local CLI instead of an AppleScript/TCC
+  bridge.
 - **Cons:** Not realtime (offline quality tier, like Octane's `final`); more setup;
-  smaller agent/MCP ecosystem than Blender.
+  smaller agent/MCP ecosystem than Blender. Local LuisaRender build currently
+  configures for Metal but fails before producing `luisa-render-cli` because bundled
+  Assimp cannot find `unzip.h`.
 - **Integration sketch:** `QualityBackend` alongside Octane; useful where Octane is
-  unavailable or licensing is a blocker.
+  unavailable or licensing is a blocker. For LuisaRender specifically, compile a
+  renderer-neutral scene/recipe into `.luisa`, run `luisa-render-cli -b metal`, then
+  convert EXR output to PNG for the existing pixel/vision review path. See
+  `docs/luisa-render-backend-investigation.md`.
 
 ### H. WebGPU engines (Babylon.js, PlayCanvas, wgpu/Bevy) — modern realtime
 - **What:** `Babylon.js` (mature, TypeScript, data-viz-friendly, open), `PlayCanvas`
@@ -190,7 +199,7 @@ Legend: ● strong · ◐ partial · ○ weak. Criteria C1–C9 per §1.
 | **D. Godot 4** | ● | ● (MCP) | ○ | ● | ○ | MIT | ● | concept/scene | med |
 | **E. Open3D/PyVista** | ● | ● (Py) | ○ | ○ | ○ | BSD/MIT | ● | science/gen | low (gen) |
 | **F. Cesium/deck.gl** | ● | ● (JS) | ○ | ● | ● | BSD/MIT | ● | geo | low (geo) |
-| **G. Mitsuba/OSPRay** | ● | ● (Py) | ● | ○ | ○ | BSD | ● | quality | med |
+| **G. Mitsuba/OSPRay/LuisaRender** | ● | ● (Py/CLI) | ● | ○ | ○ | BSD | ● | quality | med-high |
 | **H. Babylon/PlayCanvas** | ● | ● (JS) | ◐ | ● | ● | MIT | ● | data/scene | med |
 
 ---
@@ -210,7 +219,7 @@ Hermes / generator -> scene-graph DSL (already exists)
         |-- BlenderBackend (bpy / BlenderMCP)|
         |-- WebGLBackend  (three.js in canvas)   -> live + PNG
         |-- GeoBackend    (Cesium/deck.gl)        -> live + PNG
-        |-- QualityBackend(Mitsuba/OSPRay)        -> offline PNG
+        |-- QualityBackend(Mitsuba/OSPRay/Luisa)  -> offline PNG
         |
         v
    shared renders/ workspace + Hermes vision review (unchanged)
@@ -243,8 +252,10 @@ as an open photoreal alternative to Octane; resolves the BSL + AppleScript fragi
 users who don't have/want Octane. (License note: keep Blender integration in a clearly
 separated module to avoid GPL contamination of the core BSL package.)
 
-**Phase 4 — QualityBackend (Mitsuba/OSPRay).** For research-grade reproducible renders
-where Octane is undesirable.
+**Phase 4 — QualityBackend (Mitsuba/OSPRay/LuisaRender).** For research-grade
+reproducible renders where Octane is undesirable. Start LuisaRender as a spike,
+not production code: first fix the local `unzip.h` build blocker, then render one
+minimal `.luisa` scene through Metal and convert the EXR to PNG.
 
 **Defer:** Godot (D) and WebGPU-native (H) unless a specific interactive-scene or
 engine-grade need emerges.
@@ -254,8 +265,9 @@ engine-grade need emerges.
 ## 6. Risks & open questions
 
 - **License:** Blender is GPL — isolate it behind a process boundary (subprocess/MCP),
-  never import `bpy` into the BSL core package. Mitsuba/OSPRay/three.js/Babylon are
-  BSD/MIT and safe to depend on directly.
+  never import `bpy` into the BSL core package. Mitsuba/OSPRay/LuisaRender/three.js/
+  Babylon are BSD/MIT-class and safe to depend on directly; keep renderer binaries
+  behind a subprocess boundary anyway.
 - **WebGL headless PNG on macOS:** `WKWebView` can snapshot on-device (no headless Chrome
   needed) — verify this works for the canvas before assuming a browser-server path.
 - **DSL expressiveness:** current DSL is Octane-shaped (materials/pins). A `WebGLBackend`
@@ -275,7 +287,7 @@ engine-grade need emerges.
   serverless WebGL rendering patterns; multiple **Godot MCP** servers (Coding-Solo,
   FunplayAI, others); **WebGPU/Bevy** and **three.js WebGPURenderer** migration material;
   **CesiumJS/deck.gl/KeplerGL/MapLibre** as the geospatial web stack; **Mitsuba 3 /
-  OSPRay** as open path tracers.
+  OSPRay / LuisaRender** as open path tracers.
 - **Evidence caveat:** `web_extract` (Firecrawl) was unavailable this session, so
   version-specific claims (e.g. exact Blender MCP tool counts, Eevee Next feature set) were
   drawn from search summaries + project knowledge, not page-level verification. Re-verify
@@ -283,5 +295,3 @@ engine-grade need emerges.
 - Project-internal context: `docs/canvas-roadmap.md` (grammars), `docs/visual-grammar.md`,
   `apps/octanex-canvas/README.md` (thin-client design), `README.md` (current pipeline),
   and the `octanex-mcp-project` skill (TCC/AppleScript fragility, per-frame drain cost).
-</content>
-</invoke>
