@@ -84,14 +84,14 @@ class ToOctaneRouteTest(unittest.TestCase):
     def test_handoff_dry_run(self):
         # dry_run avoids invoking osascript/Octane; the queue + bridge
         # planning still execute, proving the scene->queue->bridge wiring.
+        # The route now answers 202 (async): it flushes+queues, starts the
+        # background drain+render, and returns immediately with progress hints.
         st, bd = self._post("/canvas/to-octane", {"dry_run": True})
-        self.assertEqual(st, 200, msg=bd)
+        self.assertEqual(st, 202, msg=bd)
         self.assertTrue(bd["ok"])
+        self.assertTrue(bd["async"])
         self.assertEqual(bd["scene_id"], "toctane_test")
         self.assertGreaterEqual(bd["queued_commands"], 1)
-        # Bridge ran in dry-run mode (ok + dry_run true).
-        self.assertTrue(bd["bridge"].get("ok"))
-        self.assertTrue(bd["bridge"].get("dry_run"))
 
 
 if __name__ == "__main__":

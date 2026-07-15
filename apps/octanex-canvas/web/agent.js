@@ -704,6 +704,52 @@ export async function renderToOctane() {
   }
 }
 
+// Cancel an in-flight Octane render (clicked the active render button).
+// Tells Octane to pause; the bridge lands whatever frame exists. Resets the
+// FAB to idle so the user can re-render.
+export async function cancelOctaneRender() {
+  if (!state.octaneRendering) return;
+  _stopRenderWatch();
+  state.octaneRendering = false;
+  try {
+    await postJSON("/canvas/cancel", {});
+  } catch (_) { /* gateway blip — still reset UI */ }
+  setOctaneBtn("idle");
+  setOctanePie(0);
+  dom.status.className = "state-idle";
+  dom.statusText.textContent = "render cancelled";
+}
+
+// Persist the current canvas scene into the recipebook under a slug.
+export async function commitRecipe() {
+  if (!state.currentScene) { dom.statusText.textContent = "build a scene first"; return; }
+  const slug = (window.prompt("Commit to recipebook as slug:", state.currentScene.scene_id || "my-scene") || "").trim();
+  if (!slug) return;
+  try {
+    const res = await postJSON("/canvas/commit", { slug, scene: state.currentScene, title: slug });
+    if (res.ok) dom.statusText.textContent = `committed → ${res.slug}`;
+    else dom.statusText.textContent = `commit failed: ${(res.error || "").slice(0, 60)}`;
+  } catch (e) { dom.statusText.textContent = "commit error"; }
+}
+
+// Save the current scene as a NEW recipe (never overwrites) and seed a fresh
+// canvas session from it so the user can diverge without touching the source.
+export async function forkRecipe() {
+  if (!state.currentScene) { dom.statusText.textContent = "build a scene first"; return; }
+  const slug = (window.prompt("Fork to new recipe slug:", (state.currentScene.scene_id || "my-scene") + "-fork") || "").trim();
+  if (!slug) return;
+  try {
+    const res = await postJSON("/canvas/fork", { slug, scene: state.currentScene, title: slug });
+    if (!res.ok) { dom.statusText.textContent = `fork failed: ${(res.error || "").slice(0, 60)}`; return; }
+    if (res.seed_scene) {
+      // Rebuild the canvas from the forked seed as a fresh session.
+      const built = await postJSON("/canvas/build", { scene: res.seed_scene });
+      if (built.ok) state.currentScene = built.scene;
+    }
+    dom.statusText.textContent = `forked → ${res.slug}`;
+  } catch (e) { dom.statusText.textContent = "fork error"; }
+}
+
 // --- ⌘K command palette ------------------------------------------------------
 export async function openPalette() {
   dom.palette.classList.remove("hidden");
