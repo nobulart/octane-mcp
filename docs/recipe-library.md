@@ -14,6 +14,13 @@ Photoreal target examples may include an external target/reference image. These 
 
 Animated products are also possible by generating frame-by-frame scene states. See [`examples/animations/orbit-reveal/`](../examples/animations/orbit-reveal/README.md) for a checked-in GIF/MP4 example with PNG frames and OBJ frame states.
 
+The root README showcase is intentionally narrower than this catalogue. Older
+exploratory recipes such as `data-bars`, `math-surface`, `architecture-flow`,
+`wave-interference-field`, `vision-feedback-loop`, `photoreal-earth-space`,
+`saturn-moons-space`, and `green-pawn` remain listed here for reference, but
+they are not current README showcase entries and are not active benchmark-harness
+targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
+
 | Recipe | Application area | Slug | Why it matters |
 | --- | --- | --- | --- |
 | [3D KPI Bar Chart](../examples/recipes/data-bars/README.md) | Data visualization | `data-bars` | Compare a short numeric sequence as spatial bars with a clear baseline and highlight bars above threshold. |
@@ -59,19 +66,19 @@ Animated products are also possible by generating frame-by-frame scene states. S
 
 ## Coverage map
 
-- **Data:** KPI bars.
-- **Math:** radial surface and vector field.
+- **Data:** KPI bars, attention maps, OCR/document-layout panels, and image-heightfield inspection.
+- **Math:** radial surface, vector field, and geometry recipes; only the vector-field grammar remains active in the current benchmark harness.
 - **Graphs:** knowledge/dependency graph.
 - **Geospatial:** terrain tile and site markers.
 - **Physics:** orbital trajectories.
 - **Physical simulation (Phase A):** Kelvin–Helmholtz shear roll-up, advection–diffusion pulse, mass-spring cloth drape, rigid-stack contact forces, n-body chaotic divergence. All fixture-first (deterministic, no external simulator at render time). See [Physical Simulation Recipe Suite](#physical-simulation-recipe-suite) below.
-- **Systems:** MCP architecture flow.
+- **Systems:** MCP architecture flow remains a catalogue recipe but is retired from the active benchmark harness.
 - **Agent communication:** Hermes avatar guide.
 - **Feedback loops:** render/vision review loop and corrective camera/material iteration.
 - **Annotation/text:** block-letter labels, backing plates, and callouts as OBJ geometry.
 - **Image processing/vision:** scalar heatmaps, segmentation masks, and OCR/document layouts as raised tile geometry.
 - **LLM interpretability:** attention/saliency matrices as token-aligned heightfields.
-- **Photoreal / product props:** product-studio, multi-vase studio, bowl-of-fruit, desk-fan, Earth, and Saturn scenes with PBR/studio material and lighting intent plus target/native renders.
+- **Photoreal / product props:** product-studio, multi-vase studio, bowl-of-fruit, desk-fan, wristwatch, headphones, and related studio objects. Older Earth/Saturn space targets remain catalogue entries, not active README/harness examples.
 
 ## Physical Simulation Recipe Suite
 
@@ -104,7 +111,13 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   1500 particles, liquid + foam phases) consumed via `scripts/physics_fixture_io.py`
   with **no runtime SPlisHSPlasH dependency**. Adapter: `scripts/gen_splishsplash_recipe.py`;
   provenance embedded in the `simulation` block. Adapter test: `tests/test_splishsplash_adapter.py`.
-- Oceananigans.jl, Genesis, MPIPyMHD adapters (planned): same pattern — source
+- Oceananigans.jl: `oceananigans-shallow-water-front` consumes a committed `.npz`
+  fixture (free surface, velocity, bathymetry) and emits surface panels + velocity
+  glyphs with no Julia runtime dependency. It has also been smoke-tested against
+  the installed local Oceananigans.jl project by running a tiny CPU
+  `ShallowWaterModel`, exporting `eta/u/v/bathymetry`, regenerating the recipe,
+  and native-rendering the result through OctaneX.
+- Genesis, MPIPyMHD adapters (planned): same pattern — source
   simulator exports one tiny committed fixture, adapter emits the recipe contract.
   The suite plan is in
 [`physical-simulation-recipe-suite.md`](physical-simulation-recipe-suite.md).

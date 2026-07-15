@@ -22,8 +22,8 @@ The bridge improves with use, but "use" must be measurable. This suite gives us:
 * **A regression net** — if a Lua/Python change breaks a tier, the offline
   tests fail immediately (OBJ generation, index integrity, acceptance logic,
   queue marshalling) without needing Octane.
-* **A development ladder** — 21 tasks across 7 tiers, from a single glossy cube
-  to a Saturn system and deterministic physical-simulation fixtures, each
+* **A development ladder** — 15 active tasks across 7 tiers, from a single glossy cube
+  to deterministic physical-simulation fixtures, each
   isolating one failure mode.
 * **A verified recipe feeder** — successful live runs are dumped straight into
   `docs/recipe-book.md` with the exact command sequence, so future agents
@@ -35,7 +35,7 @@ The bridge improves with use, but "use" must be measurable. This suite gives us:
 
 ```
 benchmarks/
-  spec.py        18 BenchmarkTask defs + deterministic build() per task.
+  spec.py        15 active BenchmarkTask defs + deterministic build() per task.
                  Each build() returns a combined-OBJ scene spec with materials,
                  per-group assignments, camera, lighting, save, acceptance.
   acceptance.py  Pixel-level checks (non_empty, review_ok, color_present/absent,
@@ -77,14 +77,15 @@ face-index bug (#13/#19) that silently yields a blank frame.
 | Tier | Name | Tasks | What it isolates |
 |------|------|-------|------------------|
 | 1 | Foundations | `t1_glossy_cube`, `t1_metallic_sphere`, `t1_surface_field` | Single primitive smoke test; material + iso camera; empty-frame detection. |
-| 2 | Composition & framing | `t2_bar_chart`, `t2_multi_material`, `t2_scatter` | Multiple meshes, per-group material assignment, camera framing of multi-object bounds. |
+| 2 | Composition & framing | `t2_multi_material`, `t2_scatter` | Multiple meshes, per-group material assignment, camera framing of multi-object bounds. |
 | 3 | Lighting & materials | `t3_glass_like`, `t3_emissive`, `t3_product_studio` | PBR transmission/ior/opacity, emissive glow, cyclorama product shot. |
-| 4 | Multi-object scene graphs | `t4_architecture_flow`, `t4_network_graph`, `t4_annotated_diagram` | 6–12 meshes, hierarchy, flow arrows; e.g. the MCP pipeline as a scene. |
-| 5 | Data & math | `t5_math_surface_complex`, `t5_wave_interference`, `t5_vector_field` | Dense surfaces (60×60), two-source interference, rotational vector field. |
-| 6 | Photoreal / stress | `t6_vase_studio`, `t6_earth_space`, `t6_saturn_system` | High face counts, multi-material families, translucent shells, oblate bodies. |
+| 4 | Multi-object scene graphs | `t4_network_graph`, `t4_annotated_diagram` | Multi-group graph/annotation scenes without the retired architecture-flow recipe. |
+| 5 | Data & math | `t5_vector_field` | Rotational vector-field grammar; older scalar-surface/interference demos are retired from the active harness. |
+| 6 | Photoreal / stress | `t6_vase_studio` | Product-style multi-material stress scene; older Earth/Saturn space targets are retired from the active harness. |
 | 7 | Physical simulation fixtures | `t7_advection_diffusion_panels`, `t7_cloth_drape_contact`, `t7_particle_splash_fixture` | Deterministic physics grammar: advection–diffusion panels, PBD cloth drape, seeded particle splash. Offline-verified; native render pending. |
 
-21 tasks total. Each is enumerated in `benchmarks/spec.py::ALL_TASKS`.
+15 active tasks total. Retired helpers may remain in `benchmarks/spec.py` for reference,
+but only `benchmarks/spec.py::ALL_TASKS` is part of the active harness.
 
 ---
 
@@ -116,7 +117,7 @@ criterion passes.
 ```bash
 PYTHONPATH= uv run python -m unittest tests.test_benchmarks -v
 ```
-Validates: spec determinism, OBJ index integrity for all 21 tasks, the
+Validates: spec determinism, OBJ index integrity for all active tasks, the
 `CombinedObj` offset logic, acceptance logic on synthetic PNGs, and the
 harness mirror+queue side-effects against a fake container.
 
@@ -144,31 +145,31 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 
 ## 5b. Live status (recorded results)
 
+The active harness now carries the tasks below. Earlier showcase-era tasks
+(`t2_bar_chart`, `t4_architecture_flow`, `t5_math_surface_complex`,
+`t5_wave_interference`, `t6_earth_space`, `t6_saturn_system`) were removed from
+`ALL_TASKS` rather than kept as stale gates. Their helper functions may remain in
+`spec.py` as reference code, but they are not part of the active benchmark set.
+
 | Tier | Task | Native Octane | Notes |
 |------|------|---------------|-------|
 | 1 | `t1_glossy_cube` | ✅ verified | `soft_studio`, PASS on pixels. |
 | 1 | `t1_metallic_sphere` | ✅ verified | `metallic=1.0` renders silvery (no env map); fixed to `metallic=0.55` → reads gold. `color_family` criterion. |
 | 1 | `t1_surface_field` | ✅ verified | `sin(r)/r` radial bronze surface. |
-| 2 | `t2_bar_chart` | ✅ verified | 5 cyan bars, single combined OBJ. |
 | 2 | `t2_multi_material` | ✅ verified | red cube + green sphere (two groups). |
 | 2 | `t2_scatter` | ✅ verified | orange points in 3D space. |
 | 3 | `t3_glass_like` | ✅ verified | transmission/ior/opacity sphere. |
 | 3 | `t3_emissive` | ✅ verified | chromatic cyan+amber rim glow; `bright_fraction.min_near_white` 3.0→0.5. |
 | 3 | `t3_product_studio` | ✅ verified | cyclorama + clearcoat red hero; `color_family` red. |
-| 4 | `t4_architecture_flow` | ✅ verified | User/Agent/Queue/Octane blocks + flow arrows; `color_family` blue. |
 | 4 | `t4_network_graph` | ✅ verified | 6 nodes / 8 edges spatial graph (vision-confirmed). |
 | 4 | `t4_annotated_diagram` | ✅ verified | labelled diagram primitives. |
-| 5 | `t5_math_surface_complex` | ✅ verified | z=f(x,y) surface; `shape_profile` 37 rows. |
-| 5 | `t5_wave_interference` | ✅ verified | teal interference surface; `color_family` teal. |
 | 5 | `t5_vector_field` | ✅ verified | 15 orange arrow glyphs; `color_family` orange. |
 | 6 | `t6_vase_studio` | ✅ verified | three vases on studio cyclorama. |
-| 6 | `t6_earth_space` | ✅ verified | blue Earth + atmosphere rim in space; `color_family` blue. |
-| 6 | `t6_saturn_system` | ✅ verified | planet + ring + moon. |
 | 7 | `t7_advection_diffusion_panels` | ✅ verified | 4-panel tracer, peak-decay + broadening; `color_family` teal + `shape_profile`. |
 | 7 | `t7_cloth_drape_contact` | ✅ verified | PBD cloth draped over sphere; corrected gravity axis + fresh mesh name avoids stale import collision. |
 | 7 | `t7_particle_splash_fixture` | ✅ verified | seeded liquid + foam particle families; dual `color_family` criteria. |
 
-**21/21 Tier 1–7 tasks render natively and pass pixel acceptance. Tier 7 was verified live on 2026-07-15; recipe promotion remains tracked separately from benchmark-task verification.**
+**15 active Tier 1–7 tasks remain in the harness. Tier 7 was verified live on 2026-07-15; recipe promotion remains tracked separately from benchmark-task verification.**
 
 **Lessons (also in `docs/recipe-book.md`):**
 * **Deferred render start is the current protection against render-restart

@@ -49,7 +49,9 @@ class DrainOneshotTests(unittest.TestCase):
     def _ws(self) -> SimpleNamespace:
         qd = self.tmp / "queue"
         qd.mkdir(parents=True, exist_ok=True)
-        return SimpleNamespace(queue_dir=qd)
+        pqd = self.tmp / "processing"
+        pqd.mkdir(parents=True, exist_ok=True)
+        return SimpleNamespace(queue_dir=qd, processing_dir=pqd)
 
     def test_all_clicks_fail_is_bounded_no_recursion(self) -> None:
         """Repeated bridge-click failure must retry at most 3 times and return

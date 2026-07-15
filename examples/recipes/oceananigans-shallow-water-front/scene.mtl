@@ -1,0 +1,37 @@
+# Material hints; Octane binding is driven by scene.json create_material + assign_material.
+newmtl bathymetry_mat
+Ka 1.0 1.0 1.0
+Kd 0.1600 0.1300 0.1000
+Ks 0.5 0.5 0.5
+Ns 16.0
+d 1.0
+newmtl cold_water_mat
+Ka 1.0 1.0 1.0
+Kd 0.0500 0.2800 0.7200
+Ks 0.5 0.5 0.5
+Ns 46.1
+d 1.0
+newmtl front_water_mat
+Ka 1.0 1.0 1.0
+Kd 0.0500 0.7200 0.8200
+Ks 0.5 0.5 0.5
+Ns 49.9
+d 1.0
+newmtl warm_water_mat
+Ka 1.0 1.0 1.0
+Kd 1.0000 0.2000 0.0400
+Ks 0.5 0.5 0.5
+Ns 48.6
+d 1.0
+newmtl velocity_mat
+Ka 1.0 1.0 1.0
+Kd 0.9200 0.9500 1.0000
+Ks 0.5 0.5 0.5
+Ns 52.5
+d 1.0
+newmtl coastline_mat
+Ka 1.0 1.0 1.0
+Kd 0.4800 0.3800 0.2200
+Ks 0.5 0.5 0.5
+Ns 19.2
+d 1.0

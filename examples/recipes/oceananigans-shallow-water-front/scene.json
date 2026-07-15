@@ -1,0 +1,443 @@
+{
+  "slug": "oceananigans-shallow-water-front",
+  "title": "Oceananigans Shallow-Water Front",
+  "category": "Physical simulation / ocean dynamics",
+  "domain": "Physics simulation",
+  "purpose": "Render a small Oceananigans-style shallow-water export as a free-surface front with velocity glyphs and a bathymetry/coastline base. The Julia simulation is not run by the recipe; a committed fixture is the reproducible adapter boundary.",
+  "prompt": "Visualise an Oceananigans shallow-water front with surface height, velocity arrows, and bathymetry.",
+  "camera": {
+    "position": [
+      18.001629,
+      -21.501946,
+      12.671329
+    ],
+    "target": [
+      0.0,
+      0.0,
+      -1.829984
+    ],
+    "fov": 42.0
+  },
+  "materials": {
+    "bathymetry_mat": {
+      "name": "bathymetry_mat",
+      "kind": "diffuse",
+      "color": [
+        0.16,
+        0.13,
+        0.1
+      ],
+      "roughness": 0.75
+    },
+    "cold_water_mat": {
+      "name": "cold_water_mat",
+      "kind": "glossy",
+      "color": [
+        0.05,
+        0.28,
+        0.72
+      ],
+      "roughness": 0.28
+    },
+    "front_water_mat": {
+      "name": "front_water_mat",
+      "kind": "glossy",
+      "color": [
+        0.05,
+        0.72,
+        0.82
+      ],
+      "roughness": 0.22
+    },
+    "warm_water_mat": {
+      "name": "warm_water_mat",
+      "kind": "glossy",
+      "color": [
+        1.0,
+        0.2,
+        0.04
+      ],
+      "roughness": 0.24
+    },
+    "velocity_mat": {
+      "name": "velocity_mat",
+      "kind": "glossy",
+      "color": [
+        0.92,
+        0.95,
+        1.0
+      ],
+      "roughness": 0.18
+    },
+    "coastline_mat": {
+      "name": "coastline_mat",
+      "kind": "diffuse",
+      "color": [
+        0.48,
+        0.38,
+        0.22
+      ],
+      "roughness": 0.7
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/oceananigans-shallow-water-front/scene.obj",
+        "format": "obj",
+        "name": "oceananigans_shallow_water_front"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "bathymetry_mat",
+        "kind": "diffuse",
+        "color": [
+          0.16,
+          0.13,
+          0.1
+        ],
+        "roughness": 0.75
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "cold_water_mat",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.28,
+          0.72
+        ],
+        "roughness": 0.28
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "front_water_mat",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.72,
+          0.82
+        ],
+        "roughness": 0.22
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "warm_water_mat",
+        "kind": "glossy",
+        "color": [
+          1.0,
+          0.2,
+          0.04
+        ],
+        "roughness": 0.24
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "coastline_mat",
+        "kind": "diffuse",
+        "color": [
+          0.48,
+          0.38,
+          0.22
+        ],
+        "roughness": 0.7
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "velocity_mat",
+        "kind": "glossy",
+        "color": [
+          0.92,
+          0.95,
+          1.0
+        ],
+        "roughness": 0.18
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "bathymetry_mat",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "cold_water_mat",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "front_water_mat",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "warm_water_mat",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "coastline_mat",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "oceananigans_shallow_water_front",
+        "material_name": "velocity_mat",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          18.001629,
+          -21.501946,
+          12.671329
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -1.829984
+        ],
+        "fov": 42.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "oceananigans-shallow-water-front/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "Oceananigans.jl",
+    "fixture": "/Users/craig/octanex-mcp/examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz",
+    "fixture_sha256": "6ad5d8233b34a01b8283f27f62d0659e6846774eadd4d5669467fc968cb6df37",
+    "fixture_shape": [],
+    "fixture_dtype": "mixed",
+    "fixture_loader": "numpy",
+    "fixture_arrays": [
+      "bathymetry",
+      "eta",
+      "u",
+      "v"
+    ],
+    "source_path": "/Users/craig/src/Oceananigans.jl",
+    "physical_variables": [
+      "free_surface_eta",
+      "u_velocity",
+      "v_velocity",
+      "bathymetry"
+    ],
+    "units": {
+      "length": "km",
+      "time": "s",
+      "surface_height": "m"
+    },
+    "scale_mapping": {
+      "scene_units_per_km": 0.3,
+      "height_scale": 1.35,
+      "vector_scale": 1.25
+    },
+    "time": {
+      "frame": 12,
+      "t_seconds": 1800.0
+    },
+    "null_model": "flat free surface with zero velocity and no front gradient",
+    "adapter_stats": {
+      "bounds": {
+        "min": [
+          -6.0,
+          -4.3,
+          -4.81
+        ],
+        "max": [
+          6.0,
+          4.3,
+          1.150033
+        ],
+        "center": [
+          0.0,
+          0.0,
+          -1.829984
+        ],
+        "radius": 7.802596
+      },
+      "velocity_glyphs": 6,
+      "grid_shape": [
+        24,
+        36
+      ]
+    },
+    "limitations": [
+      "fixture is a compact exported state, not a live Oceananigans solve",
+      "water colour bands encode front regions because OBJ import has no texture field",
+      "velocity arrows are downsampled glyphs, not a dense vector field"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the native Octane render after promotion.",
+  "quality_checklist": [
+    "Three water colour families show cold side, frontal zone, and warm side.",
+    "White velocity glyphs visibly cross/curve along the surface front.",
+    "Brown bathymetry/coastline base sits below the free surface.",
+    "Every usemtl group has explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge; material binding comes from scene.json commands.",
+    "The fixture is Oceananigans-style export data; tests must not import Julia/Oceananigans.",
+    "OBJ line primitives may be dropped, so velocity vectors are tube/arrow geometry."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/oceananigans-shallow-water-front/preview.png",
+    "candidate_image": "examples/recipes/oceananigans-shallow-water-front/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "front readability",
+      "velocity glyph visibility",
+      "bathymetry separation",
+      "framing"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              18.001629,
+              -21.501946,
+              12.671329
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -1.829984
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              12.961172880000001,
+              -15.48140112,
+              9.12335688
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -1.829984
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              22.502036250000003,
+              -26.8774325,
+              15.83916125
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -1.829984
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "top-oblique",
+          "camera": {
+            "position": [
+              18.001629,
+              -21.501946,
+              15.671329
+            ],
+            "target": [
+              0.0,
+              0.0,
+              -1.829984
+            ],
+            "fov": 42.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "front is legible",
+      "velocity arrows are visible",
+      "surface/base separation is clear"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/oceananigans-shallow-water-front/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (physical-simulation Phase B)"
+}

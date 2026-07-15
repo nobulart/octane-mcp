@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
-> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B B1 native-promoted.
+> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B B1 native-promoted; B2 fixture adapter implemented and offline-contract verified.
 > - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
 >   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
 >   OBJ/MTL, stdlib `preview.png`, READMEs.
@@ -12,10 +12,11 @@
 >   (1500 particles, 2 phases) establish the fixture boundary.
 > - `benchmarks/spec.py` now has **Tier 7** (3 tasks: `t7_advection_diffusion_panels`,
 >   `t7_cloth_drape_contact`, `t7_particle_splash_fixture`) — deterministic physics
->   grammar. Registry + `TIER_TITLES[7]` added; `test_benchmarks` count 18→21.
+>   grammar. The active harness has since been pruned to 15 tasks by removing older
+>   README-showcase-era demos from `ALL_TASKS`.
 > - `docs/recipe-library.md`, `docs/benchmark-suite.md`, and this file updated.
 > - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
->   (21 tasks), `test_physics_fixture_io`, and `test_splishsplash_adapter`.
+>   (15 active tasks), `test_physics_fixture_io`, and `test_splishsplash_adapter`.
 > - **Phase B started:** B1 (SPlisHSPlasH dam-break adapter) is landed, offline-verified, and native-promoted.
 >   `scripts/gen_splishsplash_recipe.py` consumes the committed fixture
 >   (`examples/fixtures/particles/dam-break-small/dam-break-small.csv`, 1500 particles)
@@ -30,10 +31,12 @@
 >   `benchmarks.verify_recipes --live --copy-back --drain-timeout 300`, passed
 >   pixel acceptance, were visually inspected, and now have promoted
 >   `octane-preview.png` files with `native_octane_verified=true`.
-> - **Benchmark status:** all 21 Tier 1–7 benchmark tasks are native verified. Tier 7
->   live verification also fixed the benchmark harness flush/drain ordering and the
->   cloth task's gravity-axis/import-collision issue.
-> - **Next:** B2–B5 adapters (Oceananigans/Genesis/MPIPyMHD) following the same
+> - **Benchmark status:** Tier 7 benchmark tasks are native verified. Older
+>   README-showcase-era benchmark tasks (`t2_bar_chart`, `t4_architecture_flow`,
+>   `t5_math_surface_complex`, `t5_wave_interference`, `t6_earth_space`,
+>   `t6_saturn_system`) were removed from active `ALL_TASKS` rather than carried as
+>   stale gates.
+> - **Next:** B3–B5 adapters (SPlisHSPlasH/Genesis/MPIPyMHD) following the same
 >   fixture-first pattern.
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
@@ -48,13 +51,13 @@
 
 The harness already has strong visual foundations:
 
-- 21 benchmark tasks in `benchmarks/spec.py`, all deterministic and pixel-gated.
+- 15 active benchmark tasks in `benchmarks/spec.py::ALL_TASKS`, all deterministic and pixel-gated.
 - Existing physics-adjacent recipes:
   - `physics-orbits`: orbital paths and body positions.
   - `wave-interference-field`: two-source scalar heightfield.
   - `vector-field`: lifted 2D vector field arrows.
   - `earth-hemisphere` and `solid-earth-shells`: physically scaled geoscience cutaways.
-  - `photoreal-earth-space`, `earth-moon-space`, `saturn-moons-space`: space-scene staging.
+  - `photoreal-earth-space`, `earth-moon-space`, `saturn-moons-space`: legacy space-scene staging retained as catalogue recipes, not active benchmark tasks.
 - Existing recipe contract in `benchmarks/verify_recipes.py` requires `README.md`, `scene.obj`, `scene.mtl`, `scene.json`, a reference preview, valid command payloads, and honest `native_octane_verified` status.
 - Known renderer/harness constraints:
   - multi-object scenes must be one combined OBJ with per-group materials;
@@ -107,7 +110,7 @@ These connect the named local libraries to OctaneX without making core tests dep
 | Priority | Slug | Source | Input fixture | Scene | Adapter output |
 | --- | --- | --- | --- | --- | --- |
 | B1 | `oceananigans-convection-column` | Oceananigans.jl | small exported scalar/velocity slice | convective plumes in a stratified water column | OBJ heightfield, velocity glyphs, temperature colour groups |
-| B2 | `oceananigans-shallow-water-front` | Oceananigans.jl | 2D free-surface + velocity snapshot | shallow-water front/eddy interaction | surface mesh + arrows + coastline/bathymetry base |
+| B2 | `oceananigans-shallow-water-front` | Oceananigans.jl | committed 2D free-surface + velocity snapshot (`examples/fixtures/oceananigans/shallow-water-front/`) | shallow-water front/eddy interaction | surface mesh + arrows + coastline/bathymetry base |
 | B3 | `splash-dam-break-particles` | SPlisHSPlasH | small VTK/partio particle frame sequence | SPH dam-break impact against a barrier | instanced spheres, wall, splash envelope, optional foam particles |
 | B4 | `splash-two-phase-droplets` | SPlisHSPlasH | two material particle classes | droplet mixing / surface tension | two particle colour families, translucent liquid material |
 | B5 | `genesis-cloth-on-rigid` | Genesis | cloth vertex states + rigid body mesh | cloth drapes over a moving rigid object | cloth mesh frames, rigid mesh, contact markers |

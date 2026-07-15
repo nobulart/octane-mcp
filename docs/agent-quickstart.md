@@ -165,10 +165,14 @@ For broader applications, inspect `docs/recipe-library.md` and `examples/recipes
 
 Good first examples:
 
-- `examples/recipes/data-bars/` for metric comparisons.
-- `examples/recipes/math-surface/` for function landscapes.
+- `examples/recipes/wristwatch/` or `examples/recipes/desk-fan/` for product props.
 - `examples/recipes/vector-field/` for flow/dynamics explanations.
-- `examples/recipes/geospatial-terrain/` for map/terrain scenes.
-- `examples/recipes/architecture-flow/` for system diagrams.
+- `examples/recipes/oceananigans-shallow-water-front/` for source-backed simulation fields.
+- `examples/recipes/dam-break-splash/` for particle-fluid fixture adapters.
+- `examples/recipes/mass-spring-cloth-drape/` for deformable-body simulation geometry.
+
+Older exploratory recipes such as `data-bars`, `math-surface`, and
+`architecture-flow` remain in the catalogue, but they are no longer README
+showcase or active benchmark-harness examples.
 
 Copy a matching recipe, adjust geometry or camera, then record any useful result with `octane_record_recipe(...)`.

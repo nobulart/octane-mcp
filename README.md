@@ -39,9 +39,12 @@ The bridge intentionally avoids arbitrary Lua execution. The MCP server emits a 
 
 The recipe library starts with copyable visual targets, not just prose. The headline example above is a photoreal/PBR product-studio setup with glass, metal, softbox reflections, camera intent, material notes, and a native-render validation checklist. See [`examples/recipes/photoreal-product-studio/`](examples/recipes/photoreal-product-studio/) for the reusable OBJ/MTL scene and MCP command metadata.
 
-### More recipe previews
+### Current recipe previews
 
-The library now spans photoreal product props, space scenes, data/math visuals, and agent-loop demos. A sample of recent, native-verified recipes:
+The public showcase now points at current, reproducible recipe directions rather
+than the older exploratory rows. Legacy space/data/demo recipes still exist in
+`examples/recipes/` for reference, but they are no longer the README headline or
+active benchmark-harness targets unless they have been reconciled and re-gated.
 
 | Wristwatch | Desk fan | Headphones studio |
 | --- | --- | --- |
@@ -53,22 +56,17 @@ The library now spans photoreal product props, space scenes, data/math visuals, 
 | [![Ancient temple](examples/recipes/ancient-temple/octane-preview.png)](examples/recipes/ancient-temple/) | [![Bowl of fruit](examples/recipes/bowl-of-fruit/octane-preview.png)](examples/recipes/bowl-of-fruit/) | [![Photoreal vase studio](examples/recipes/photoreal-vase-studio/octane-preview.png)](examples/recipes/photoreal-vase-studio/) |
 | Columned structure with proper lighting and bounds-aware framing. | Generated fruit cluster on a reflective surface. | Multi-vase photoreal studio with soft lighting. |
 
-| Photoreal Earth | Saturn and moons | Data bars |
+| Oceananigans shallow water | Dam-break splash | Cloth drape contact |
 | --- | --- | --- |
-| [![Photoreal Earth in space](examples/recipes/photoreal-earth-space/photoreal-preview.png)](examples/recipes/photoreal-earth-space/) | [![Saturn and moons in space](examples/recipes/saturn-moons-space/photoreal-preview.png)](examples/recipes/saturn-moons-space/) | [![3D KPI bar chart](examples/recipes/data-bars/preview.png)](examples/recipes/data-bars/) |
-| Space rendering target with clouds, atmosphere, and sunlight. | Ringed-planet target with moons, bands, and Cassini division. | Fast generated chart geometry for numeric comparisons. |
+| [![Oceananigans shallow-water front](examples/recipes/oceananigans-shallow-water-front/preview.png)](examples/recipes/oceananigans-shallow-water-front/) | [![Dam-break splash](examples/recipes/dam-break-splash/octane-preview.png)](examples/recipes/dam-break-splash/) | [![Mass-spring cloth drape](examples/recipes/mass-spring-cloth-drape/octane-preview.png)](examples/recipes/mass-spring-cloth-drape/) |
+| Source-backed Julia/Oceananigans shallow-water export rendered as scalar bands and velocity glyphs. | SPlisHSPlasH-style liquid/foam particle fixture with native material groups. | Mass-spring cloth over a rigid sphere with explicit contact geometry. |
 
-| Math surface | Architecture flow | Animated orbit reveal |
+| Kelvin-Helmholtz slice | Rigid stack contacts | N-body divergence |
 | --- | --- | --- |
-| [![Radial math surface](examples/recipes/math-surface/preview.png)](examples/recipes/math-surface/) | [![MCP architecture flow](examples/recipes/architecture-flow/preview.png)](examples/recipes/architecture-flow/) | [![Animated orbit reveal](examples/animations/orbit-reveal/animation.gif)](examples/animations/orbit-reveal/) |
-| Damped radial surface for mathematical explanation. | Explain command flow as spatial geometry. | GIF/MP4 frame-sequence pattern for animated products. |
+| [![Kelvin-Helmholtz shear layer](examples/recipes/fluid-kelvin-helmholtz-slice/octane-preview.png)](examples/recipes/fluid-kelvin-helmholtz-slice/) | [![Rigid stack contact forces](examples/recipes/rigid-stack-contact-forces/octane-preview.png)](examples/recipes/rigid-stack-contact-forces/) | [![N-body chaotic divergence](examples/recipes/nbody-chaotic-divergence/octane-preview.png)](examples/recipes/nbody-chaotic-divergence/) |
+| Shear-layer scalar field fixture for fluid instability visualisation. | Contact-force vectors over stacked rigid bodies. | Three-body trajectory divergence rendered as a physical-simulation recipe. |
 
-| Wave interference | Vision feedback loop | Green pawn |
-| --- | --- | --- |
-| [![Wave interference field](examples/recipes/wave-interference-field/preview.png)](examples/recipes/wave-interference-field/) | [![Render/vision feedback loop](examples/recipes/vision-feedback-loop/preview.png)](examples/recipes/vision-feedback-loop/) | [![Green chess pawn](examples/recipes/green-pawn/octane-preview.png)](examples/recipes/green-pawn/) |
-| Two-source wave field with highlighted emitters. | Agent loop from scene queue to PNG preview to local vision review. | Native Octane chess-pawn prop with material per group. |
-
-See [`docs/recipe-library.md`](docs/recipe-library.md) for the full catalogue (30+ recipes) with reusable OBJ/MTL scenes and MCP command metadata.
+See [`docs/recipe-library.md`](docs/recipe-library.md) for the full catalogue (40 recipes) with reusable OBJ/MTL scenes and MCP command metadata.
 
 ## What this is for
 
