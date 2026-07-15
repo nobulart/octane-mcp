@@ -42,6 +42,11 @@
 >   passed a real 5-step CPU `ShallowWaterModel`; SPlisHSPlasH, Genesis, and
 >   MPIPyMHD are source-present but blocked by concrete local dependency/configure
 >   issues.
+> - **B2 real-export path added:**
+>   `scripts/export_oceananigans_shallow_water_fixture.jl` runs the real local
+>   Oceananigans `ShallowWaterModel`; the Python wrapper packages the CSV bundle
+>   into `examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz`
+>   plus sidecar provenance, which is merged into the recipe `simulation` block.
 > - **Next:** B3–B5 adapters (SPlisHSPlasH/Genesis/MPIPyMHD) should keep the same
 >   fixture-first contract tests and include/refresh matching real-library smoke
 >   evidence when the corresponding runtime is unblocked.

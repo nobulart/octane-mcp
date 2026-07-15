@@ -5,13 +5,14 @@ Phase B fixture-first adapter recipe. It renders a compact Oceananigans-style sh
 ## Provenance
 
 - Fixture: `/Users/craig/octanex-mcp/examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz`
-- SHA-256: `6ad5d8233b34a01b8283f27f62d0659e6846774eadd4d5669467fc968cb6df37`
+- SHA-256: `e8e9517d42be0e879724c5fc99097ba1f0932992e4b0f2b81a6c775fce5a4274`
 - Grid: `24×36`
-- Velocity glyphs: `6`
+- Velocity glyphs: `15`
 
 ## Regenerate
 
 ```bash
+python3 scripts/export_oceananigans_shallow_water_fixture.py --timeout 240
 PYTHONPATH=scripts:. uv run python scripts/gen_oceananigans_shallow_water_recipe.py
 ```
 

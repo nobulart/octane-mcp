@@ -71,6 +71,9 @@ def _load_fixture() -> tuple[dict[str, list[list[float]]], dict[str, Any]]:
             raise ValueError(f"array {name} shape {item_shape} != {shape}")
         shaped[name] = _reshape([float(x) for x in item["data"]], item_shape)
     provenance = arrays["eta"]["provenance"]
+    sidecar = path.with_suffix(".json")
+    if sidecar.exists():
+        provenance = {**provenance, **json.loads(sidecar.read_text(encoding="utf-8"))}
     provenance = {**provenance, "fixture_arrays": sorted(required)}
     return shaped, provenance
 
@@ -325,6 +328,7 @@ def _write_readme(path: Path, stats: dict[str, Any], provenance: dict[str, Any])
         f"- Velocity glyphs: `{stats['velocity_glyphs']}`\n\n"
         "## Regenerate\n\n"
         "```bash\n"
+        "python3 scripts/export_oceananigans_shallow_water_fixture.py --timeout 240\n"
         "PYTHONPATH=scripts:. uv run python scripts/gen_oceananigans_shallow_water_recipe.py\n"
         "```\n\n"
         "Then promote through the live Octane recipe verifier when ready.\n\n"

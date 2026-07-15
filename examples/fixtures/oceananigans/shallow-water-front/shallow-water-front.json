@@ -1,0 +1,37 @@
+{
+  "dt_seconds": 0.02,
+  "eta_max": 1.04801141206,
+  "eta_min": 0.951556329267,
+  "exporter": "export_oceananigans_shallow_water_fixture.jl",
+  "field_names": [
+    "eta",
+    "u",
+    "v",
+    "bathymetry"
+  ],
+  "fixture": "/Users/craig/octanex-mcp/examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz",
+  "fixture_arrays": [
+    "bathymetry",
+    "eta",
+    "u",
+    "v"
+  ],
+  "fixture_dtype": "float64",
+  "fixture_loader": "stdlib-npy",
+  "fixture_sha256": "e8e9517d42be0e879724c5fc99097ba1f0932992e4b0f2b81a6c775fce5a4274",
+  "fixture_shape": [
+    24,
+    36
+  ],
+  "grid_shape": [
+    24,
+    36
+  ],
+  "julia_stderr_tail": "\u250c Warning: The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation.\n\u2514 @ Oceananigans.Models.ShallowWaterModels ~/src/Oceananigans.jl/src/Models/ShallowWaterModels/shallow_water_model.jl:136\n",
+  "julia_stdout": "oceananigans_export_ok output=<temp-csv-dir> grid=24x36 eta_min=0.951556 eta_max=1.048011 u_max=0.209979 v_max=0.000000",
+  "model": "ShallowWaterModel",
+  "source_library": "Oceananigans.jl",
+  "time_steps": 5,
+  "u_max": 0.209979047032,
+  "v_max": 0.0
+}

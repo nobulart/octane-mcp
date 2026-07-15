@@ -29,6 +29,29 @@ python3 scripts/run_physics_real_library_smokes.py --timeout 180 --output /tmp/o
 | Genesis | `/Users/craig/src/Genesis` | blocked | Source-path import failed before any simulation: `ModuleNotFoundError: No module named 'quadrants'`. |
 | MPIPyMHD | `/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework` | blocked | Source-context import failed before MPI smoke: `ModuleNotFoundError: No module named 'mpi4py'`. |
 
+## Oceananigans fixture export evidence
+
+The `oceananigans-shallow-water-front` fixture is now regenerated from a real
+Oceananigans Julia run, then consumed by the fixture-first recipe adapter.
+
+```bash
+python3 scripts/export_oceananigans_shallow_water_fixture.py --timeout 240
+PYTHONPATH=scripts:. uv run python scripts/gen_oceananigans_shallow_water_recipe.py
+```
+
+Latest exporter result:
+
+```text
+oceananigans_export_ok output=<temp-csv-dir> grid=24x36 eta_min=0.951556 eta_max=1.048011 u_max=0.209979 v_max=0.000000
+fixture_sha256=e8e9517d42be0e879724c5fc99097ba1f0932992e4b0f2b81a6c775fce5a4274
+velocity_glyphs=15
+```
+
+Committed provenance lives next to the fixture at
+`examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.json` and
+is merged into the recipe `simulation` block by
+`scripts/gen_oceananigans_shallow_water_recipe.py`.
+
 ## Relationship to fixture-first tests
 
 Fixture-first recipe tests assert the stable adapter boundary:
