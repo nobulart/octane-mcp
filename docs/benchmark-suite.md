@@ -164,11 +164,11 @@ Use `harness.run_all(tiers=[...])` from Python for custom subsets.
 | 6 | `t6_vase_studio` | ✅ verified | three vases on studio cyclorama. |
 | 6 | `t6_earth_space` | ✅ verified | blue Earth + atmosphere rim in space; `color_family` blue. |
 | 6 | `t6_saturn_system` | ✅ verified | planet + ring + moon. |
-| 7 | `t7_advection_diffusion_panels` | ⏳ pending native | offline-verified; 4-panel tracer, peak-decay + broadening. |
-| 7 | `t7_cloth_drape_contact` | ⏳ pending native | offline-verified; PBD cloth tenting over sphere. |
-| 7 | `t7_particle_splash_fixture` | ⏳ pending native | offline-verified; seeded liquid + foam families. |
+| 7 | `t7_advection_diffusion_panels` | ✅ verified | 4-panel tracer, peak-decay + broadening; `color_family` teal + `shape_profile`. |
+| 7 | `t7_cloth_drape_contact` | ✅ verified | PBD cloth draped over sphere; corrected gravity axis + fresh mesh name avoids stale import collision. |
+| 7 | `t7_particle_splash_fixture` | ✅ verified | seeded liquid + foam particle families; dual `color_family` criteria. |
 
-**18/18 Tier 1–6 tasks render natively and pass pixel acceptance. Tier 7 (3 tasks) is offline-verified and pending native benchmark-task render; the bridge/TCC blocker is resolved, but recipe promotion is tracked separately from benchmark-task verification.**
+**21/21 Tier 1–7 tasks render natively and pass pixel acceptance. Tier 7 was verified live on 2026-07-15; recipe promotion remains tracked separately from benchmark-task verification.**
 
 **Lessons (also in `docs/recipe-book.md`):**
 * **Deferred render start is the current protection against render-restart

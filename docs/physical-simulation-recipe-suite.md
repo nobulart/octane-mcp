@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
-> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks added + offline-verified; Phase B B1 native-promoted.
+> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B B1 native-promoted.
 > - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
 >   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
 >   OBJ/MTL, stdlib `preview.png`, READMEs.
@@ -22,15 +22,18 @@
 >   via `physics_fixture_io.py` with NO runtime SPlisHSPlasH dependency, emits a
 >   contract-clean recipe (`examples/recipes/dam-break-splash/`). Provenance is
 >   embedded in the `simulation` block. Covered by `tests/test_splishsplash_adapter.py`.
-> - Full offline suite green (44 tests; 1 live-gated skip). `test_verify_recipes`
->   counts bumped 38→39 / 37→38 (the 1 intentional failure stays `earth-moon-space`).
+> - Full focused suite green after live promotion (`test_verify_recipes`,
+>   `test_recipes`, `test_benchmarks`, `test_physics_fixture_io`,
+>   `test_splishsplash_adapter`; 1 live-gated skip).
 > - **Native render status:** Octane bridge/TCC/Scripts-menu issues are cleared for
->   this host. `mass-spring-cloth-drape` and `dam-break-splash` were rendered via
+>   this host. All five Phase A recipes plus `dam-break-splash` were rendered via
 >   `benchmarks.verify_recipes --live --copy-back --drain-timeout 300`, passed
 >   pixel acceptance, were visually inspected, and now have promoted
 >   `octane-preview.png` files with `native_octane_verified=true`.
-> - **Next:** (a) promote the remaining Phase A recipes and/or Tier 7 benchmark
->   tasks; (b) B2–B5 adapters (Oceananigans/Genesis/MPIPyMHD) following the same
+> - **Benchmark status:** all 21 Tier 1–7 benchmark tasks are native verified. Tier 7
+>   live verification also fixed the benchmark harness flush/drain ordering and the
+>   cloth task's gravity-axis/import-collision issue.
+> - **Next:** B2–B5 adapters (Oceananigans/Genesis/MPIPyMHD) following the same
 >   fixture-first pattern.
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
@@ -45,7 +48,7 @@
 
 The harness already has strong visual foundations:
 
-- 18 benchmark tasks in `benchmarks/spec.py`, all deterministic and pixel-gated.
+- 21 benchmark tasks in `benchmarks/spec.py`, all deterministic and pixel-gated.
 - Existing physics-adjacent recipes:
   - `physics-orbits`: orbital paths and body positions.
   - `wave-interference-field`: two-source scalar heightfield.

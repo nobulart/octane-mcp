@@ -931,87 +931,117 @@ def _t7_cloth_drape_contact() -> dict[str, Any]:
     sphere — the same grammar as the `mass-spring-cloth-drape` recipe, here
     promoted to a harness task.
     """
-    G = 14
-    size = 4.0
-    sp = size / (G - 1)
-    center = (0.0, 0.0, 0.9)
-    R = 1.0
-    pinned = {(0, 0), (0, G - 1), (G - 1, 0), (G - 1, G - 1)}
-    pos = [[[(i - (G - 1) / 2) * sp, (j - (G - 1) / 2) * sp, 1.8] for j in range(G)] for i in range(G)]
-    prev = [[list(pos[i][j]) for j in range(G)] for i in range(G)]
-    gravity = -1.0
-    dt = 0.03
+    G = 28
+    size = 6.0
+    sphere_r = 1.9
+    center = (0.0, 0.0, 0.0)
+    rest = size / (G - 1)
+    pinned = {(0, 0), (0, G - 1)}
     damping = 0.98
+    gravity = -0.012
+    dt = 0.6
 
-    def _constrain(a, b, rest):
-        dx = b[0] - a[0]; dy = b[1] - a[1]; dz = b[2] - a[2]
-        d = math.sqrt(dx * dx + dy * dy + dz * dz) or 1e-6
-        corr = (d - rest) / d / 2.0
-        a[0] += dx * corr; a[1] += dy * corr; a[2] += dz * corr
-        b[0] -= dx * corr; b[1] -= dy * corr; b[2] -= dz * corr
+    pos: list[list[list[float]]] = []
+    prev: list[list[list[float]]] = []
+    for i in range(G):
+        row = []
+        old = []
+        for j in range(G):
+            p = [-size / 2 + size * j / (G - 1), -size / 2 + size * i / (G - 1), sphere_r + 0.5]
+            row.append(p[:])
+            old.append(p[:])
+        pos.append(row)
+        prev.append(old)
 
-    def _collide(p):
-        dx = p[0] - center[0]; dy = p[1] - center[1]; dz = p[2] - center[2]
-        d = math.sqrt(dx * dx + dy * dy + dz * dz) or 1e-6
-        if d < R:
-            s = R / d
-            p[0] = center[0] + dx * s
-            p[1] = center[1] + dy * s
-            p[2] = center[2] + dz * s
+    def _dist(a: list[float], b: list[float]) -> float:
+        return math.sqrt(sum((a[k] - b[k]) ** 2 for k in range(3)))
 
-    for _ in range(260):
+    def _constrain(i: int, j: int, ni: int, nj: int, target: float, stiffness: float) -> None:
+        a = pos[i][j]
+        b = pos[ni][nj]
+        cur = _dist(a, b) or 1e-6
+        diff = (cur - target) / cur
+        corr = min(max(diff, -0.5), 0.5) * 0.5 * stiffness
+        ai = (i, j) not in pinned
+        bi = (ni, nj) not in pinned
+        if ai and bi:
+            for k in range(3):
+                off = (b[k] - a[k]) * corr
+                a[k] += off
+                b[k] -= off
+        elif ai:
+            for k in range(3):
+                a[k] += (b[k] - a[k]) * 2 * corr
+        elif bi:
+            for k in range(3):
+                b[k] -= (b[k] - a[k]) * 2 * corr
+
+    for _ in range(90):
         for i in range(G):
             for j in range(G):
                 if (i, j) in pinned:
                     continue
-                p = pos[i][j]; pr = prev[i][j]
-                v = [(p[k] - pr[k]) * damping for k in range(3)]
-                nxt = [p[k] + v[k] + gravity * dt * dt for k in range(3)]
-                prev[i][j] = p
+                p = pos[i][j]
+                old = prev[i][j]
+                nxt = [p[k] + (p[k] - old[k]) * damping + (gravity * dt * dt if k == 2 else 0.0) for k in range(3)]
+                prev[i][j] = p[:]
                 pos[i][j] = nxt
-        for _ in range(3):
+        for _ in range(8):
             for i in range(G):
                 for j in range(G):
-                    if i + 1 < G:
-                        _constrain(pos[i][j], pos[i + 1][j], sp)
-                    if j + 1 < G:
-                        _constrain(pos[i][j], pos[i][j + 1], sp)
+                    for di, dj in ((1, 0), (0, 1), (1, 1), (1, -1)):
+                        ni, nj = i + di, j + dj
+                        if not (0 <= ni < G and 0 <= nj < G):
+                            continue
+                        target = rest * (1.0 if di == 0 or dj == 0 else math.sqrt(2))
+                        stiffness = 0.9 if (di == 0 or dj == 0) else 0.4
+                        _constrain(i, j, ni, nj, target, stiffness)
         for i in range(G):
             for j in range(G):
                 if (i, j) in pinned:
                     continue
-                _collide(pos[i][j])
+                p = pos[i][j]
+                v = [p[k] - center[k] for k in range(3)]
+                r = math.sqrt(sum(x * x for x in v)) or 1e-6
+                if r < sphere_r + 0.05:
+                    s = (sphere_r + 0.05) / r
+                    for k in range(3):
+                        p[k] = center[k] + v[k] * s
 
     verts: list[list[tuple[float, float, float]]] = [
         [(float(pos[i][j][0]), float(pos[i][j][1]), float(pos[i][j][2])) for j in range(G)]
         for i in range(G)
     ]
+    sphere_b = ObjBuilder("sphere")
+    sphere_b.add_ellipsoid(center=center, radii=(sphere_r, sphere_r, sphere_r), segments_u=48, segments_v=24, material="sphere_mat")
     cloth_b = ObjBuilder("cloth")
     cloth_b.add_surface(vertices=verts, material="cloth_mat")
-    sphere_b = ObjBuilder("sphere")
-    sphere_b.add_ellipsoid(center=center, radii=(R, R, R), material="sphere_mat")
-    obj = CombinedObj("t7_cloth")
-    obj.add_group("cloth", "cloth_mat", cloth_b)
+    obj = CombinedObj("t7_cloth_contact")
     obj.add_group("sphere", "sphere_mat", sphere_b)
+    obj.add_group("cloth", "cloth_mat", cloth_b)
     return {
-        "mesh_name": "t7_cloth",
+        "mesh_name": "t7_cloth_contact",
         "obj": obj.text(),
         "bounds": obj.bounds(),
         "materials": [
-            _mat("cloth_mat", "glossy", [0.85, 0.2, 0.25], roughness=0.4),
-            _mat("sphere_mat", "diffuse", [0.2, 0.2, 0.22], roughness=0.9),
+            _mat("sphere_mat", "glossy", [0.3, 0.32, 0.36], roughness=0.5),
+            _mat("cloth_mat", "glossy", [0.85, 0.3, 0.35], roughness=0.6),
         ],
         "assignments": [
-            {"group_index": 1, "material_name": "cloth_mat"},
-            {"group_index": 2, "material_name": "sphere_mat"},
+            {"group_index": 1, "material_name": "sphere_mat"},
+            {"group_index": 2, "material_name": "cloth_mat"},
         ],
-        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.4),
+        "camera": {
+            "position": [8.60519, -14.715919, 7.709358],
+            "target": [-0.740483, -3.553032, 0.180899],
+            "fov": 35.0,
+        },
         "lighting": "soft_studio",
         "save": {"quality": "high", "width": 1024, "height": 1024},
         "acceptance": [
             {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
             {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
-            {"kind": "color_family", "target": [0.85, 0.2, 0.25], "hue_tol": 45, "min_fraction": 0.01},
+            {"kind": "color_family", "target": [0.85, 0.3, 0.35], "hue_tol": 45, "min_fraction": 0.01},
             {"kind": "shape_profile", "min_rows": 6},
         ],
     }
@@ -1099,9 +1129,9 @@ ALL_TASKS: list[BenchmarkTask] = [
     BenchmarkTask(6, "t6_vase_studio", "Photoreal vase studio", "photoreal", "Three vases, glass/ceramic/metal families.", _t6_vase_studio),
     BenchmarkTask(6, "t6_earth_space", "Earth & moon in space", "photoreal-space", "Earth + atmosphere shell + moon.", _t6_earth_space),
     BenchmarkTask(6, "t6_saturn_system", "Saturn & moons", "photoreal-space", "Oblate Saturn + rings + two moons.", _t6_saturn_system),
-    BenchmarkTask(7, "t7_advection_diffusion_panels", "Advection–diffusion panels", "physics-transport", "Four tiled Gaussians advecting + diffusing; peak decays, footprint broadens.", _t7_advection_diffusion_panels),
-    BenchmarkTask(7, "t7_cloth_drape_contact", "Cloth drape contact", "physics-deformable", "PBD cloth draping over a rigid sphere with emergent contact patch.", _t7_cloth_drape_contact),
-    BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture),
+    BenchmarkTask(7, "t7_advection_diffusion_panels", "Advection–diffusion panels", "physics-transport", "Four tiled Gaussians advecting + diffusing; peak decays, footprint broadens.", _t7_advection_diffusion_panels, True),
+    BenchmarkTask(7, "t7_cloth_drape_contact", "Cloth drape contact", "physics-deformable", "PBD cloth draping over a rigid sphere with emergent contact patch.", _t7_cloth_drape_contact, True),
+    BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture, True),
 ]
 
 

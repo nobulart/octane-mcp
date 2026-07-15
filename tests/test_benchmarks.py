@@ -231,10 +231,11 @@ class _FakeWorkspace:
         self.root = root
         self.assets_dir = root / "assets"
         self.queue_dir = root / "queue"
+        self.processing_dir = root / "processing"
         self.renders_dir = root / "renders"
         self.state_dir = root / "state"
         self.status_path = root / "state" / "bridge_status.json"
-        for d in (self.assets_dir, self.queue_dir, self.renders_dir, self.state_dir):
+        for d in (self.assets_dir, self.queue_dir, self.processing_dir, self.renders_dir, self.state_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     def ensure(self):
@@ -273,6 +274,27 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(queued, "no commands queued")
         last = json.loads(queued[-1].read_text())
         self.assertEqual(last["op"], "save_preview")
+
+    def test_live_run_flushes_stale_queue_before_writing_task_commands(self):
+        stale = self.fake.queue_dir / "000000_stale.json"
+        stale.write_text(json.dumps({"op": "stale", "payload": {}}), encoding="utf-8")
+
+        orig_drain = harness.drain_oneshot
+        harness.drain_oneshot = lambda *a, **k: {"ok": True, "queue_remaining": 0}
+        try:
+            task = get_task("t1_glossy_cube")
+            self.assertIsNotNone(task)
+            assert task is not None
+            run = harness.run_task(task, container=self.tmp, dry_run=False, drain=True)
+        finally:
+            harness.drain_oneshot = orig_drain
+
+        self.assertFalse(stale.exists(), "stale queue file should be flushed before queueing")
+        queued = sorted(self.fake.queue_dir.glob("*.json"))
+        self.assertGreaterEqual(len(queued), run.queued, "freshly queued commands were flushed away")
+        ops = [json.loads(p.read_text())["op"] for p in queued]
+        self.assertIn("import_geometry", ops)
+        self.assertEqual(ops[-1], "save_preview")
 
     def test_harness_obj_index_guard_raises(self):
         obj = CombinedObj("bad")

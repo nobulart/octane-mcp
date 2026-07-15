@@ -141,6 +141,17 @@ def run_task(
     ws.ensure()
 
     try:
+        if not dry_run and drain:
+            # ALWAYS flush the shared/persistent queue before every live render
+            # (unconditional — do not skip even when the queue looks empty; the
+            # autonomous steward and parallel agents write to the same queue/, so
+            # it refills silently between sessions). Reversible backup, never rm.
+            from octanex_mcp.bridge import flush_queue
+
+            flush_res = flush_queue(ws)
+            if flush_res["flushed"]:
+                run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
+
         spec = task.build_scene()
         if quality_override:
             spec["save"]["quality"] = quality_override
@@ -166,14 +177,6 @@ def run_task(
             run.notes.append("drain deferred")
             return run
 
-        # ALWAYS flush the shared/persistent queue before every live render
-        # (unconditional — do not skip even when the queue looks empty; the
-        # autonomous steward and parallel agents write to the same queue/, so
-        # it refills silently between sessions). Reversible backup, never rm.
-        from octanex_mcp.bridge import flush_queue
-        flush_res = flush_queue(ws)
-        if flush_res["flushed"]:
-            run.notes.append(f"auto-flushed {flush_res['flushed']} stale queue files (backup {flush_res['backup_dir']})")
         # Delete any pre-existing preview so acceptance guards on a FRESH mtime,
         # never a stale frame from a prior session.
         if run.preview_path and run.preview_path.exists():
@@ -254,17 +257,20 @@ def drain_oneshot(ws: Workspace, *, timeout_seconds: float = 60.0) -> dict[str, 
     if not result.get("last_bridge_result", {}).get("ok"):
         return result
 
-    # Poll until queue drains (files move to processed/failed) or timeout.
+    # Poll until queue drains AND the active processing slot clears. Queue files
+    # move into processing/ while Octane renders; queue/ empty alone is not done.
     while waited < timeout_seconds:
         q = list(ws.queue_dir.glob("*.json"))
+        p = list(ws.processing_dir.glob("*.json"))
         result["queue_remaining"] = len(q)
-        if not q:
+        result["processing_remaining"] = len(p)
+        if not q and not p:
             result["ok"] = True
             break
         time.sleep(2.0)
         waited += 2.0
     if not result["ok"]:
-        result.setdefault("error", "queue did not fully drain within timeout")
+        result.setdefault("error", "queue/processing did not fully drain within timeout")
     return result
 
 

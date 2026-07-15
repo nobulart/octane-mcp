@@ -10,8 +10,11 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT / "src") not in __import__("sys").path:
-    __import__("sys").path.insert(0, str(ROOT / "src"))
+_path = __import__("sys").path
+if str(ROOT / "src") not in _path:
+    _path.insert(0, str(ROOT / "src"))
+if str(ROOT / "scripts") not in _path:
+    _path.insert(0, str(ROOT / "scripts"))
 
 from physics_fixture_io import (  # noqa: E402
     Fixtures,
