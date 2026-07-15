@@ -44,7 +44,7 @@ Observed:
 - `build/bin/` exists but contained no finished `luisa-render-cli` executable before build attempt.
 - local submodules show modified state in `src/compute`, `src/ext/assimp`, `src/ext/json`, etc.; treat the checkout as not pristine.
 
-### Build attempt
+### Build attempt and smoke update
 
 Attempted:
 
@@ -52,7 +52,7 @@ Attempted:
 cmake --build build --target luisa-render-cli -j 4
 ```
 
-Result: configuration succeeded and began compiling, but build failed in bundled Assimp:
+First result: configuration succeeded and began compiling, but build failed in bundled Assimp:
 
 ```text
 /Users/craig/src/LuisaRender/src/ext/assimp/code/Common/ZipArchiveIOSystem.cpp:57:14: fatal error: 'unzip.h' file not found
@@ -61,11 +61,33 @@ Result: configuration succeeded and began compiling, but build failed in bundled
 Interpretation:
 
 - The local checkout is close enough to configure for macOS/Metal.
-- Current blocker is a build dependency/include issue around minizip/unzip headers, not an architectural failure.
-- Fix candidates to test later:
-  - install/locate Homebrew minizip headers and pass include path into CMake;
-  - configure Assimp to avoid ZIP/minizip support if possible;
-  - use a known-good LuisaRender branch/build recipe for Apple Silicon.
+- The blocker was a build dependency/include issue around Homebrew `minizip`, not an
+  architectural failure.
+
+Follow-up smoke (same day): Homebrew already had `minizip` installed at
+`/opt/homebrew/opt/minizip`, with `unzip.h` under `include/minizip/`. Reconfiguring
+with that include directory fixed the build:
+
+```bash
+cmake -S . -B build -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_FLAGS="-I/opt/homebrew/opt/minizip/include/minizip"
+cmake --build build --target luisa-render-cli -j 4
+```
+
+Result:
+
+```text
+[100%] Linking CXX executable ../../bin/luisa-render-cli
+[100%] Built target luisa-render-cli
+```
+
+`build/bin/luisa-render-cli -h` reports backend choices as `metal`, and a minimal
+inline-mesh `.luisa` scene rendered successfully through Metal on `Apple M3 Ultra`.
+The smoke render wrote `/tmp/luisa-smoke/smoke.exr`, converted via
+`OPENCV_IO_ENABLE_OPENEXR=1 python3 tools/hdr2srgb.py`, and produced a non-blank
+`/tmp/luisa-smoke/smoke.png` (`96x96`, stddev `57.6`, min/max `0/215`, 205 sampled
+unique colours). Local vision confirmed it shows a lit reddish triangle over a floor,
+not a flat frame.
 
 ### CLI and scene model
 
@@ -119,7 +141,7 @@ From source inspection:
 | Existing recipe geometry | Medium | OBJ input possible; combined OBJ single-mesh rule roughly aligns with Luisa's single-mesh loader. |
 | Material translation | Medium | Need Octane material kind → Luisa Surface/Texture mapping. |
 | Preview verification | Strong | Output can feed existing PNG pixel QA after EXR→PNG tonemap. |
-| Build/ops complexity | Medium-high | Current local build blocked by `unzip.h`; demo scenes separate. |
+| Build/ops complexity | Medium | Build needs Homebrew `minizip` include path (`-I/opt/homebrew/opt/minizip/include/minizip`); demo scenes separate. |
 | License | Verify before shipping | Keep adapter as a subprocess boundary regardless. |
 
 ---
@@ -191,7 +213,7 @@ This is also useful for Blender/Mitsuba later.
 
 Actions:
 
-1. Resolve `unzip.h` build blocker.
+1. Resolve `unzip.h` build blocker. **Done locally:** pass Homebrew minizip include path via `CMAKE_CXX_FLAGS`.
 2. Build target:
    ```bash
    cmake --build /Users/craig/src/LuisaRender/build --target luisa-render-cli -j 4
@@ -201,7 +223,7 @@ Actions:
    /Users/craig/src/LuisaRender/build/bin/luisa-render-cli -h
    ```
 
-Verdict gate: executable exists and help runs.
+Verdict gate: executable exists and help runs. **Passed locally:** `luisa-render-cli -h` reports `metal`.
 
 ### Spike 002 — Minimal `.luisa` inline triangle/sphere render
 
@@ -209,7 +231,7 @@ Verdict gate: executable exists and help runs.
 
 Use no Octane assets yet. This isolates Luisa build/runtime from octanex translation.
 
-Verdict gate: non-empty PNG passes existing `review_preview` / `evaluate_acceptance`.
+Verdict gate: non-empty PNG passes existing `review_preview` / `evaluate_acceptance`. **Passed locally as an ad-hoc smoke:** EXR→PNG produced a non-blank, visually inspected triangle/floor render.
 
 ### Spike 003 — Translate one `BenchmarkTask`
 
@@ -231,15 +253,15 @@ Verdict gate: colour-family checks detect at least two expected material familie
 
 1. **Keep three.js/WebGL as the realtime Canvas priority.** LuisaRender does not replace the immediate live interaction need.
 2. **Add LuisaRender as a candidate quality backend in the backend abstraction docs.** It belongs beside Mitsuba/OSPRay, not beside WebGL.
-3. **Run the build/runtime smoke spike before writing production adapter code.** The local checkout currently does not build due to `unzip.h`.
-4. **If smoke passes, implement `scripts/spike_luisa_scene.py` first**, not `src/octanex_mcp/backends/luisa_backend.py`. Prove scene generation and EXR→PNG first.
+3. **Codify the successful build/runtime smoke as a repo-local spike script before writing production adapter code.** The local checkout builds when Homebrew minizip's nested include dir is injected.
+4. **Implement `scripts/spike_luisa_scene.py` first**, not `src/octanex_mcp/backends/luisa_backend.py`. Reproduce scene generation, CLI invocation, EXR→PNG conversion, and pixel QA from a clean temp directory.
 5. **Only after one BenchmarkTask renders**, promote the adapter into `src/octanex_mcp/backends/` with tests around scene-file generation, not live rendering.
 
 ---
 
 ## Open questions
 
-- What is the cleanest fix for the local `unzip.h` build failure?
+- Should the LuisaRender build fix be documented as `CMAKE_CXX_FLAGS=-I.../minizip`, or should the upstream Assimp/minizip include handling be patched/reconfigured more cleanly?
 - Does LuisaRender's output filename always come from `Camera.file`, and is EXR the only practical output format?
 - Which EXR→PNG path should be standard here: Luisa's own tools, `tools/hdr2srgb.py`, ImageMagick, OpenImageIO, or a small Python dependency?
 - Can `luisa-render-export` convert our existing OBJ/glTF fixtures cleanly enough to avoid writing `.luisa` directly?
@@ -252,4 +274,4 @@ Verdict gate: colour-family checks detect at least two expected material familie
 
 LuisaRender is worth a spike. It would not replace Octane X as an immediate drop-in, and it would not solve the realtime Canvas problem. But it could become a cleaner local quality backend with a normal CLI, Metal support, reproducible scene files, and no AppleScript/TCC dependency.
 
-The next concrete step is **not** adapter architecture. It is a build/runtime smoke test that fixes `unzip.h`, renders one minimal `.luisa` scene, and converts the EXR to a PNG that the existing pixel QA can judge.
+The first smoke has now passed: the CLI builds, `-h` reports Metal, and a minimal `.luisa` scene rendered to EXR and converted to a non-blank PNG. The next concrete step is still **not** production adapter architecture. It is to codify the smoke as a small repo-local spike script, then translate one simple `BenchmarkTask` into `.luisa` and run the same EXR→PNG→pixel-QA path reproducibly.

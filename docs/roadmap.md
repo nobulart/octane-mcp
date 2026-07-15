@@ -1259,16 +1259,16 @@ BSD-3, scene-file/CLI renderer with a macOS Metal backend and useful `Mesh`,
 It is **not** a realtime Canvas backend and should not be mapped command-by-command
 from the Octane queue. Treat it as a QualityBackend spike: compile renderer-neutral
 recipe state into `.luisa`, run `luisa-render-cli -b metal`, convert EXR output to
-PNG, then use the existing pixel/vision review path. Current blocker is operational,
-not architectural: the local build configures for Metal but fails in bundled Assimp
-because `unzip.h` is missing. Research note:
-`docs/luisa-render-backend-investigation.md`.
+PNG, then use the existing pixel/vision review path. First smoke passed locally:
+injecting Homebrew `minizip`'s nested include dir fixed the `unzip.h` build blocker,
+`luisa-render-cli -h` reported `metal`, and a tiny inline-mesh scene rendered to a
+non-blank PNG. Research note: `docs/luisa-render-backend-investigation.md`.
 
-**Recommended next move (2026-07-15):** start WP15 with the LuisaRender smoke spike in
-parallel with the WebGLBackend planning, but keep production adapter work gated until
-the CLI builds and one minimal `.luisa` scene renders through Metal. First task: fix
-the `unzip.h` build dependency, run `luisa-render-cli -h`, render a tiny inline-mesh
-scene, and prove EXR→PNG→pixel-QA before touching `src/octanex_mcp/backends/`.
+**Recommended next move (2026-07-15):** continue WP15 by codifying the successful
+LuisaRender smoke as a reproducible `scripts/spike_luisa_scene.py` before production
+adapter work. It should create a temp `.luisa` inline-mesh scene, run
+`luisa-render-cli -b metal`, convert EXR→PNG, compute pixel stats, and only then
+graduate to translating one simple `BenchmarkTask`.
 
 ---
 
