@@ -86,9 +86,14 @@ export class CanvasRenderer {
     this._clock = new THREE.Clock();
     this.TRANSITION_MS = 500;
 
-    // Orbit state
+    // Orbit state. Start at an oblique 3/4 view (not the pole): phi is the
+    // polar angle from +Y, theta the azimuth. If both start at 0 the camera
+    // math (`setFromSpherical(radius, phi=0, theta=0)`) collapses to a straight
+    // top-down (0, radius, 0) view for EVERY scene, so box heights read as
+    // depth and a bar chart collapses to a flat block. A near-equatorial
+    // oblique angle gives a proper 3/4 perspective on the first frame.
     this.target = new THREE.Vector3(0, 0, 0);
-    this.spherical = new THREE.Spherical();
+    this.spherical = new THREE.Spherical(8, Math.PI * 0.32, Math.PI * 0.25);
     this._dragging = false;
     this._panning = false;
     this._lastX = 0;

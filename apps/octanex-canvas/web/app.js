@@ -89,6 +89,9 @@ document.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------------------
 initRenderer();
 if (DEV_MODE && dom.debugLog) dom.debugLog.classList.remove("hidden"); // forensic stream on
+// DEV-only scene-graph handle for headless e2e verification (read node transforms
+// without scraping pixels). Mirrors the debug-log affordance; never shipped in prod.
+if (DEV_MODE) window.__octanex = { get renderer() { return state.renderer; }, get state() { return state; } };
 restoreContinuity();
 setViewMode("live");
 setInterval(pollPreview, 750);
