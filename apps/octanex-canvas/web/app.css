@@ -96,6 +96,10 @@ body.mode-split #preview { width: 50%; left: 50%; }
   letter-spacing: 0.02em;
 }
 #viewmodes button.active { background: rgba(78, 161, 255, 0.18); color: var(--text); }
+#viewmodes button:hover { color: var(--text); }
+/* Commit / Fork actions sit inline, right of the mode toggles (same segmented
+   styling); a small gap separates the action group from the view-mode group. */
+#viewmodes #octane-commit { margin-left: 8px; }
 
 /* When in Final-only mode, hide the live WebGL canvas (Octane PNG owns
    the screen). The view-mode selector stays visible so the user can switch
@@ -539,33 +543,6 @@ body.focus #log-toggle { display: none !important; }
 #octane-render[data-state="error"] { color: var(--red); border-color: var(--red); }
 #octane-render[data-state="error"] .ox-pie { opacity: 1; }
 #octane-render[data-state="error"] .ox-pie-progress { stroke: var(--red); animation: none; }
-
-/* Commit / Fork recipe actions sit beside the render FAB */
-#octane-actions {
-  position: fixed;
-  right: 22px;
-  bottom: 92px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 41;
-}
-#octane-actions button {
-  width: 52px;
-  padding: 7px 0;
-  border-radius: 9px;
-  border: 1px solid var(--border);
-  background: rgba(20, 26, 33, 0.82);
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-#octane-actions button:hover { background: rgba(40, 52, 66, 0.92); border-color: var(--accent); }
-#octane-actions button:active { transform: scale(0.96); }
 
 #tasks {
   position: fixed;
