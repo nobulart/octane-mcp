@@ -1,0 +1,307 @@
+{
+  "slug": "cathedral",
+  "title": "Sagrada-Familia-style Cathedral (fluted spires, main door only, v11j)",
+  "category": "Architecture",
+  "purpose": "Render a monolithic Sagrada-Familia-style cathedral. v10: spiral VERTICAL CREASES in the shafts, fatter spire crowns (br*0.55), proper UV mapping. v11: windows extruded as real recessed pockets seated PROUD of the stone (no intersection). v11b: REAL geometric relief - every stone vertex pushed along its surface normal by a shared 3D fractal displacement field (actual geometry, not a normal map). v11c: relief DIALED TO CRISPER + SOFTER - base frequency raised (1.0->2.2) for sub-metre cut-stone lobes, amplitude lowered (0.022->0.012), 6 octaves + a dedicated high-freq grain octave for sharp sandstone speckle, and the mesh densified (tower P24->34 rings64->96, crown P16->26, base P20->30, buttress P12->18) so the finer speckle actually resolves instead of aliasing into faceted ribbing. v11d: (1) relief FREQUENCY RAMPS UP WITH HEIGHT - base lobes + fine speckle scale 1.0x (ground) -> 2.8x (tip) via a smooth frac=y/18 gradient, so the stone reads broad-cut at the base and intricately carved toward the spires; (2) per-element JITTER - each tower/crown/base/buttress samples a different offset into the noise field, so no two architectural elements share the same relief pattern. v11e: KILLED THE COIN-STACK - dropped shaft/crown/base/buttress lobes to 0 and crease depth 0.14->0.03 (relief now comes from displacement, not faceting). REWROTE the field: (1) HELICAL TWIST about Y (0.6 rad/m -> grooves spiral ~1.8 turns up each spire); (2) DOMAIN WARP (turbulence) so the pattern meanders and never reads as a repeating lattice; (3) pushed the height frequency ramp 1.0x->4.0x (tip->~4x finer). amp 0.012->0.015 for a wilder depth. v11f: (1) GOLDEN-RATIO PROPORTIONS - every tower base radius (phi^2 central -> /phi per ring -> /phi^2 outer) and total height (phi^6 central -> /phi ladder) derive from phi, so the spire cluster reads as one harmonious family; (2) HARDER TIP TAPER - the crown profile now necks through phi^-1/phi^-2/0.05/0.012 with a concave curve, so spires end in fine needles instead of blunt cones; (3) frequency content re-balanced to read as carved grit, NOT ribs (base f0 2.2->4.0, 7 octaves, gentler 0.62 falloff, DOUBLE domain warp), creases removed entirely so displacement is the only relief. v11i: de-bulbed the foot (base flare 1.9x->1.30x) + slashed trunk fusion (merge_r 0.70->0.32, MERGE_FRAC 0.30->0.22) so towers read as distinct slender columns, and made the 9 vertical flutes a REAL ~11cm displacement (was ~4mm, invisible) so the stone reads carved-stone. v11j: removed ALL per-tower + flanking window niches (they floated in mid-air once the trunk was slimmed) leaving only the single main arched door, re-seated on the actual central-tower radius.",
+  "prompt": "Visualise a cathedral in the style of Gaudi's Sagrada Familia, with stained glass.",
+  "camera": {
+    "position": [
+      20.6142,
+      16.514,
+      37.2048
+    ],
+    "target": [
+      0.0,
+      8.5,
+      1.5
+    ],
+    "fov": 50.0
+  },
+  "materials": {
+    "mat_stone": {
+      "name": "mat_stone",
+      "kind": "glossy",
+      "color": [
+        0.83,
+        0.79,
+        0.71
+      ],
+      "roughness": 0.66,
+      "emission": 0.0
+    },
+    "mat_glass_gold": {
+      "name": "mat_glass_gold",
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.72,
+        0.1
+      ],
+      "roughness": 0.12,
+      "emission": 0.65
+    },
+    "mat_glass_violet": {
+      "name": "mat_glass_violet",
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.1,
+        0.8
+      ],
+      "roughness": 0.12,
+      "emission": 0.6
+    },
+    "mat_glass_blue": {
+      "name": "mat_glass_blue",
+      "kind": "glossy",
+      "color": [
+        0.06,
+        0.2,
+        0.85
+      ],
+      "roughness": 0.12,
+      "emission": 0.6
+    },
+    "mat_glass_green": {
+      "name": "mat_glass_green",
+      "kind": "glossy",
+      "color": [
+        0.05,
+        0.65,
+        0.22
+      ],
+      "roughness": 0.12,
+      "emission": 0.55
+    },
+    "mat_glass_red": {
+      "name": "mat_glass_red",
+      "kind": "glossy",
+      "color": [
+        0.85,
+        0.06,
+        0.08
+      ],
+      "roughness": 0.12,
+      "emission": 0.6
+    },
+    "mat_cavity": {
+      "name": "mat_cavity",
+      "kind": "glossy",
+      "color": [
+        0.03,
+        0.03,
+        0.04
+      ],
+      "roughness": 0.9,
+      "emission": 0.0
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/cathedral/scene.obj",
+        "format": "obj",
+        "name": "cathedral"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_stone",
+        "kind": "glossy",
+        "color": [
+          0.83,
+          0.79,
+          0.71
+        ],
+        "roughness": 0.66,
+        "emission": 0.0
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_glass_gold",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.72,
+          0.1
+        ],
+        "roughness": 0.12,
+        "emission": 0.65
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_glass_violet",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.1,
+          0.8
+        ],
+        "roughness": 0.12,
+        "emission": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_glass_blue",
+        "kind": "glossy",
+        "color": [
+          0.06,
+          0.2,
+          0.85
+        ],
+        "roughness": 0.12,
+        "emission": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_glass_green",
+        "kind": "glossy",
+        "color": [
+          0.05,
+          0.65,
+          0.22
+        ],
+        "roughness": 0.12,
+        "emission": 0.55
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_glass_red",
+        "kind": "glossy",
+        "color": [
+          0.85,
+          0.06,
+          0.08
+        ],
+        "roughness": 0.12,
+        "emission": 0.6
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_cavity",
+        "kind": "glossy",
+        "color": [
+          0.03,
+          0.03,
+          0.04
+        ],
+        "roughness": 0.9,
+        "emission": 0.0
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_stone"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_glass_gold"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_glass_violet"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_glass_blue"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_glass_green"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_glass_red"
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "cathedral",
+        "material_name": "mat_cavity"
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          20.6142,
+          16.514,
+          37.2048
+        ],
+        "target": [
+          0.0,
+          8.5,
+          1.5
+        ],
+        "fov": 50.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/cathedral/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "samples": 700,
+        "min_samples": 64,
+        "timeout_seconds": 45,
+        "max_render_time": 38
+      }
+    }
+  ],
+  "acceptance": [
+    {
+      "kind": "non_empty",
+      "min_mean_dev": 2.0,
+      "min_nonbg": 2.0
+    },
+    {
+      "kind": "review_ok",
+      "fail_on": [
+        "mostly near-white",
+        "very low contrast",
+        "all objects white"
+      ]
+    }
+  ],
+  "native_octane_verified": true,
+  "status": "native_octane_verified"
+}

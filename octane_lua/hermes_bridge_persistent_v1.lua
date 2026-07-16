@@ -929,22 +929,47 @@ local function handle_create_material(cmd)
             end
             return nil, tried, false, errmsg
         end
+        -- Wire an image-texture node into a material pin. For the albedo we
+        -- want a NON-normal texture pin (diffuse/albedo); for the normal map we
+        -- want the pin whose name contains "normal". Falls back to the first
+        -- texture pin if the preferred pin isn't found (keeps old behaviour).
+        -- FIX (v11): previously both albedo and normal scanned for the FIRST
+        -- texture pin, so the normal map overwrote the albedo connection. They
+        -- now target distinct pins.
+        local function wire_tex(tex, want_normal)
+            local wired_pin = nil
+            pcall(function()
+                local count = m:getPinCount()
+                local first_tex = nil
+                for i = 0, count - 1 do
+                    local info = m:getPinInfoIx(i)
+                    if info and (info.type == 4 or info.type == "PT_TEXTURE") then
+                        if first_tex == nil then first_tex = i end
+                        local nm = string.lower(tostring(info.name or ""))
+                        if want_normal then
+                            if string.find(nm, "normal") then
+                                if connect_to(m, i, tex) then wired_pin = tostring(info.name or i); return end
+                            end
+                        else
+                            if not string.find(nm, "normal") then
+                                if connect_to(m, i, tex) then wired_pin = tostring(info.name or i); return end
+                            end
+                        end
+                    end
+                end
+                if first_tex ~= nil then
+                    if connect_to(m, first_tex, tex) then wired_pin = tostring(first_tex) end
+                end
+            end)
+            return wired_pin
+        end
         if cmd.texture_path then
             local tex, ntype, loaded = make_image_node(name .. "_albedo", cmd.texture_path)
             if tex then
-                local wired_pin = nil
-                pcall(function()
-                    local count = m:getPinCount()
-                    for i = 0, count - 1 do
-                        local info = m:getPinInfoIx(i)
-                        if info and (info.type == 4 or info.type == "PT_TEXTURE") then
-                            if connect_to(m, i, tex) then wired_pin = tostring(info.name or i); break end
-                        end
-                    end
-                end)
+                local wp = wire_tex(tex, false)
                 append_log("image texture albedo node=" .. tostring(ntype)
                     .. " path=" .. tostring(cmd.texture_path)
-                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wired_pin))
+                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wp))
             else
                 append_log("image texture albedo FAILED node=" .. tostring(ntype) .. " path=" .. tostring(cmd.texture_path))
             end
@@ -952,19 +977,10 @@ local function handle_create_material(cmd)
         if cmd.normal_path then
             local normal, ntype, loaded = make_image_node(name .. "_normal", cmd.normal_path)
             if normal then
-                local wired_pin = nil
-                pcall(function()
-                    local count = m:getPinCount()
-                    for i = 0, count - 1 do
-                        local info = m:getPinInfoIx(i)
-                        if info and (info.type == 4 or info.type == "PT_TEXTURE") then
-                            if connect_to(m, i, normal) then wired_pin = tostring(info.name or i); break end
-                        end
-                    end
-                end)
+                local wp = wire_tex(normal, true)
                 append_log("image texture normal node=" .. tostring(ntype)
                     .. " path=" .. tostring(cmd.normal_path)
-                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wired_pin))
+                    .. " loaded=" .. tostring(loaded) .. " wired_pin=" .. tostring(wp))
             else
                 append_log("image texture normal FAILED node=" .. tostring(ntype) .. " path=" .. tostring(cmd.normal_path))
             end

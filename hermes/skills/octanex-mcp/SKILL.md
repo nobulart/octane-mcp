@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.16
+version: 1.9.17
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]
@@ -254,6 +254,20 @@ Consequently: the Script-menu / `osascript` path used here is the *only* support
    ```text
    octane_reset_octane_scene()       # {ok:true} or {ok:false, kind:...}
    ```
+
+   **CRITICAL: a cold relaunch reopens Octane's LAST PROJECT, not a blank scene.**
+   If Octane was last rendering the Mandelbulb (or any other scene), a
+   `quit`+`open -a` relaunch restores that project's scene graph. A subsequent
+   bridge click then ADDS the new geometry *beside* the old nodes, so the old
+   mesh (and any "floating" elements from it) keeps rendering. Symptom the agent
+   will see: "the floating windows are still there" / "it's rendering the stale
+   old scene" even though the generator OBJ no longer contains those parts
+   (confirm by dropping vertex count — a removed element must shrink the OBJ).
+   Fix is NOT another regen: `octane_flush_queue()` (archive) +
+   `octane_reset_octane_scene()` (File ▸ New, wipes the in-memory graph) +
+   requeue, THEN exactly one bridge click into the now-empty scene. Always
+   verify the live preview (mtime post-flush, queue drained to 0,
+   native-vision inspected) before claiming the new look is on screen.
 
    **Application-control error taxonomy** (the control layer classifies these
    so the agent branches instead of blindly retrying):

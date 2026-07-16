@@ -1531,3 +1531,28 @@ geometry, the launcher `-2741` bug, and TCC.
 ### Follow-ups
 - Per-vertex colours baked into the OBJ are NOT honoured by the Octane X OBJ importer on this build (usedColor stays white), so name-based `assign_material` is the only reliable colour path. Keep the explicit create_material + assign_material commands.
 - If a part still renders white, grep `bridge.log` for `material <name> -> NO matching pin` (bad) vs `-> pin <name>` (good).
+
+## Sagrada-Familia cathedral — fluted golden-ratio spires, main door only (generator)
+
+- **Outcome:** success (native Octane X verified 2026-07-16, beauty=5000)
+- **Recorded:** 2026-07-16
+- **Context:** Procedural Gaudí-style cathedral: slender φ-proportioned fluted
+  stone spires from a shared base, needle tips, real geometric carved-stone
+  relief, one arched main door. Built via `scripts/gen_cathedral.py` (one combined
+  OBJ + per-material `usemtl` groups + `examples/recipes/cathedral/scene.json`).
+
+### Steps
+- `python scripts/gen_cathedral.py` emits `examples/recipes/cathedral/{scene.obj,scene.json}`, regenerates the procedural stone albedo/normal maps, and queues a live render. A `hermes mcp call octanex octane_queue_recipe --slug cathedral` then ONE `hermes_bridge_oneshot.generated` click also works.
+- Stone relief is baked into the mesh (every vertex displaced along its normal by a shared 3D fractal field: helical + domain-warp + height-ramped, plus a real ~11 cm vertical 9-flute term). No external texture required for the look.
+- Door = single `arch_niche` cavity seated on the actual central-tower radius.
+
+### Signals / evidence
+- Native preview: `examples/recipes/cathedral/octane-preview.png` (257 KB, 1280×1280, beauty=5000).
+- Vertex count dropped 47,522 → 36,602 when per-tower + flanking window niches were removed (confirms the parts left the OBJ).
+- Vision: fluted slender spires + needle tips intact, floating windows GONE, single flush door.
+
+### Root-cause lesson (this build)
+- **"Floating windows still there" = STALE SCENE GRAPH, not a generator bug.** Octane X *reopens its last project on a cold relaunch* (here a leftover Mandelbulb). A bridge click then adds the new cathedral BESIDE the old nodes, so the old mesh keeps rendering. Removing parts from the OBJ is necessary but not sufficient. Fix: `octane_flush_queue()` (archive) + `octane_reset_octane_scene()` (File ▸ New) + requeue + ONE bridge click into the empty scene. Always confirm via OBJ vertex-count delta + native-vision of the live frame.
+- **Invisible relief = displacement too small.** A ~4 mm flute term on a 2 m spire is nothing; ~11 cm reads as carved stone. Scale the displacement, don't just add frequency.
+- **Bulbous/snowman** = `1.9×` base flare + fat trunk fusion (`merge_r 0.70`); slim to `1.30×` / `0.32`. **Ice-cream** = round lobes + heavy smoothing; re-inject lobes + lighter smoothing. **Pancake stack** = 3.6 rad twist coil; slash to ~1.3.
+- Bridge `create_material` now wires `normal_path` (both templates, regenerated via `octanex-mcp init`; parity 8/8 OK).
