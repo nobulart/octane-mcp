@@ -89,7 +89,9 @@ class SpecCoverageTests(unittest.TestCase):
     def test_all_tasks_have_unique_slugs(self):
         slugs = [t.slug for t in ALL_TASKS]
         self.assertEqual(len(slugs), len(set(slugs)), "duplicate task slugs")
-        self.assertEqual(len(slugs), 15)
+        # 17 = 12 tiers 1-6 + 3 tier-7 physics + 2 tier-8 MHD diagnostics.
+        # Bump this when adding/removing benchmark tasks, and keep spec.py ALL_TASKS in sync.
+        self.assertEqual(len(slugs), 17)
 
     def test_task_build_is_deterministic_and_complete(self):
         for slug in (t.slug for t in ALL_TASKS):

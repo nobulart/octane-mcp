@@ -12,11 +12,10 @@
 >   (1500 particles, 2 phases) establish the fixture boundary.
 > - `benchmarks/spec.py` now has **Tier 7** (3 tasks: `t7_advection_diffusion_panels`,
 >   `t7_cloth_drape_contact`, `t7_particle_splash_fixture`) — deterministic physics
->   grammar. The active harness has since been pruned to 15 tasks by removing older
->   README-showcase-era demos from `ALL_TASKS`.
-> - `docs/recipe-library.md`, `docs/benchmark-suite.md`, and this file updated.
+>   grammar — plus **Tier 8** (2 tasks: `t8_mhd_field_ribbons`, `t8_conservation_budget`)
+>   for MHD diagnostics carried by geometry. The active harness totals 17 tasks.
 > - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
->   (15 active tasks), `test_physics_fixture_io`, `test_splishsplash_adapter`,
+>   (17 active tasks), `test_physics_fixture_io`, `test_splishsplash_adapter`,
 >   and `test_mpipymhd_adapter`.
 > - **Phase B started:** SPlisHSPlasH-style dam-break adapter is landed, offline-verified, and native-promoted.
 >   `scripts/gen_splishsplash_recipe.py` consumes the committed fixture
@@ -82,7 +81,7 @@
 
 The harness already has strong visual foundations:
 
-- 15 active benchmark tasks in `benchmarks/spec.py::ALL_TASKS`, all deterministic and pixel-gated.
+- 17 active benchmark tasks in `benchmarks/spec.py::ALL_TASKS` (Tiers 1–8), all deterministic and pixel-gated.
 - Existing physics-adjacent recipes:
   - `physics-orbits`: orbital paths and body positions.
   - `wave-interference-field`: two-source scalar heightfield.

@@ -168,8 +168,10 @@ The active harness now carries the tasks below. Earlier showcase-era tasks
 | 7 | `t7_advection_diffusion_panels` | ✅ verified | 4-panel tracer, peak-decay + broadening; `color_family` teal + `shape_profile`. |
 | 7 | `t7_cloth_drape_contact` | ✅ verified | PBD cloth draped over sphere; corrected gravity axis + fresh mesh name avoids stale import collision. |
 | 7 | `t7_particle_splash_fixture` | ✅ verified | seeded liquid + foam particle families; dual `color_family` criteria. |
+| 8 | `t8_mhd_field_ribbons` | offline | magnetic field lines traced from real Orszag-Tang MHD integration, rendered as ribbons; `mhd-field` archetype. |
+| 8 | `t8_conservation_budget` | offline | kinetic/magnetic/internal energy bars across MHD steps; `mhd-conservation` archetype. |
 
-**15 active Tier 1–7 tasks remain in the harness. Tier 7 was verified live on 2026-07-15; recipe promotion remains tracked separately from benchmark-task verification.**
+**17 active Tier 1–8 tasks remain in the harness (Tier 8 = `t8_mhd_field_ribbons`, `t8_conservation_budget`, added 2026-07-16). Tier 7 was verified live on 2026-07-15; Tier 8 is offline-contract verified only (not yet live-promoted). Recipe promotion remains tracked separately from benchmark-task verification.**
 
 **Lessons (also in `docs/recipe-book.md`):**
 * **Deferred render start is the current protection against render-restart

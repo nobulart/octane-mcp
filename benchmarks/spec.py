@@ -1097,6 +1097,216 @@ def _t7_particle_splash_fixture() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Tier 8 — MHD diagnostics (carried by geometry, no external simulator)
+# ---------------------------------------------------------------------------
+
+
+def _orszag_tang_mhd(steps: int, grid: int = 24, dt: float = 0.02) -> dict[str, Any]:
+    """Minimal real 2D MHD integration (mirrors the MPIPyMHD B7 exporter).
+
+    Returns the final field dict plus a per-step energy trace so downstream
+    tasks can carry the physics in geometry. Deterministic; numpy-only.
+    """
+    import numpy as np
+
+    xs = 2.0 * math.pi * np.arange(grid) / grid
+    ys = 2.0 * math.pi * np.arange(grid) / grid
+    X, Y = np.meshgrid(xs, ys, indexing="ij")
+    f = {
+        "vx": -np.sin(Y), "vy": np.sin(X), "Bx": -np.sin(Y), "By": np.sin(2.0 * X),
+        "density": 1.0 + 0.18 * np.sin(X + Y) + 0.08 * np.cos(2.0 * X - Y),
+        "pressure": 0.6 + 0.08 * np.cos(X - Y),
+    }
+    dx = 2.0 * math.pi / grid
+    gamma = 5.0 / 3.0
+    trace: list[dict[str, float]] = []
+
+    def _curl(bx, by):
+        return (np.roll(by, -1, axis=1) - np.roll(by, 1, axis=1)) / (2.0 * dx) - (
+            np.roll(bx, -1, axis=0) - np.roll(bx, 1, axis=0)) / (2.0 * dx)
+
+    for s in range(steps + 1):
+        rho = np.maximum(f["density"], 1e-3)
+        J = _curl(f["Bx"], f["By"])
+        ke = float(np.mean(0.5 * rho * (f["vx"] ** 2 + f["vy"] ** 2)))
+        me = float(np.mean(0.5 * (f["Bx"] ** 2 + f["By"] ** 2)))
+        ie = float(np.mean(np.maximum(f["pressure"] / (gamma - 1.0), 1e-4)))
+        trace.append({"step": s, "kinetic": ke, "magnetic": me, "internal": ie,
+                      "total": ke + me + ie})
+        if s == steps:
+            break
+        pdx = (np.roll(f["pressure"], -1, axis=1) - np.roll(f["pressure"], 1, axis=1)) / (2.0 * dx)
+        pdy = (np.roll(f["pressure"], -1, axis=0) - np.roll(f["pressure"], 1, axis=0)) / (2.0 * dx)
+        vx = f["vx"] - dt * (pdx / rho) + dt * (J * f["By"]) / rho
+        vy = f["vy"] - dt * (pdy / rho) - dt * (J * f["Bx"]) / rho
+        bx = f["Bx"] - dt * (np.roll(vx * f["By"] - vy * f["Bx"], -1, axis=1)
+                             - np.roll(vx * f["By"] - vy * f["Bx"], 1, axis=1)) / (2.0 * dx)
+        by = f["By"] - dt * (np.roll(vx * f["By"] - vy * f["Bx"], -1, axis=0)
+                             - np.roll(vx * f["By"] - vy * f["Bx"], 1, axis=0)) / (2.0 * dx)
+        drdx = (np.roll(rho, -1, axis=1) - np.roll(rho, 1, axis=1)) / (2.0 * dx)
+        drdy = (np.roll(rho, -1, axis=0) - np.roll(rho, 1, axis=0)) / (2.0 * dx)
+        rho = rho - dt * (vx * drdx + vy * drdy)
+        ke2 = 0.5 * rho * (vx ** 2 + vy ** 2)
+        me2 = 0.5 * (bx ** 2 + by ** 2)
+        p = np.maximum((gamma - 1.0) * np.maximum(f["pressure"] / (gamma - 1.0) + ke2 + me2, 1e-3) - ke2 - me2, 1e-4)
+        f = {"vx": vx, "vy": vy, "Bx": bx, "By": by, "density": rho, "pressure": p}
+    return {"fields": f, "trace": trace, "grid": grid, "dx": dx}
+
+
+def _t8_mhd_field_ribbons() -> dict[str, Any]:
+    """Magnetic field-line ribbons from the real Orszag-Tang MHD integration.
+
+    Field lines are traced by Euler integration of B(x,y) on the final MHD state;
+    each line becomes a thin raised ribbon (a surface sweep) so the curl of B
+    around current sheets is visible as the ribbon geometry. The physics is
+    carried by the field topology, not an overlay.
+    """
+    sim = _orszag_tang_mhd(steps=8, grid=24)
+    f = sim["fields"]
+    import numpy as np
+
+    bx = f["Bx"]
+    by = f["By"]
+    grid = sim["grid"]
+    dx = sim["dx"]
+    xs = np.arange(grid) * dx
+
+    ribbon_color = [0.55, 0.45, 0.95]
+    seed_n = 14
+    rng = __import__("random").Random(20260716)
+    seeds = [(rng.uniform(0, 2 * math.pi), rng.uniform(0, 2 * math.pi)) for _ in range(seed_n)]
+
+    obj = CombinedObj("t8_mhd_ribbons")
+    assignments = []
+    gi = 0
+    scale = 1.4
+    for si, (sx, sy) in enumerate(seeds):
+        # find nearest grid index
+        i0 = int(((sx % (2 * math.pi)) / (2 * math.pi)) * grid) % grid
+        j0 = int(((sy % (2 * math.pi)) / (2 * math.pi)) * grid) % grid
+        line: list[tuple[float, float, float]] = []
+        ci, cj = i0, j0
+        for _ in range(60):
+            bxv = float(bx[ci, cj])
+            byv = float(by[ci, cj])
+            mag = math.hypot(bxv, byv) or 1e-6
+            ci = (ci + int(round(bxv / mag * 1.0)) % grid)
+            cj = (cj + int(round(byv / mag * 1.0)) % grid)
+            ci %= grid
+            cj %= grid
+            x = xs[ci] - math.pi
+            y = xs[cj] - math.pi
+            z = 0.15 * (bxv * bxv + byv * byv) ** 0.5
+            line.append((x * scale, y * scale, z * scale))
+            if len(line) > 3 and np.allclose(line[-1], line[0], atol=1e-6):
+                break
+        if len(line) < 4:
+            continue
+        # sweep a thin ribbon: offset each point along +z by a small width
+        verts: list[list[tuple[float, float, float]]] = []
+        for (x, y, z) in line:
+            verts.append([(x, y, z), (x, y, z + 0.12 * scale)])
+        rb = ObjBuilder(f"ribbon{si}")
+        rb.add_surface(vertices=verts, material="ribbon_mat")
+        gi += 1
+        obj.add_group(f"ribbon{si}", "ribbon_mat", rb)
+        assignments.append({"group_index": gi, "material_name": "ribbon_mat"})
+
+    floor_b = ObjBuilder("floor")
+    floor_b.add_box(center=(0, 0, -0.05), size=(3.2 * scale, 3.2 * scale, 0.04), material="floor_mat")
+    gi += 1
+    obj.add_group("floor", "floor_mat", floor_b)
+    assignments.append({"group_index": gi, "material_name": "floor_mat"})
+
+    return {
+        "mesh_name": "t8_mhd_ribbons",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": [
+            _mat("ribbon_mat", "glossy", ribbon_color, roughness=0.3),
+            _mat("floor_mat", "diffuse", [0.06, 0.07, 0.09], roughness=0.9),
+        ],
+        "assignments": assignments,
+        "camera": camera_for_bounds(obj.bounds(), view="top", margin=1.3, fov=42),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1024, "height": 1024},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
+            {"kind": "color_family", "target": ribbon_color, "hue_tol": 50, "min_fraction": 0.01},
+            {"kind": "shape_profile", "min_rows": 8},
+        ],
+    }
+
+
+def _t8_conservation_budget() -> dict[str, Any]:
+    """Energy-budget bars across MHD timesteps (kinetic / magnetic / internal).
+
+    The physical claim is near-conservation: bar heights per step stay close to
+    their initial values, and total energy is approximately flat. Geometry
+    carries the claim (relative bar heights), no external simulator required.
+    """
+    sim = _orszag_tang_mhd(steps=8, grid=20)
+    trace = sim["trace"]
+    steps_n = len(trace)
+    bar_w = 0.5
+    gap = 0.35
+    group_gap = 0.7
+    groups = ["kinetic", "magnetic", "internal"]
+    group_colors = {
+        "kinetic": [0.2, 0.7, 0.95],
+        "magnetic": [0.95, 0.7, 0.2],
+        "internal": [0.6, 0.85, 0.4],
+    }
+    # normalise heights to the max total so bars stay in frame
+    max_total = max(t["total"] for t in trace) or 1.0
+    height_scale = 2.4 / max_total
+
+    obj = CombinedObj("t8_budget")
+    assignments = []
+    gi = 0
+    x = 0.0
+    for t in trace:
+        for g in groups:
+            h = max(t[g] * height_scale, 0.02)
+            b = ObjBuilder(f"b{gi}")
+            b.add_box(center=(x + bar_w / 2, 0.0, h / 2), size=(bar_w, bar_w, h), material=f"{g}_mat")
+            gi += 1
+            obj.add_group(f"b{gi - 1}", f"{g}_mat", b)
+            assignments.append({"group_index": gi, "material_name": f"{g}_mat"})
+            x += bar_w + gap
+        x += group_gap
+    floor_b = ObjBuilder("floor")
+    floor_b.add_box(center=((x - group_gap) / 2, 0, -0.05), size=(x - group_gap + 1.0, 2.5, 0.04), material="floor_mat")
+    gi += 1
+    obj.add_group("floor", "floor_mat", floor_b)
+    assignments.append({"group_index": gi, "material_name": "floor_mat"})
+
+    return {
+        "mesh_name": "t8_budget",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": [
+            _mat("kinetic_mat", "glossy", group_colors["kinetic"], roughness=0.3),
+            _mat("magnetic_mat", "glossy", group_colors["magnetic"], roughness=0.3),
+            _mat("internal_mat", "glossy", group_colors["internal"], roughness=0.3),
+            _mat("floor_mat", "diffuse", [0.06, 0.07, 0.09], roughness=0.9),
+        ],
+        "assignments": assignments,
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.3, fov=42),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1024, "height": 1024},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white", "likely object too small"]},
+            {"kind": "color_family", "target": group_colors["kinetic"], "hue_tol": 50, "min_fraction": 0.005},
+            {"kind": "color_family", "target": group_colors["magnetic"], "hue_tol": 50, "min_fraction": 0.005},
+            {"kind": "color_family", "target": group_colors["internal"], "hue_tol": 50, "min_fraction": 0.005},
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -1108,6 +1318,7 @@ TIER_TITLES = {
     5: "Data & math — dense geometry, fields, surfaces",
     6: "Photoreal / stress — high face counts, multi-material families",
     7: "Physical simulation fixtures — deterministic physics grammar",
+    8: "MHD diagnostics — field topology + conservation carried by geometry",
 }
 
 ALL_TASKS: list[BenchmarkTask] = [
@@ -1126,6 +1337,8 @@ ALL_TASKS: list[BenchmarkTask] = [
     BenchmarkTask(7, "t7_advection_diffusion_panels", "Advection–diffusion panels", "physics-transport", "Four tiled Gaussians advecting + diffusing; peak decays, footprint broadens.", _t7_advection_diffusion_panels, True),
     BenchmarkTask(7, "t7_cloth_drape_contact", "Cloth drape contact", "physics-deformable", "PBD cloth draping over a rigid sphere with emergent contact patch.", _t7_cloth_drape_contact, True),
     BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture, True),
+    BenchmarkTask(8, "t8_mhd_field_ribbons", "MHD field-line ribbons", "mhd-field", "Magnetic field lines traced from the real Orszag-Tang MHD integration, rendered as ribbons.", _t8_mhd_field_ribbons, False),
+    BenchmarkTask(8, "t8_conservation_budget", "MHD energy budget", "mhd-conservation", "Kinetic/magnetic/internal energy bars across MHD timesteps; near-conservation carried by bar heights.", _t8_conservation_budget, False),
 ]
 
 
