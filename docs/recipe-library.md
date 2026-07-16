@@ -58,6 +58,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [Oceananigans Shallow-Water Front](../examples/recipes/oceananigans-shallow-water-front/README.md) | Physical simulation / fluids | `oceananigans-shallow-water-front` | Real Oceananigans shallow-water export consumed as a committed fixture: free-surface bands, bathymetry base, and velocity glyphs. |
 | [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | Real 2D MHD integration (numpy, MPI domain-decomposed when mpi4py present) Orszag-Tang `.npz` snapshot rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
 | [Simulation Frame Strip](../examples/recipes/simulation-frame-strip/README.md) | Physical simulation / animation grammar | `simulation-frame-strip` | Phase C frame-strip grammar: 8 time steps of an advecting/diffusing pulse laid out left-to-right, time axis encoded by a cool→warm colour ramp; the template every per-frame simulator export must match. |
+| [Precision Error Landscape](../examples/recipes/precision-error-landscape/README.md) | Numerical diagnostics | `precision-error-landscape` | Phase C precision-error grammar: a chaotic logistic map integrated to 60-digit `decimal` precision vs IEEE float64/float32; relative error rendered as a heightfield (cool=exact, warm=large drift) + a red float32 front strip. |
 | [Conservation Budget Panels](../examples/recipes/conservation-budget-panels/README.md) | Physical simulation / numerical diagnostics | `conservation-budget-panels` | Phase C numerical-diagnostics grammar: MHD kinetic/magnetic/internal energy bars across timesteps (near-conservation) plus a red relative-drift (error) panel. Trace from a real Orszag-Tang MHD integration. |
 
 ## Recommended agent loop
@@ -163,10 +164,15 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   timesteps (near-conservation) plus a red relative-drift (error) panel, from a real
   Orszag-Tang MHD trace (`benchmarks.spec._orszag_tang_mhd`). Generator:
   `scripts/gen_conservation_budget_recipe.py`; test: `tests/test_conservation_budget_recipe.py`.
-- Remaining Phase C items (C3 precision-error
-  landscape, C4 renderer-backend comparison, C5 particle-export interchange) are
-  planned; each should keep the same fixture-first contract + offline test before
-  any native Octane promotion.
+- `precision-error-landscape` ✅ landed (offline-verified, contract-clean, **native-promoted**). Numerical-precision grammar: a chaotic logistic map integrated to
+  60-digit `decimal` precision vs IEEE float64/float32; relative error carried as a heightfield
+  + float32 front strip. y-cruncher is the plan-suggested high-precision source but its
+  binaries are x86-64 ELF (Linux) and cannot run on this Apple-Silicon host, so the portable
+  `decimal` reference is used — noted in `simulation.limitations`. Generator:
+  `scripts/gen_precision_error_recipe.py`; test: `tests/test_precision_error_recipe.py`.
+- Remaining Phase C items (C4 renderer-backend comparison, C5 particle-export
+  interchange) are planned; each should keep the same fixture-first contract +
+  offline test before any native Octane promotion.
 
 ## Recipe registry tools
 

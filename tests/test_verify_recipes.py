@@ -57,16 +57,17 @@ class TestRecipeContractOffline(TestCase):
     def test_verify_recipe_library_dry_run_counts(self):
         report = verify_recipe_library(dry_run=True)
         self.assertEqual(report["mode"], "dry_run")
-        # 45 recipe dirs total (54 on disk, but several are fixtures/non-scene
-        # dirs excluded by _recipe_dirs). 44/45 pass the offline contract;
+        # 46 recipe dirs total (54 on disk, but several are fixtures/non-scene
+        # dirs excluded by _recipe_dirs). 45/46 pass the offline contract;
         # `earth-moon-space` is the remaining intentional exception (no checked-in
         # preview). `cathedral` previously failed (missing scene.mtl) and was fixed
         # by generating the hint MTL from scene.json MATERIALS. `genesis-cloth-on-rigid`
         # was added as the B5 Genesis Phase-B adapter and passes the contract.
-        # `simulation-frame-strip` (Phase C / C1) and `conservation-budget-panels`
-        # (Phase C / C2) were added and pass the contract.
-        self.assertEqual(report["total"], 45)
-        self.assertEqual(report["contract_ok"], 44, report)
+        # `simulation-frame-strip` (Phase C / C1), `conservation-budget-panels`
+        # (Phase C / C2), and `precision-error-landscape` (Phase C / C3) were added
+        # and pass the contract.
+        self.assertEqual(report["total"], 46)
+        self.assertEqual(report["contract_ok"], 45, report)
         self.assertEqual(report["contract_failed"], 1)
         failed = [r["slug"] for r in report["recipes"] if not r["contract_ok"]]
         self.assertEqual(failed, ["earth-moon-space"], report)

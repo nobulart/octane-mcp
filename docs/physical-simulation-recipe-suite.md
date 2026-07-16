@@ -415,11 +415,11 @@ The physical simulation suite is usable when:
 
 ## 13. Suggested next task
 
-**Phase A, B, C1 (`simulation-frame-strip`), and C2 (`conservation-budget-panels`) are
-landed + offline-verified + **native-promoted** (18 active benchmark tasks; native
-Octane promotion done for all five Phase A, the four Phase B library adapters —
-`dam-break-splash`, `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`,
-`genesis-cloth-on-rigid` — plus the two Phase C recipes).** The strongest next blocks,
+**Phase A, B, C1 (`simulation-frame-strip`), C2 (`conservation-budget-panels`), and C3
+(`precision-error-landscape`) are landed + offline-verified + **native-promoted** (18 active
+benchmark tasks; native Octane promotion done for all five Phase A, the four Phase B library
+adapters — `dam-break-splash`, `genesis-cloth-on-rigid` (B5), `mhd-orszag-tang-vortex`,
+`oceananigans-shallow-water-front` — plus the three Phase C recipes).
 in priority order:
 
 1. **C3 `precision-error-landscape`** — high-precision reference vs float32/float64 error

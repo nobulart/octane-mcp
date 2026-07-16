@@ -1,0 +1,203 @@
+{
+  "slug": "precision-error-landscape",
+  "title": "Precision Error Landscape (logistic map, decimal vs float)",
+  "category": "Physical simulation / numerical diagnostics",
+  "domain": "Numerical diagnostics",
+  "purpose": "Make floating-point precision error visible. A chaotic logistic map x -> 4x(1-x) is integrated to high precision with Python `decimal` (60 digits) and compared against IEEE float64 and float32. The surface height and colour encode the relative error |ref - float| (cool = exact, warm = large drift); the red front strip is the float32-vs-reference error. This is the Phase C numerical-story grammar: correctness/error made geometric.",
+  "prompt": "Visualise a precision-error landscape: a heightfield of float vs high-precision reference error over (iteration, initial condition).",
+  "camera": {
+    "position": [
+      49.813682,
+      -31.744676,
+      30.480545
+    ],
+    "target": [
+      12.42,
+      12.92,
+      0.357857
+    ],
+    "fov": 40.0
+  },
+  "materials": {
+    "error_mat": {
+      "kind": "glossy",
+      "color": [
+        0.55,
+        0.45,
+        0.95
+      ],
+      "roughness": 0.3
+    },
+    "base_mat": {
+      "kind": "diffuse",
+      "color": [
+        0.06,
+        0.07,
+        0.09
+      ],
+      "roughness": 0.9
+    },
+    "f32_mat": {
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.3,
+        0.35
+      ],
+      "roughness": 0.3
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/precision-error-landscape/scene.obj",
+        "format": "obj",
+        "name": "precision_error_landscape"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "error_mat",
+        "kind": "glossy",
+        "color": [
+          0.55,
+          0.45,
+          0.95
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base_mat",
+        "kind": "diffuse",
+        "color": [
+          0.06,
+          0.07,
+          0.09
+        ],
+        "roughness": 0.9
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "f32_mat",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.3,
+          0.35
+        ],
+        "roughness": 0.3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "precision_error_landscape",
+        "material_name": "error_mat",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "precision_error_landscape",
+        "material_name": "base_mat",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "precision_error_landscape",
+        "material_name": "f32_mat",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          49.813682,
+          -31.744676,
+          30.480545
+        ],
+        "target": [
+          12.42,
+          12.92,
+          0.357857
+        ],
+        "fov": 40.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "precision-error-landscape/octane-preview.png",
+        "width": 1400,
+        "height": 900,
+        "quality": "high",
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "Python decimal (portable arbitrary precision reference)",
+    "fixture": "deterministic logistic-map error grid 24x24",
+    "physical_variables": [
+      "relative_precision_error"
+    ],
+    "units": {
+      "error": "relative (|ref-float|/|ref|)"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 2.2,
+      "grid_nx": 24,
+      "grid_nit": 24,
+      "error_encoding": "log10(1 + rel_err*1e6)/7 clamped to [0,1]"
+    },
+    "time": {
+      "iterations_max": 25
+    },
+    "null_model": "exact arithmetic: flat zero-error surface",
+    "frame_grammar": {
+      "layout": "error_heightfield",
+      "color_axis": "cool_exact_to_warm_large_error",
+      "front_strip_encodes": "float32_vs_reference_error"
+    },
+    "limitations": [
+      "y-cruncher (plan-suggested high-precision source) ships only x86-64 ELF Linux binaries and cannot run on this Apple-Silicon macOS host; the portable `decimal` (60-digit) reference is used instead.",
+      "error is log-compressed for visibility; small errors saturate to near-flat."
+    ],
+    "error_stats": {
+      "max_rel_err_f64": 0.015463453220750581,
+      "max_rel_err_f32": 1.0
+    }
+  },
+  "quality_checklist": [
+    "Heightfield shows spatial error structure (not a flat plane).",
+    "Colour ramps cool (low error) to warm (high error).",
+    "Red front strip encodes float32 error distinctly from the surface.",
+    "Each mesh group has an explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge; families need explicit materials.",
+    "Heightfield is one group; the colour ramp is carried by material, not vertices."
+  ],
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-17)"
+}
