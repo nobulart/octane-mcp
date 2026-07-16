@@ -63,8 +63,12 @@
 > - **Next:** B3–B6 adapters (additional SPlisHSPlasH/Genesis fixtures) should keep
 >   the same fixture-first contract tests and include/refresh matching real-library
 >   smoke evidence when the corresponding runtime is unblocked. The SPlisHSPlasH
->   `dam-break-splash` adapter is a candidate to upgrade from fixture-only to a real
->   `pysplishsplash` `Simulation` run now that `pysplishsplash` imports cleanly.
+>   `dam-break-splash` adapter added `scripts/export_splishsplash_dam_break_fixture.py`
+>   with a real-run branch, but `pysplishsplash` is scene-XML driven: constructing
+>   fluid/boundary models directly in Python **segfaults** on this binding (observed
+>   SIGSEGV during `addFluidModel`/`init`), so the real branch is gated behind an
+>   explicit `--scene-xml` and remains blocked until a valid scene file is authored.
+>   The default path keeps the committed CSV fixture (deterministic, no solver).
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
 
