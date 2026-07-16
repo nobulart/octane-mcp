@@ -122,9 +122,18 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 - Today — fix(spec): promote `t8_mhd_field_ribbons` to `native_octane_verified=True`
   (evidence-backed; acceptance passes on the live render).
 - Today — **physical-simulation roadmap closure (all 4 libraries integrated):**
-  - `t8_conservation_budget`: fixed the geometry so all three energy families are
-    honestly visible (wider bars + tighter camera + min-height floor); re-rendered
-    live, acceptance now passes; promoted `native_octane_verified=True`.
+  - **MHD solver fixed to be genuinely conservative.** The old central-difference
+    integrator lost ~45% of total energy over 8 steps (internal energy collapsed to
+    ~0) — a real solver defect surfaced by the first live-solve test. Replaced with
+    a finite-volume Rusanov scheme in `scripts/mhd_integrator.py` (single source of
+    truth for both the MPIPyMHD exporter and `benchmarks/spec.py`). Total energy now
+    conserved to round-off (drift ~1e-14%) and stable with CFL-safe dt. Re-rendered
+    `mhd-orszag-tang-vortex` (live, 437 KB, acceptance-passing, re-promoted) and
+    `t8_conservation_budget` (live, acceptance passes: KE 0.97 / ME 0.011 / IE 0.023
+    color families all clear the 0.5% gate). Benchmark tasks carry verification via
+    the harness acceptance pass, not a `native_octane_verified` recipe flag.
+  - `t8_conservation_budget` geometry: wider bars + tighter camera + min-height floor
+    so all three energy families are honestly visible (defect fixed, not masked).
   - **Genesis B5** `genesis-cloth-on-rigid`: built the full fixture-first adapter —
     committed draped fixture (`examples/fixtures/genesis/cloth-on-rigid/`, 65 contact
     verts), shared drape math (`scripts/genesis_cloth_drape.py`), recipe generator

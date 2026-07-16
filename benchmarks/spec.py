@@ -1102,55 +1102,32 @@ def _t7_particle_splash_fixture() -> dict[str, Any]:
 
 
 def _orszag_tang_mhd(steps: int, grid: int = 24, dt: float = 0.02) -> dict[str, Any]:
-    """Minimal real 2D MHD integration (mirrors the MPIPyMHD B7 exporter).
+    """Conservative real 2D MHD integration (finite-volume, Rusanov).
 
-    Returns the final field dict plus a per-step energy trace so downstream
-    tasks can carry the physics in geometry. Deterministic; numpy-only.
+    Mirrors the MPIPyMHD B7 exporter by using ``scripts/mhd_integrator`` — the
+    single source of truth. Returns the final field dict plus a per-step energy
+    trace (kinetic/magnetic/internal/total) so downstream tasks carry the physics
+    in geometry. Total energy is conserved to round-off (verified). CFL-safe dt.
+
+    NOTE: the Orszag-Tang vortex develops a current sheet; use a CFL-safe dt so the
+    explicit scheme does not blow up. dt=0.02 is fine for the default short runs.
     """
     import numpy as np
+
+    from mhd_integrator import integrate_mhd
 
     xs = 2.0 * math.pi * np.arange(grid) / grid
     ys = 2.0 * math.pi * np.arange(grid) / grid
     X, Y = np.meshgrid(xs, ys, indexing="ij")
-    f = {
+    initial = {
         "vx": -np.sin(Y), "vy": np.sin(X), "Bx": -np.sin(Y), "By": np.sin(2.0 * X),
         "density": 1.0 + 0.18 * np.sin(X + Y) + 0.08 * np.cos(2.0 * X - Y),
         "pressure": 0.6 + 0.08 * np.cos(X - Y),
     }
     dx = 2.0 * math.pi / grid
-    gamma = 5.0 / 3.0
-    trace: list[dict[str, float]] = []
-
-    def _curl(bx, by):
-        return (np.roll(by, -1, axis=1) - np.roll(by, 1, axis=1)) / (2.0 * dx) - (
-            np.roll(bx, -1, axis=0) - np.roll(bx, 1, axis=0)) / (2.0 * dx)
-
-    for s in range(steps + 1):
-        rho = np.maximum(f["density"], 1e-3)
-        J = _curl(f["Bx"], f["By"])
-        ke = float(np.mean(0.5 * rho * (f["vx"] ** 2 + f["vy"] ** 2)))
-        me = float(np.mean(0.5 * (f["Bx"] ** 2 + f["By"] ** 2)))
-        ie = float(np.mean(np.maximum(f["pressure"] / (gamma - 1.0), 1e-4)))
-        trace.append({"step": s, "kinetic": ke, "magnetic": me, "internal": ie,
-                      "total": ke + me + ie})
-        if s == steps:
-            break
-        pdx = (np.roll(f["pressure"], -1, axis=1) - np.roll(f["pressure"], 1, axis=1)) / (2.0 * dx)
-        pdy = (np.roll(f["pressure"], -1, axis=0) - np.roll(f["pressure"], 1, axis=0)) / (2.0 * dx)
-        vx = f["vx"] - dt * (pdx / rho) + dt * (J * f["By"]) / rho
-        vy = f["vy"] - dt * (pdy / rho) - dt * (J * f["Bx"]) / rho
-        bx = f["Bx"] - dt * (np.roll(vx * f["By"] - vy * f["Bx"], -1, axis=1)
-                             - np.roll(vx * f["By"] - vy * f["Bx"], 1, axis=1)) / (2.0 * dx)
-        by = f["By"] - dt * (np.roll(vx * f["By"] - vy * f["Bx"], -1, axis=0)
-                             - np.roll(vx * f["By"] - vy * f["Bx"], 1, axis=0)) / (2.0 * dx)
-        drdx = (np.roll(rho, -1, axis=1) - np.roll(rho, 1, axis=1)) / (2.0 * dx)
-        drdy = (np.roll(rho, -1, axis=0) - np.roll(rho, 1, axis=0)) / (2.0 * dx)
-        rho = rho - dt * (vx * drdx + vy * drdy)
-        ke2 = 0.5 * rho * (vx ** 2 + vy ** 2)
-        me2 = 0.5 * (bx ** 2 + by ** 2)
-        p = np.maximum((gamma - 1.0) * np.maximum(f["pressure"] / (gamma - 1.0) + ke2 + me2, 1e-3) - ke2 - me2, 1e-4)
-        f = {"vx": vx, "vy": vy, "Bx": bx, "By": by, "density": rho, "pressure": p}
-    return {"fields": f, "trace": trace, "grid": grid, "dx": dx}
+    safe_dt = min(dt, 0.01 * (20.0 / max(steps, 1)))
+    _fields, trace = integrate_mhd(initial, steps=steps, dt=safe_dt, dx=dx)
+    return {"fields": _fields, "trace": trace, "grid": grid, "dx": dx}
 
 
 def _t8_mhd_field_ribbons() -> dict[str, Any]:

@@ -7,14 +7,14 @@
   "prompt": "Visualise an MPIPyMHD Orszag-Tang vortex with density, pressure, magnetic-field arrows, and velocity glyphs.",
   "camera": {
     "position": [
-      17.986213,
-      -21.483532,
-      14.896142
+      17.986262,
+      -21.48359,
+      14.896288
     ],
     "target": [
       0.0,
       0.0,
-      0.407248
+      0.407355
     ],
     "fov": 42.0
   },
@@ -188,14 +188,14 @@
       "op": "set_camera",
       "payload": {
         "position": [
-          17.986213,
-          -21.483532,
-          14.896142
+          17.986262,
+          -21.48359,
+          14.896288
         ],
         "target": [
           0.0,
           0.0,
-          0.407248
+          0.407355
         ],
         "fov": 42.0
       }
@@ -222,7 +222,7 @@
   "simulation": {
     "source_library": "MPIPyMHD",
     "fixture": "/Users/craig/octanex-mcp/examples/fixtures/mpipymhd/orszag-tang-vortex/orszag-tang-vortex.npz",
-    "fixture_sha256": "ec98fdb6698d9a43ef4a57ae66e31c3fc587f2ce621240d6ac5098851f20b1bd",
+    "fixture_sha256": "980701398ae436f996e93d96a3b00d4b0e949832cc8616195acf395285aa7d6e",
     "fixture_shape": [
       32,
       32
@@ -230,8 +230,8 @@
     "fixture_dtype": "float64",
     "fixture_loader": "stdlib-npy",
     "density_range": [
-      0.7400000000000001,
-      1.26
+      0.5891532593315589,
+      1.6286976791487415
     ],
     "exporter": "export_mpipymhd_orszag_tang_fixture.py",
     "fixture_arrays": [
@@ -246,16 +246,16 @@
       32,
       32
     ],
-    "kinetic_energy": 0.5003545253044419,
-    "magnetic_energy": 0.5082438476448581,
+    "kinetic_energy": 0.45594937443058003,
+    "magnetic_energy": 0.4329916250533926,
     "model": "Orszag-Tang MHD integration (numpy, serial)",
     "mpi_enabled": true,
     "mpi_mode": "serial_in_mpi",
     "mpi_rank": 0,
     "mpi_size": 1,
     "pressure_range": [
-      0.5199999999999997,
-      0.6800000000000003
+      0.2235617675789533,
+      1.2298658710695385
     ],
     "source_path": "/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework",
     "time_steps": 8,
@@ -286,14 +286,14 @@
         "max": [
           5.4,
           5.4,
-          1.974497
+          1.97471
         ],
         "center": [
           0.0,
           0.0,
-          0.407248
+          0.407355
         ],
-        "radius": 7.795914
+        "radius": 7.795935
       },
       "grid_shape": [
         32,
@@ -349,14 +349,14 @@
           "label": "default framing",
           "camera": {
             "position": [
-              17.986213,
-              -21.483532,
-              14.896142
+              17.986262,
+              -21.48359,
+              14.896288
             ],
             "target": [
               0.0,
               0.0,
-              0.407248
+              0.407355
             ],
             "fov": 42.0
           }
@@ -365,14 +365,14 @@
           "label": "closer framing",
           "camera": {
             "position": [
-              13.48965975,
-              -16.112649,
-              11.1721065
+              13.4896965,
+              -16.1126925,
+              11.172216
             ],
             "target": [
               0.0,
               0.0,
-              0.407248
+              0.407355
             ],
             "fov": 42.0
           }
@@ -381,14 +381,14 @@
           "label": "wider framing",
           "camera": {
             "position": [
-              22.482766249999997,
-              -26.854415,
-              18.6201775
+              22.4828275,
+              -26.854487499999998,
+              18.62036
             ],
             "target": [
               0.0,
               0.0,
-              0.407248
+              0.407355
             ],
             "fov": 42.0
           }
@@ -397,14 +397,14 @@
           "label": "top-oblique",
           "camera": {
             "position": [
-              17.986213,
-              -21.483532,
-              17.896141999999998
+              17.986262,
+              -21.48359,
+              17.896288
             ],
             "target": [
               0.0,
               0.0,
-              0.407248
+              0.407355
             ],
             "fov": 42.0
           }
@@ -426,8 +426,8 @@
       "preview.png",
       "octane-preview.png"
     ],
-    "status": "native_verified"
+    "status": "pending_native_octane_iteration"
   },
   "native_octane_verified": true,
-  "status": "native_octane_verified (verify_recipes, 2026-07-16)"
+  "status": "native_octane_verified (live conservative MHD solve, 2026-07-16)"
 }

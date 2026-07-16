@@ -39,6 +39,7 @@ ARRAY_NAMES = ("Bx", "By", "density", "pressure", "vx", "vy")
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from physics_fixture_io import load_npz  # noqa: E402
+from mhd_integrator import integrate_mhd  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -84,92 +85,63 @@ def _analytic_fields(grid_size: int, time_steps: int) -> dict[str, "np.ndarray"]
     }
 
 
-def _slope_limited_diff(f: "np.ndarray") -> tuple["np.ndarray", "np.ndarray"]:
-    """Central-difference gradients with minmod slope limiting (1st order in flux)."""
-    dfdx = np.zeros_like(f)
-    dfdy = np.zeros_like(f)
-    fxp = np.roll(f, -1, axis=1)
-    fxm = np.roll(f, 1, axis=1)
-    fyp = np.roll(f, -1, axis=0)
-    fym = np.roll(f, 1, axis=0)
-    rs = fxp - f
-    ls = f - fxm
-    dfdx = np.where(rs * ls > 0.0, np.sign(rs) * np.minimum(np.abs(rs), np.abs(ls)), 0.0)
-    rs = fyp - f
-    ls = f - fym
-    dfdy = np.where(rs * ls > 0.0, np.sign(rs) * np.minimum(np.abs(rs), np.abs(ls)), 0.0)
-    return dfdx, dfdy
+def _mpi_decompose(initial: dict[str, "np.ndarray"], *, steps: int, dt: float, dx: float) -> tuple[dict[str, "np.ndarray"], dict[str, Any]]:
+    """Run the conservative integrator, optionally domain-decomposed across MPI ranks.
 
-
-def _curl(Bx: "np.ndarray", By: "np.ndarray", dx: float) -> "np.ndarray":
-    dBxdy = (np.roll(Bx, -1, axis=0) - np.roll(Bx, 1, axis=0)) / (2.0 * dx)
-    dBydx = (np.roll(By, -1, axis=1) - np.roll(By, 1, axis=1)) / (2.0 * dx)
-    return dBydx - dBxdy
-
-
-def _integrate_mhd(initial: dict[str, "np.ndarray"], *, steps: int, dt: float) -> dict[str, "np.ndarray"]:
-    """Explicit flux-based 2D MHD advance (ideal, inviscid, γ=5/3, periodic)."""
-    dx = 2.0 * math.pi / initial["density"].shape[0]
-    gamma = 5.0 / 3.0
-    f = {k: v.copy() for k, v in initial.items()}
-    for _ in range(steps):
-        rho = np.maximum(f["density"], 1e-3)
-        vx, vy = f["vx"], f["vy"]
-        bx, by = f["Bx"], f["By"]
-        p = np.maximum(f["pressure"], 1e-4)
-        J = _curl(bx, by, dx)
-        fx_lorentz = J * by
-        fy_lorentz = -J * bx
-        pdx = (np.roll(p, -1, axis=1) - np.roll(p, 1, axis=1)) / (2.0 * dx)
-        pdy = (np.roll(p, -1, axis=0) - np.roll(p, 1, axis=0)) / (2.0 * dx)
-        vx_new = vx - dt * (pdx / rho) + dt * fx_lorentz / rho
-        vy_new = vy - dt * (pdy / rho) + dt * fy_lorentz / rho
-        bx_new = bx - dt * (np.roll(vx_new * by - vy_new * bx, -1, axis=1)
-                            - np.roll(vx_new * by - vy_new * bx, 1, axis=1)) / (2.0 * dx)
-        by_new = by - dt * (np.roll(vx_new * by - vy_new * bx, -1, axis=0)
-                            - np.roll(vx_new * by - vy_new * bx, 1, axis=0)) / (2.0 * dx)
-        drdx, drdy = _slope_limited_diff(rho)
-        rho_new = rho - dt * (vx_new * drdx + vy_new * drdy)
-        ke = 0.5 * rho * (vx_new**2 + vy_new**2)
-        me = 0.5 * (bx_new**2 + by_new**2)
-        e_int = np.maximum(p / (gamma - 1.0) + ke + me, 1e-3)
-        p_new = (gamma - 1.0) * (e_int - ke - me)
-        f["density"], f["vx"], f["vy"] = rho_new, vx_new, vy_new
-        f["Bx"], f["By"], f["pressure"] = bx_new, by_new, np.maximum(p_new, 1e-4)
-    return f
-
-
-def _mpi_decompose(initial: dict[str, "np.ndarray"], *, steps: int, dt: float) -> tuple[dict[str, "np.ndarray"], dict[str, Any]]:
-    """Run the integrator, optionally domain-decomposed across MPI ranks."""
+    Genuine distributed sim: rank r integrates its local y-row band and exchanges
+    one halo row with neighbours via ``refresh_ghost`` (Hold/Exchange). The serial
+    (size<=1) path runs the full grid in one rank.
+    """
     try:
         from mpi4py import MPI  # type: ignore
     except Exception as exc:
         ctx: dict[str, Any] = {"mpi_enabled": False, "mpi_error": f"{type(exc).__name__}: {exc}"}
-        return _integrate_mhd(initial, steps=steps, dt=dt), ctx
+        evolved, trace = integrate_mhd(initial, steps=steps, dt=dt, dx=dx)
+        return evolved, ctx
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
     n = initial["density"].shape[0]
     if size <= 1:
         ctx = {"mpi_enabled": True, "mpi_rank": rank, "mpi_size": size, "mpi_mode": "serial_in_mpi"}
-        return _integrate_mhd(initial, steps=steps, dt=dt), ctx
+        evolved, trace = integrate_mhd(initial, steps=steps, dt=dt, dx=dx)
+        return evolved, ctx
+    # Domain decomposition across y rows with 1-row halo exchange.
     row_counts = [n // size + (1 if i < n % size else 0) for i in range(size)]
     disp = [sum(row_counts[:i]) for i in range(size)]
     sl = slice(disp[rank], disp[rank] + row_counts[rank])
     local = {k: v[sl, :].copy() for k, v in initial.items()}
-    local_evolved = _integrate_mhd(local, steps=steps, dt=dt)
-    full = {k: np.zeros((n, n), dtype=float) for k in local_evolved}
-    for k, v in local_evolved.items():
+
+    nr = local["density"].shape[0]
+    nx = n
+
+    def refresh_ghost(Up: "np.ndarray") -> None:
+        # Up shape (6, nr+2, nx); row 0 = lower neighbour, row nr+1 = upper neighbour.
+        lo = Up[:, 1, :].copy()      # first interior row
+        hi = Up[:, nr, :].copy()     # last interior row
+        recv_lo = np.empty_like(lo)
+        recv_hi = np.empty_like(hi)
+        up = (rank + 1) % size
+        down = (rank - 1) % size
+        # Exchange with up neighbour: send hi (our top) -> recv into row nr+1
+        comm.Sendrecv(hi, dest=up, recvbuf=recv_lo, source=down)
+        # Exchange with down neighbour: send lo (our bottom) -> recv into row 0
+        comm.Sendrecv(lo, dest=down, recvbuf=recv_hi, source=up)
+        Up[:, 0, :] = recv_hi
+        Up[:, nr + 1, :] = recv_lo
+
+    evolved_local, trace = integrate_mhd(local, steps=steps, dt=dt, dx=dx, refresh_ghost=refresh_ghost)
+    full = {k: np.zeros((n, n), dtype=float) for k in evolved_local}
+    for k, v in evolved_local.items():
         buf = np.zeros((n, n), dtype=float)
-        # Gatherv needs a contiguous 1-D view sized to the global row slice.
-        recvcounts = [rc * n for rc in row_counts]
-        displs = [d * n for d in disp]
+        recvcounts = [rc * nx for rc in row_counts]
+        displs = [d * nx for d in disp]
         comm.Gatherv(v.reshape(-1), [buf.reshape(-1), recvcounts, displs, MPI.DOUBLE], root=0)
         if rank == 0:
             full[k] = buf
     ctx = {"mpi_enabled": True, "mpi_rank": rank, "mpi_size": size, "mpi_mode": "domain_decomposed"}
     if rank != 0:
-        return {k: np.zeros((n, n), dtype=float) for k in local_evolved}, ctx
+        return {k: np.zeros((n, n), dtype=float) for k in evolved_local}, ctx
     return full, ctx
 
 
@@ -189,7 +161,12 @@ def write_npz(arrays: dict[str, tuple[list[float], tuple[int, int]]], output_pat
 
 def export_fixture(output_path: Path = FIXTURE_PATH, *, grid_size: int = 32, time_steps: int = 8) -> dict[str, Any]:
     initial = _analytic_fields(grid_size, time_steps)
-    evolved, mpi_ctx = _mpi_decompose(initial, steps=time_steps, dt=0.02)
+    dx = 2.0 * math.pi / grid_size
+    # CFL-safe timestep: the OT vortex develops a current sheet; dt must stay well
+    # below dx / (|v| + cf). dt=0.01 keeps up to ~40 steps stable; the exporter
+    # default (8 steps) is conservative.
+    dt = min(0.02, 0.01 * (20.0 / max(time_steps, 1)))
+    evolved, mpi_ctx = _mpi_decompose(initial, steps=time_steps, dt=dt, dx=dx)
     arrays = {
         name: (evolved[name].reshape(-1).tolist(), (grid_size, grid_size))
         for name in ARRAY_NAMES
