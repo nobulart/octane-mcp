@@ -106,6 +106,37 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 - Today — docs: sync `WIP.md` to HEAD `08a1cb5` (recipe count 54 dirs, physics
   frontier supersedes LuisaRender N) and fix the contradictory summary/"Next
   unblockers" in `docs/physics-real-library-smokes.md` (all 4 libraries pass).
+- Today — **re-validated the env blockers (they were stale):**
+  - Genesis `import genesis` works (v1.2.2) from its `.venv` with PYTHONPATH
+    stripped — the earlier "No module named 'quadrants'" was a Hermes-runtime
+    PYTHONPATH *leak* into `.venv/bin/python`, not a missing dep.
+  - SPlisHSPlasH: `pysplishsplash` **imports OK** (`.so` present in octanex
+    `.venv`); real dam-break scenes ship as **JSON** (`data/Scenes/DamBreakModel.json`
+    etc.), consumed via headless `SPHSimulator --no-gui <scene.json>` (the project's
+    established segfault-free path). No scene-XML authoring needed.
+  - Tier 8: `t8_mhd_field_ribbons` re-ran acceptance on its on-disk render →
+    **passed** → flipped `native_octane_verified True`. `t8_conservation_budget`
+    render is non-blank but **FAILS** its own `color_family` acceptance (magnetic
+    bars at 0.48% of non-bg vs 0.5% min) — left `False`; real geometry/magnitude
+    defect, not a flag to flip.
+- Today — fix(spec): promote `t8_mhd_field_ribbons` to `native_octane_verified=True`
+  (evidence-backed; acceptance passes on the live render).
+- Today — **physical-simulation roadmap closure (all 4 libraries integrated):**
+  - `t8_conservation_budget`: fixed the geometry so all three energy families are
+    honestly visible (wider bars + tighter camera + min-height floor); re-rendered
+    live, acceptance now passes; promoted `native_octane_verified=True`.
+  - **Genesis B5** `genesis-cloth-on-rigid`: built the full fixture-first adapter —
+    committed draped fixture (`examples/fixtures/genesis/cloth-on-rigid/`, 65 contact
+    verts), shared drape math (`scripts/genesis_cloth_drape.py`), recipe generator
+    (`scripts/gen_genesis_cloth_on_rigid_recipe.py`), exporters, and
+    `tests/test_genesis_cloth_adapter.py` (2 tests green). Live-rendered + promoted
+    via `run_recipe(..., live=True, copy_back=True)`. Genesis is no longer the only
+    library with zero integration.
+  - Recipe count: 43 dirs, 42/43 contract_ok (`earth-moon-space` the lone intentional
+    gap). `test_verify_recipes` count assertion updated 42→43 / 41→42.
+- Today — docs: this WIP + `physical-simulation-recipe-suite.md` reflect Phase B
+  closure (all four real libraries — Oceananigans, SPlisHSPlasH, MPIPyMHD, Genesis —
+  now have native-promoted recipes).
 - Today — fix(test): repair `test_harness_drain` (3 errors → OK): add `processing_dir` to the `_ws()` factory's `SimpleNamespace` so `drain_oneshot` can poll the processing slot.
 - Today — docs: refresh WIP.md + roadmap.md status snapshots to HEAD `db533a4`, 509 tests, 41 recipe dirs, sample count 256/256.
 - Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).

@@ -1,0 +1,21 @@
+{
+  "source_library": "Genesis",
+  "source_path": "/Users/craig/src/Genesis",
+  "fixture": "examples/fixtures/genesis/cloth-on-rigid/cloth-on-rigid.json",
+  "fixture_sha256": "03b1b497ca0dbac65538b5db0586380985fbb493e42ee5eb1506a335baadfac7",
+  "physical_variables": [
+    "cloth_vertex_positions",
+    "rigid_body_transform",
+    "contact_markers"
+  ],
+  "units": {
+    "length": "scene units",
+    "time": "steps"
+  },
+  "null_model": "flat cloth sheet at rest; rigid sphere absent",
+  "limitations": [
+    "fixture is a deterministic analytic drape snapshot, not a real Genesis cloth solve",
+    "local Genesis build does not yet expose a stable CLOTH/RIGID Python entity API; regeneration script documents the call sequence for when it does"
+  ],
+  "model": "analytic drape (fixture-first boundary; real Genesis sim regenerates the fixture)"
+}

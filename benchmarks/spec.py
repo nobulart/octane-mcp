@@ -1249,18 +1249,21 @@ def _t8_conservation_budget() -> dict[str, Any]:
     sim = _orszag_tang_mhd(steps=8, grid=20)
     trace = sim["trace"]
     steps_n = len(trace)
-    bar_w = 0.5
-    gap = 0.35
-    group_gap = 0.7
+    bar_w = 0.78                       # wider bars: legible on screen at cluster framing
+    gap = 0.22
+    group_gap = 0.55
     groups = ["kinetic", "magnetic", "internal"]
     group_colors = {
         "kinetic": [0.2, 0.7, 0.95],
         "magnetic": [0.95, 0.7, 0.2],
         "internal": [0.6, 0.85, 0.4],
     }
-    # normalise heights to the max total so bars stay in frame
+    # Normalise heights to the max total so bars stay in frame. Each family keeps
+    # its TRUE relative magnitude (kinetic≈magnetic≈0.5, internal decays 0.9→0.02),
+    # but a small floor keeps the thinnest bar from collapsing to a sub-pixel sliver.
     max_total = max(t["total"] for t in trace) or 1.0
     height_scale = 2.4 / max_total
+    min_bar_h = 0.06
 
     obj = CombinedObj("t8_budget")
     assignments = []
@@ -1268,7 +1271,7 @@ def _t8_conservation_budget() -> dict[str, Any]:
     x = 0.0
     for t in trace:
         for g in groups:
-            h = max(t[g] * height_scale, 0.02)
+            h = max(t[g] * height_scale, min_bar_h)
             b = ObjBuilder(f"b{gi}")
             b.add_box(center=(x + bar_w / 2, 0.0, h / 2), size=(bar_w, bar_w, h), material=f"{g}_mat")
             gi += 1
@@ -1293,7 +1296,9 @@ def _t8_conservation_budget() -> dict[str, Any]:
             _mat("floor_mat", "diffuse", [0.06, 0.07, 0.09], roughness=0.9),
         ],
         "assignments": assignments,
-        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.3, fov=42),
+        # Tighter framing on the bar CLUSTER (not the whole 30-unit row) so each
+        # widened bar occupies enough screen to clear the color_family visibility gate.
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.05, fov=38),
         "lighting": "soft_studio",
         "save": {"quality": "high", "width": 1024, "height": 1024},
         "acceptance": [
@@ -1337,8 +1342,8 @@ ALL_TASKS: list[BenchmarkTask] = [
     BenchmarkTask(7, "t7_advection_diffusion_panels", "Advection–diffusion panels", "physics-transport", "Four tiled Gaussians advecting + diffusing; peak decays, footprint broadens.", _t7_advection_diffusion_panels, True),
     BenchmarkTask(7, "t7_cloth_drape_contact", "Cloth drape contact", "physics-deformable", "PBD cloth draping over a rigid sphere with emergent contact patch.", _t7_cloth_drape_contact, True),
     BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture, True),
-    BenchmarkTask(8, "t8_mhd_field_ribbons", "MHD field-line ribbons", "mhd-field", "Magnetic field lines traced from the real Orszag-Tang MHD integration, rendered as ribbons.", _t8_mhd_field_ribbons, False),
-    BenchmarkTask(8, "t8_conservation_budget", "MHD energy budget", "mhd-conservation", "Kinetic/magnetic/internal energy bars across MHD timesteps; near-conservation carried by bar heights.", _t8_conservation_budget, False),
+    BenchmarkTask(8, "t8_mhd_field_ribbons", "MHD field-line ribbons", "mhd-field", "Magnetic field lines traced from the real Orszag-Tang MHD integration, rendered as ribbons.", _t8_mhd_field_ribbons, True),
+    BenchmarkTask(8, "t8_conservation_budget", "MHD energy budget", "mhd-conservation", "Kinetic/magnetic/internal energy bars across MHD timesteps; near-conservation carried by bar heights.", _t8_conservation_budget, True),
 ]
 
 

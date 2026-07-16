@@ -426,7 +426,7 @@
       "preview.png",
       "octane-preview.png"
     ],
-    "status": "native_octane_verified"
+    "status": "native_verified"
   },
   "native_octane_verified": true,
   "status": "native_octane_verified (verify_recipes, 2026-07-16)"

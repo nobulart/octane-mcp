@@ -1,0 +1,49 @@
+# Material hints; Octane binding is driven by scene.json create_material + assign_material.
+newmtl mat_stone
+Kd 0.8300 0.7900 0.7100
+Ks 0.1000 0.1000 0.1000
+Ns 70
+d 1.0
+illum 2
+
+newmtl mat_glass_gold
+Kd 0.9500 0.7200 0.1000
+Ks 0.4000 0.4000 0.4000
+Ns 120
+d 1.0
+illum 2
+
+newmtl mat_glass_violet
+Kd 0.5500 0.1000 0.8000
+Ks 0.4000 0.4000 0.4000
+Ns 120
+d 1.0
+illum 2
+
+newmtl mat_glass_blue
+Kd 0.0600 0.2000 0.8500
+Ks 0.4000 0.4000 0.4000
+Ns 120
+d 1.0
+illum 2
+
+newmtl mat_glass_green
+Kd 0.0500 0.6500 0.2200
+Ks 0.4000 0.4000 0.4000
+Ns 120
+d 1.0
+illum 2
+
+newmtl mat_glass_red
+Kd 0.8500 0.0600 0.0800
+Ks 0.4000 0.4000 0.4000
+Ns 120
+d 1.0
+illum 2
+
+newmtl mat_cavity
+Kd 0.0300 0.0300 0.0400
+Ks 0.0500 0.0500 0.0500
+Ns 70
+d 1.0
+illum 2
