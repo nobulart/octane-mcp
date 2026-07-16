@@ -27,12 +27,12 @@ docs in this commit.
 
 ## Current state (evidence, 2026-07-15)
 
-|| Area | State |
+| Area | State |
 |------|-------|
 | Repo | `main` = `db533a4` (`feat(physics): promote remaining phase-a recipes`), tracking `origin/main`; tree clean and contains the harness-drain fix (SimpleNamespace missing `processing_dir`). |
 | Tests | **509 ran / 0 failing / 10 skipped** on a clean checkout via `unittest discover -s tests` — fully green. The 3 pre-existing `test_harness_drain` errors (missing `processing_dir` in factory `SimpleNamespace`) were fixed this run. The previously-failing `test_physics_fixture_io` import path issue was fixed in HEAD. Recipe + benchmark + Lua-parity suite green; `compileall src` clean. |
 | Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=256`, `samples_target=256`, last_preview=`recipe_nbody-chaotic-divergence_octane-preview.png`. Bridge module `hermes_bridge_oneshot_v2.lua` in one-shot mode. |
-| Recipe library | **40 recipe dirs** (growth from 32 → 40 since last snapshot). Offline contract **39/40 OK** — only `earth-moon-space` fails (no checked-in preview). `earth-hemisphere` is intentionally **regenerable**: its large `scene.obj` is gitignored and rebuilt via the committed `scripts/gen_earth_hemisphere.py`. Both `recipes.py:validate_recipe_library` and `benchmarks/verify_recipes.py` use the shared `_is_regenerable_recipe`. `native_octane_verified` counts pending live sweep. |
+| Recipe library | **41 recipe dirs** (growth from 32 → 41 since last snapshot). Offline contract **40/41 OK** — only `earth-moon-space` fails (no checked-in preview). `earth-hemisphere` is intentionally **regenerable**: its large `scene.obj` is gitignored and rebuilt via the committed `scripts/gen_earth_hemisphere.py`. Both `recipes.py:validate_recipe_library` and `benchmarks/verify_recipes.py` use the shared `_is_regenerable_recipe`. `native_octane_verified` counts pending live sweep. |
 | Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
 | Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. New planning docs: `docs/physical-simulation-recipe-suite.md` and `docs/luisa-render-backend-investigation.md`. |
 | Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction with LuisaRender QualityBackend spike, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
@@ -73,7 +73,7 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 ## Done recently
 
 - Today — fix(test): repair `test_harness_drain` (3 errors → OK): add `processing_dir` to the `_ws()` factory's `SimpleNamespace` so `drain_oneshot` can poll the processing slot.
-- Today — docs: refresh WIP.md + roadmap.md status snapshots to HEAD `db533a4`, 509 tests, 40 recipe dirs, sample count 256/256.
+- Today — docs: refresh WIP.md + roadmap.md status snapshots to HEAD `db533a4`, 509 tests, 41 recipe dirs, sample count 256/256.
 - Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).
 - Today — fix(lua): oneshot↔persistent `handle_assign_material` parity (added `request_render_restart` + group-index suffix in oneshot).
 - `4de64d1` — canvas: remove duplicate setViewMode def in app.js.

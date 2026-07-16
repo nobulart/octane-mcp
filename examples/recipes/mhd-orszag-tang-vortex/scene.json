@@ -1,0 +1,431 @@
+{
+  "slug": "mhd-orszag-tang-vortex",
+  "title": "MHD Orszag-Tang Vortex",
+  "category": "Physical simulation / magnetohydrodynamics",
+  "domain": "Physics simulation",
+  "purpose": "Render an Orszag-Tang-style MHD snapshot with density and pressure surfaces plus magnetic and velocity glyph fields.",
+  "prompt": "Visualise an MPIPyMHD Orszag-Tang vortex with density, pressure, magnetic-field arrows, and velocity glyphs.",
+  "camera": {
+    "position": [
+      17.986065,
+      -21.483356,
+      14.895708
+    ],
+    "target": [
+      0.0,
+      0.0,
+      0.406933
+    ],
+    "fov": 42.0
+  },
+  "materials": {
+    "base_mat": {
+      "name": "base_mat",
+      "kind": "diffuse",
+      "color": [
+        0.04,
+        0.045,
+        0.06
+      ],
+      "roughness": 0.8
+    },
+    "density_mat": {
+      "name": "density_mat",
+      "kind": "glossy",
+      "color": [
+        0.08,
+        0.36,
+        0.92
+      ],
+      "roughness": 0.35
+    },
+    "pressure_mat": {
+      "name": "pressure_mat",
+      "kind": "glossy",
+      "color": [
+        0.92,
+        0.3,
+        0.08
+      ],
+      "roughness": 0.35
+    },
+    "magnetic_mat": {
+      "name": "magnetic_mat",
+      "kind": "glossy",
+      "color": [
+        0.72,
+        0.25,
+        1.0
+      ],
+      "roughness": 0.2
+    },
+    "velocity_mat": {
+      "name": "velocity_mat",
+      "kind": "glossy",
+      "color": [
+        0.1,
+        0.95,
+        0.75
+      ],
+      "roughness": 0.25
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/mhd-orszag-tang-vortex/scene.obj",
+        "format": "obj",
+        "name": "mhd_orszag_tang_vortex"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "base_mat",
+        "kind": "diffuse",
+        "color": [
+          0.04,
+          0.045,
+          0.06
+        ],
+        "roughness": 0.8
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "density_mat",
+        "kind": "glossy",
+        "color": [
+          0.08,
+          0.36,
+          0.92
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "pressure_mat",
+        "kind": "glossy",
+        "color": [
+          0.92,
+          0.3,
+          0.08
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "magnetic_mat",
+        "kind": "glossy",
+        "color": [
+          0.72,
+          0.25,
+          1.0
+        ],
+        "roughness": 0.2
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "velocity_mat",
+        "kind": "glossy",
+        "color": [
+          0.1,
+          0.95,
+          0.75
+        ],
+        "roughness": 0.25
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "mhd_orszag_tang_vortex",
+        "material_name": "base_mat",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "mhd_orszag_tang_vortex",
+        "material_name": "density_mat",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "mhd_orszag_tang_vortex",
+        "material_name": "pressure_mat",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "mhd_orszag_tang_vortex",
+        "material_name": "magnetic_mat",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "mhd_orszag_tang_vortex",
+        "material_name": "velocity_mat",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          17.986065,
+          -21.483356,
+          14.895708
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.406933
+        ],
+        "fov": 42.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "mhd-orszag-tang-vortex/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "quality": "standard",
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "MPIPyMHD",
+    "fixture": "/Users/craig/octanex-mcp/examples/fixtures/mpipymhd/orszag-tang-vortex/orszag-tang-vortex.npz",
+    "fixture_sha256": "4bed01e87899454997724f6fc1b6eb257a830bc70ecf394c7a00810d9690c540",
+    "fixture_shape": [
+      32,
+      32
+    ],
+    "fixture_dtype": "float64",
+    "fixture_loader": "stdlib-npy",
+    "density_range": [
+      0.7405243779130509,
+      1.2594756220869492
+    ],
+    "exporter": "export_mpipymhd_orszag_tang_fixture.py",
+    "fixture_arrays": [
+      "Bx",
+      "By",
+      "density",
+      "pressure",
+      "vx",
+      "vy"
+    ],
+    "grid_shape": [
+      32,
+      32
+    ],
+    "kinetic_energy": 0.5,
+    "magnetic_energy": 0.5000000000000003,
+    "model": "Orszag-Tang analytic MHD snapshot",
+    "mpi_enabled": false,
+    "mpi_error": "ModuleNotFoundError: No module named 'mpi4py'",
+    "pressure_range": [
+      0.5202330568502448,
+      0.6797669431497552
+    ],
+    "source_path": "/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework",
+    "time_steps": 8,
+    "physical_variables": [
+      "density",
+      "pressure",
+      "velocity",
+      "magnetic_field"
+    ],
+    "units": {
+      "length": "normalized",
+      "time": "normalized"
+    },
+    "scale_mapping": {
+      "scene_units_per_domain": 10.0,
+      "density_height_scale": 1.4,
+      "pressure_height_scale": 0.7,
+      "vector_scale": 0.85
+    },
+    "null_model": "uniform density/pressure with zero velocity and magnetic field",
+    "adapter_stats": {
+      "bounds": {
+        "min": [
+          -5.4,
+          -5.4,
+          -1.16
+        ],
+        "max": [
+          5.4,
+          5.4,
+          1.973865
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.406933
+        ],
+        "radius": 7.79585
+      },
+      "grid_shape": [
+        32,
+        32
+      ],
+      "magnetic_glyphs": 36,
+      "velocity_glyphs": 36
+    },
+    "limitations": [
+      "fixture is an analytic Orszag-Tang-style snapshot, not a full time-integrated MHD solve",
+      "magnetic and velocity vectors are downsampled glyphs",
+      "normal tests do not import mpi4py or require an MPI runtime"
+    ]
+  },
+  "preview_note": "preview.png is a lightweight reference raster; octane-preview.png is the native Octane render after promotion.",
+  "quality_checklist": [
+    "Density and pressure surfaces are visibly separated.",
+    "Purple magnetic glyphs and teal velocity glyphs are both visible.",
+    "Every usemtl group has explicit create_material + assign_material(group_index)."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge; scene.json material commands are required.",
+    "The committed fixture is analytic until the local MPIPyMHD solver grows a real Orszag-Tang integrator.",
+    "OBJ line primitives may be dropped, so vectors are arrow meshes."
+  ],
+  "visual_iteration_protocol": {
+    "model": "ollama:glm-ocr",
+    "reference_image": "examples/recipes/mhd-orszag-tang-vortex/preview.png",
+    "candidate_image": "examples/recipes/mhd-orszag-tang-vortex/octane-preview.png",
+    "max_iterations": 4,
+    "review_focus": [
+      "surface separation",
+      "magnetic glyph visibility",
+      "velocity glyph visibility",
+      "framing"
+    ],
+    "patch_dimensions": [
+      "geometry",
+      "camera",
+      "lighting",
+      "materials",
+      "render_settings"
+    ],
+    "required_evidence": [
+      "bridge result metadata",
+      "native Octane preview at octane-preview.png",
+      "iteration records",
+      "final native Octane render bundled as octane-preview.png"
+    ],
+    "baseline_sweep": {
+      "camera_or_scene_variants": [
+        {
+          "label": "default framing",
+          "camera": {
+            "position": [
+              17.986065,
+              -21.483356,
+              14.895708
+            ],
+            "target": [
+              0.0,
+              0.0,
+              0.406933
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "closer framing",
+          "camera": {
+            "position": [
+              13.48954875,
+              -16.112517,
+              11.171781000000001
+            ],
+            "target": [
+              0.0,
+              0.0,
+              0.406933
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "wider framing",
+          "camera": {
+            "position": [
+              22.48258125,
+              -26.854195,
+              18.619635000000002
+            ],
+            "target": [
+              0.0,
+              0.0,
+              0.406933
+            ],
+            "fov": 42.0
+          }
+        },
+        {
+          "label": "top-oblique",
+          "camera": {
+            "position": [
+              17.986065,
+              -21.483356,
+              17.895708
+            ],
+            "target": [
+              0.0,
+              0.0,
+              0.406933
+            ],
+            "fov": 42.0
+          }
+        }
+      ]
+    },
+    "stop_conditions": [
+      "magnetic glyphs are legible",
+      "surface layers are distinguishable"
+    ]
+  },
+  "final_bundle": {
+    "required": true,
+    "native_render": "examples/recipes/mhd-orszag-tang-vortex/octane-preview.png",
+    "bundled_assets": [
+      "scene.obj",
+      "scene.mtl",
+      "scene.json",
+      "preview.png",
+      "octane-preview.png"
+    ],
+    "status": "pending_native_octane_iteration"
+  },
+  "native_octane_verified": false,
+  "status": "built; native render pending (physical-simulation Phase B)"
+}

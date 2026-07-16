@@ -59,11 +59,11 @@ Live-checked 2026-07-15 from `main` at `db533a4` (`feat(physics): promote remain
 - **Repo:** `main` = `db533a4`, tracking `origin/main`. Tree clean.
 - **Tests:** `unittest discover -s tests` = **509 ran / 0 failing / 10 skipped** (green). The 3 `test_harness_drain` errors (factory `SimpleNamespace` missing `processing_dir`) were fixed this run. `test_physics_fixture_io` path issue was fixed in HEAD (commit `scripts/` to `sys.path`). Recipe + benchmark + Lua-parity suite green; `compileall src` clean.
 - **Doctor / bridge:** `octanex-mcp doctor --json` returned `ok: true`. Bridge: `status=processed`, `render_stage=ready`, `samples_done=256`, `samples_target=256`, `last_preview=recipe_nbody-chaotic-divergence_octane-preview.png`. `hermes_bridge_oneshot_v2.lua` in one-shot mode.
-- **Recipe library ground truth:** `_recipe_dirs(examples/recipes)` reports **40 recipe dirs** (up from 32). Offline contract **39/40 OK** — `earth-moon-space` is the only hard failure (no checked-in preview). `earth-hemisphere` is **regenerable** via `scripts/gen_earth_hemisphere.py`.
+- **Recipe library ground truth:** `_recipe_dirs(examples/recipes)` reports **41 recipe dirs** (up from 32). Offline contract **40/41 OK** — `earth-moon-space` is the only hard failure (no checked-in preview). `earth-hemisphere` is **regenerable** via `scripts/gen_earth_hemisphere.py`.
 - **Benchmarks vs recipes:** benchmark coverage remains separate from recipe-library closure. The offline benchmark suite is green (509 tests).
 - **Current capability direction:** WP10/WP11 landed via practice; `octane_api_corpus_export`, `octane_capabilities`, `octane_probe_types`, live scene harvest, pre-render sanity gates all exposed. WP12 single-source Lua handler generation and WP13 registry-backed material/light compatibility remain the highest-leverage bridge-hardening work.
 
-**Maturity read:** the project is a working visual workbench with 40 recipe dirs, a live bridge, and broad test coverage (509 tests, green). Active risk has shifted from queue/launch to test-document drift — 40 recipe dirs have outgrown the static counts (31→32→39→40), and 3 of the 509 regression-failing tests (`test_harness_drain` SimpleNamespace) were repaired this run.
+**Maturity read:** the project is a working visual workbench with 41 recipe dirs, a live bridge, and broad test coverage (509 tests, green). Active risk has shifted from queue/launch to test-document drift — 41 recipe dirs have outgrown the static counts (31→32→39→40→41), and 3 of the 509 regression-failing tests (`test_harness_drain` SimpleNamespace) were repaired this run.
 
 **Shipped (previously listed under Priority A — do not redo):**
 

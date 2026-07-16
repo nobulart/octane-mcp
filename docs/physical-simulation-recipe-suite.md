@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
-> **Status (2026-07-15):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B B1 native-promoted; B2 fixture adapter implemented and offline-contract verified.
+> **Status (2026-07-16):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B now has three fixture-first adapters checked in (`dam-break-splash`, `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`). `dam-break-splash` is native-promoted; `oceananigans-shallow-water-front` and `mhd-orszag-tang-vortex` are offline-contract verified and pending native promotion.
 > - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
 >   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
 >   OBJ/MTL, stdlib `preview.png`, READMEs.
@@ -16,16 +16,18 @@
 >   README-showcase-era demos from `ALL_TASKS`.
 > - `docs/recipe-library.md`, `docs/benchmark-suite.md`, and this file updated.
 > - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
->   (15 active tasks), `test_physics_fixture_io`, and `test_splishsplash_adapter`.
-> - **Phase B started:** B1 (SPlisHSPlasH dam-break adapter) is landed, offline-verified, and native-promoted.
+>   (15 active tasks), `test_physics_fixture_io`, `test_splishsplash_adapter`,
+>   and `test_mpipymhd_adapter`.
+> - **Phase B started:** SPlisHSPlasH-style dam-break adapter is landed, offline-verified, and native-promoted.
 >   `scripts/gen_splishsplash_recipe.py` consumes the committed fixture
 >   (`examples/fixtures/particles/dam-break-small/dam-break-small.csv`, 1500 particles)
 >   via `physics_fixture_io.py` with NO runtime SPlisHSPlasH dependency, emits a
 >   contract-clean recipe (`examples/recipes/dam-break-splash/`). Provenance is
 >   embedded in the `simulation` block. Covered by `tests/test_splishsplash_adapter.py`.
-> - Full focused suite green after live promotion (`test_verify_recipes`,
->   `test_recipes`, `test_benchmarks`, `test_physics_fixture_io`,
->   `test_splishsplash_adapter`; 1 live-gated skip).
+> - Full focused suite green after live promotion and MPIPyMHD fixture addition
+>   (`test_verify_recipes`, `test_recipes`, `test_benchmarks`,
+>   `test_physics_fixture_io`, `test_splishsplash_adapter`,
+>   `test_mpipymhd_adapter`; live gates still require `OCTANEX_LIVE=1`).
 > - **Native render status:** Octane bridge/TCC/Scripts-menu issues are cleared for
 >   this host. All five Phase A recipes plus `dam-break-splash` were rendered via
 >   `benchmarks.verify_recipes --live --copy-back --drain-timeout 300`, passed
@@ -47,9 +49,19 @@
 >   Oceananigans `ShallowWaterModel`; the Python wrapper packages the CSV bundle
 >   into `examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz`
 >   plus sidecar provenance, which is merged into the recipe `simulation` block.
-> - **Next:** B3–B5 adapters (SPlisHSPlasH/Genesis/MPIPyMHD) should keep the same
->   fixture-first contract tests and include/refresh matching real-library smoke
->   evidence when the corresponding runtime is unblocked.
+> - **B7 fixture-first adapter added:** `scripts/export_mpipymhd_orszag_tang_fixture.py`
+>   writes a deterministic Orszag-Tang-style `.npz` snapshot plus provenance sidecar;
+>   `scripts/gen_mpipymhd_orszag_tang_recipe.py` consumes it into
+>   `examples/recipes/mhd-orszag-tang-vortex/` with density/pressure surfaces,
+>   magnetic/velocity arrow glyphs, explicit material bindings, and optional
+>   `simulation` metadata. Covered by `tests/test_mpipymhd_adapter.py`. Normal
+>   verification does not require `mpi4py`; the real MPIPyMHD smoke remains blocked
+>   until the local MPI Python dependency is installed.
+> - **Next:** B3–B6 adapters (additional SPlisHSPlasH/Genesis fixtures) should keep
+>   the same fixture-first contract tests and include/refresh matching real-library
+>   smoke evidence when the corresponding runtime is unblocked. MPIPyMHD's next step
+>   is upgrading the analytic fixture to a real source-backed export once `mpi4py`
+>   and a bounded local smoke path are available.
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
 
@@ -127,13 +139,13 @@ actual local simulator import/configure/run status.
 
 | Priority | Slug | Source | Input fixture | Scene | Adapter output |
 | --- | --- | --- | --- | --- | --- |
-| B1 | `oceananigans-convection-column` | Oceananigans.jl | small exported scalar/velocity slice | convective plumes in a stratified water column | OBJ heightfield, velocity glyphs, temperature colour groups |
+| B1 | `dam-break-splash` | SPlisHSPlasH-style fixture | committed particle CSV (`examples/fixtures/particles/dam-break-small/`) | SPH dam-break impact against a barrier | instanced spheres, wall, splash envelope, foam particles |
 | B2 | `oceananigans-shallow-water-front` | Oceananigans.jl | committed 2D free-surface + velocity snapshot (`examples/fixtures/oceananigans/shallow-water-front/`) | shallow-water front/eddy interaction | surface mesh + arrows + coastline/bathymetry base |
-| B3 | `splash-dam-break-particles` | SPlisHSPlasH | small VTK/partio particle frame sequence | SPH dam-break impact against a barrier | instanced spheres, wall, splash envelope, optional foam particles |
+| B3 | `oceananigans-convection-column` | Oceananigans.jl | small exported scalar/velocity slice | convective plumes in a stratified water column | OBJ heightfield, velocity glyphs, temperature colour groups |
 | B4 | `splash-two-phase-droplets` | SPlisHSPlasH | two material particle classes | droplet mixing / surface tension | two particle colour families, translucent liquid material |
 | B5 | `genesis-cloth-on-rigid` | Genesis | cloth vertex states + rigid body mesh | cloth drapes over a moving rigid object | cloth mesh frames, rigid mesh, contact markers |
 | B6 | `genesis-mpm-sand-wheel` | Genesis | particle positions + wheel transform | granular material displaced by a wheel | sand particles + wheel mesh + displacement trail |
-| B7 | `mhd-orszag-tang-vortex` | MPIPyMHD | density/pressure/B-field arrays | MHD vortex and compressed magnetic structures | density heightfield + magnetic ribbons/glyphs |
+| B7 | `mhd-orszag-tang-vortex` | MPIPyMHD | committed analytic Orszag-Tang `.npz` (`examples/fixtures/mpipymhd/orszag-tang-vortex/`) | MHD vortex and compressed magnetic structures | density/pressure heightfields + magnetic/velocity arrow glyphs |
 | B8 | `mhd-alfven-wave` | MPIPyMHD | 1D/2D wave field snapshots | propagating Alfvén wave | field-line ribbons + amplitude panels |
 
 ### Phase C: Simulation-to-render and numerical-diagnostics recipes
@@ -375,13 +387,13 @@ Do not mark `native_octane_verified=true` until a fresh native PNG passes pixel 
 The physical simulation suite is usable when:
 
 - at least five Phase A recipes pass the offline recipe contract;
-- at least two local-source-backed recipes exist with committed tiny fixtures;
+- at least three local-source-backed recipes exist with committed tiny fixtures (`dam-break-splash`, `oceananigans-shallow-water-front`, and `mhd-orszag-tang-vortex`);
 - every new physical recipe includes the optional `simulation` metadata block;
 - every recipe has explicit material bindings and a reference preview;
 - at least two recipes have native Octane previews promoted with fresh mtimes;
 - `docs/recipe-library.md` has a Physical Simulation coverage section;
 - Tier 7 benchmark tasks exist only after the recipe grammar is stable and pass `tests.test_benchmarks` offline.
 
-## 13. Suggested first task
+## 13. Suggested next task
 
-Build `fluid-kelvin-helmholtz-slice` as a pure deterministic recipe. It exercises scalar fields, vector/ribbon overlays, colour-family acceptance, multi-panel physical storytelling, and no external runtime dependencies. Once that pattern is clean, use the same generator scaffold for `advection-diffusion-pulse` and `mass-spring-cloth-drape`, then attach Oceananigans and SPlisHSPlasH fixtures.
+Native-promote `oceananigans-shallow-water-front` and `mhd-orszag-tang-vortex` through the live recipe verifier once Octane is available, then implement the next source-backed fixture that closes a remaining physical class gap. The strongest next build is either `genesis-cloth-on-rigid` (if the Genesis environment is unblocked) or `splash-two-phase-droplets` (if SPlisHSPlasH export/build status improves). Keep the same fixture-first pattern: committed tiny fixture, adapter unit test, optional real-library smoke evidence, offline recipe-contract verification, and only then native Octane promotion.

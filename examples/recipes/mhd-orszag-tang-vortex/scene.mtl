@@ -1,0 +1,21 @@
+# Material hints; Octane binding is driven by scene.json commands.
+newmtl base_mat
+Kd 0.0400 0.0450 0.0600
+Ks 0.4 0.4 0.4
+d 1.0
+newmtl density_mat
+Kd 0.0800 0.3600 0.9200
+Ks 0.4 0.4 0.4
+d 1.0
+newmtl pressure_mat
+Kd 0.9200 0.3000 0.0800
+Ks 0.4 0.4 0.4
+d 1.0
+newmtl magnetic_mat
+Kd 0.7200 0.2500 1.0000
+Ks 0.4 0.4 0.4
+d 1.0
+newmtl velocity_mat
+Kd 0.1000 0.9500 0.7500
+Ks 0.4 0.4 0.4
+d 1.0

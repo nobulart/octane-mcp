@@ -1,0 +1,39 @@
+{
+  "density_range": [
+    0.7405243779130509,
+    1.2594756220869492
+  ],
+  "exporter": "export_mpipymhd_orszag_tang_fixture.py",
+  "fixture": "/Users/craig/octanex-mcp/examples/fixtures/mpipymhd/orszag-tang-vortex/orszag-tang-vortex.npz",
+  "fixture_arrays": [
+    "Bx",
+    "By",
+    "density",
+    "pressure",
+    "vx",
+    "vy"
+  ],
+  "fixture_dtype": "float64",
+  "fixture_loader": "stdlib-npy",
+  "fixture_sha256": "4bed01e87899454997724f6fc1b6eb257a830bc70ecf394c7a00810d9690c540",
+  "fixture_shape": [
+    32,
+    32
+  ],
+  "grid_shape": [
+    32,
+    32
+  ],
+  "kinetic_energy": 0.5,
+  "magnetic_energy": 0.5000000000000003,
+  "model": "Orszag-Tang analytic MHD snapshot",
+  "mpi_enabled": false,
+  "mpi_error": "ModuleNotFoundError: No module named 'mpi4py'",
+  "pressure_range": [
+    0.5202330568502448,
+    0.6797669431497552
+  ],
+  "source_library": "MPIPyMHD",
+  "source_path": "/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework",
+  "time_steps": 8
+}

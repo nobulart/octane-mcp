@@ -48,12 +48,15 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [Bowl of Fruit (Studio)](../examples/recipes/bowl-of-fruit/README.md) | Product / prop studio | `bowl-of-fruit` | A stylised ceramic bowl of glossy fruit, demonstrating a reusable multi-group still-life OBJ with explicit material binding. |
 | [Desk Fan with Cord and Plug](../examples/recipes/desk-fan/README.md) | Product / prop studio | `desk-fan` | A stylised desk fan with blue blades, tubular front/back guard cage, stand/base, tubular cord, plug body, and brass prongs. |
 | [Cutaway Earth — point-cloud hemisphere](../examples/recipes/earth-hemisphere/README.md) | Geoscience / planet visualization | `earth-hemisphere` | Dense to-scale interior-shell point cloud (PREM-like) + atmospheric sheaths as translucent jello with a glowing solid inner core; WGS84 oblateness, differentiated continental/oceanic crust, smooth-sphere particles, LLSVP provinces + plume tendrils, off-axis "Hermes Camera" framing. |
-|| [Solid Earth — concentric shell cutaway](../examples/recipes/solid-earth-shells/README.md) | Geoscience / planet visualization | `solid-earth-shells` | Mesh-equivalent of the volumetric Earth recipe — no particles. To-scale WGS84 oblate shells (PREM), fluid outer core, atmosphere, mesh-only LLSVP/plume context, and 1:1 GeoTIFF elevation/bathymetry displacement on the crust surface; hemispherical cut face reads as concentric annuli. |
-|| [Kelvin–Helmholtz Shear-Layer Slice](../examples/recipes/fluid-kelvin-helmholtz-slice/README.md) | Physical simulation / fluids | `fluid-kelvin-helmholtz-slice` | Analytic shear-layer tracer field with counter-rotating vortex ribbons — the classic KH billow, computed deterministically (no live solver). |
-|| [Advection–Diffusion Pulse](../examples/recipes/advection-diffusion-pulse/README.md) | Physical simulation / transport | `advection-diffusion-pulse` | Four time panels of a Gaussian tracer advecting and diffusing; peak height decays and the pulse broadens left-to-right. |
-|| [Mass-Spring Cloth Drape](../examples/recipes/mass-spring-cloth-drape/README.md) | Physical simulation / deformable bodies | `mass-spring-cloth-drape` | Verlet/PBD cloth sheet draping and tenting over a rigid sphere — emergent sag and contact from the solver. |
-|| [Rigid Stack Contact Forces](../examples/recipes/rigid-stack-contact-forces/README.md) | Physical simulation / rigid bodies | `rigid-stack-contact-forces` | Settled block stack with downward contact-force glyphs that thicken and shift red→yellow toward the base (the static load path). |
-|| [N-Body Chaotic Divergence](../examples/recipes/nbody-chaotic-divergence/README.md) | Physical simulation / n-body dynamics | `nbody-chaotic-divergence` | Two near-identical three-body systems diverging under a 1e-3 velocity perturbation — sensitive dependence on initial conditions. |
+| [Solid Earth — concentric shell cutaway](../examples/recipes/solid-earth-shells/README.md) | Geoscience / planet visualization | `solid-earth-shells` | Mesh-equivalent of the volumetric Earth recipe — no particles. To-scale WGS84 oblate shells (PREM), fluid outer core, atmosphere, mesh-only LLSVP/plume context, and 1:1 GeoTIFF elevation/bathymetry displacement on the crust surface; hemispherical cut face reads as concentric annuli. |
+| [Kelvin–Helmholtz Shear-Layer Slice](../examples/recipes/fluid-kelvin-helmholtz-slice/README.md) | Physical simulation / fluids | `fluid-kelvin-helmholtz-slice` | Analytic shear-layer tracer field with counter-rotating vortex ribbons — the classic KH billow, computed deterministically (no live solver). |
+| [Advection–Diffusion Pulse](../examples/recipes/advection-diffusion-pulse/README.md) | Physical simulation / transport | `advection-diffusion-pulse` | Four time panels of a Gaussian tracer advecting and diffusing; peak height decays and the pulse broadens left-to-right. |
+| [Mass-Spring Cloth Drape](../examples/recipes/mass-spring-cloth-drape/README.md) | Physical simulation / deformable bodies | `mass-spring-cloth-drape` | Verlet/PBD cloth sheet draping and tenting over a rigid sphere — emergent sag and contact from the solver. |
+| [Rigid Stack Contact Forces](../examples/recipes/rigid-stack-contact-forces/README.md) | Physical simulation / rigid bodies | `rigid-stack-contact-forces` | Settled block stack with downward contact-force glyphs that thicken and shift red→yellow toward the base (the static load path). |
+| [N-Body Chaotic Divergence](../examples/recipes/nbody-chaotic-divergence/README.md) | Physical simulation / n-body dynamics | `nbody-chaotic-divergence` | Two near-identical three-body systems diverging under a 1e-3 velocity perturbation — sensitive dependence on initial conditions. |
+| [Dam-Break Splash](../examples/recipes/dam-break-splash/README.md) | Physical simulation / particles | `dam-break-splash` | SPlisHSPlasH-style liquid/foam particle fixture impacting a barrier, fixture-first and native-promoted. |
+| [Oceananigans Shallow-Water Front](../examples/recipes/oceananigans-shallow-water-front/README.md) | Physical simulation / fluids | `oceananigans-shallow-water-front` | Real Oceananigans shallow-water export consumed as a committed fixture: free-surface bands, bathymetry base, and velocity glyphs. |
+| [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | MPIPyMHD-track analytic Orszag-Tang `.npz` fixture rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
 
 ## Recommended agent loop
 
@@ -72,6 +75,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 - **Geospatial:** terrain tile and site markers.
 - **Physics:** orbital trajectories.
 - **Physical simulation (Phase A):** Kelvin–Helmholtz shear roll-up, advection–diffusion pulse, mass-spring cloth drape, rigid-stack contact forces, n-body chaotic divergence. All fixture-first (deterministic, no external simulator at render time). See [Physical Simulation Recipe Suite](#physical-simulation-recipe-suite) below.
+- **Physical simulation (Phase B):** source-backed/adapter-track fixtures for dam-break particles, Oceananigans shallow water, and MPIPyMHD Orszag-Tang MHD. These remain fixture-first; only promoted recipes with fresh `octane-preview.png` claim native Octane verification.
 - **Systems:** MCP architecture flow remains a catalogue recipe but is retired from the active benchmark harness.
 - **Agent communication:** Hermes avatar guide.
 - **Feedback loops:** render/vision review loop and corrective camera/material iteration.
@@ -116,17 +120,23 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   glyphs with no Julia runtime dependency. It has also been smoke-tested against
   the installed local Oceananigans.jl project by running a tiny CPU
   `ShallowWaterModel`, exporting `eta/u/v/bathymetry`, regenerating the recipe,
-  and native-rendering the result through OctaneX.
-- Genesis, MPIPyMHD adapters (planned): same pattern — source
-  simulator exports one tiny committed fixture, adapter emits the recipe contract.
-  The suite plan is in
+  and offline-verifying the adapter contract. Native Octane promotion remains
+  pending until a fresh `octane-preview.png` is copied back.
+- MPIPyMHD: `mhd-orszag-tang-vortex` ✅ fixture-first adapter landed. The exporter
+  writes a committed analytic Orszag-Tang-style `.npz` plus provenance sidecar; the
+  adapter renders density/pressure surfaces and magnetic/velocity arrow glyphs with
+  no normal-test dependency on `mpi4py`. Native Octane promotion is still pending.
+- Genesis adapters (planned): same pattern — source simulator exports one tiny
+  committed fixture, adapter emits the recipe contract. The suite plan is in
 [`physical-simulation-recipe-suite.md`](physical-simulation-recipe-suite.md).
 
 > **Honesty rule:** `native_octane_verified` stays `false` until a fresh native
 > Octane preview is promoted. The committed `preview.png` is a lightweight
 > reference raster, not a native render. As of 2026-07-15, all five Phase A
 > recipes plus the Phase B `dam-break-splash` adapter have promoted native
-> `octane-preview.png` renders.
+> `octane-preview.png` renders; `oceananigans-shallow-water-front` and
+> `mhd-orszag-tang-vortex` remain pending native promotion until fresh live
+> renders are inspected and copied back.
 
 ## Recipe registry tools
 
