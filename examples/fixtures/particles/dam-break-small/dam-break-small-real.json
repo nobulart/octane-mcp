@@ -1,0 +1,10 @@
+{
+  "fixture": "examples/fixtures/particles/dam-break-small/dam-break-small-real.csv",
+  "fixture_sha256": "c0daba03ba439a967e58a7d82f97d0e544d1e48248cf9d2a98a5a9ec7a85de6c",
+  "model": "SPlisHSPlasH DFSPH dam-break (real SPHSimulator, source-built from /Users/craig/src/SPlisHSPlasH with Eigen 3.4.0)",
+  "n_particles": 13718,
+  "scene": "DamBreakModel.json (enablePartioExport=true, stopAt=0.05, absolute model paths)",
+  "solver": "DFSPH",
+  "source_library": "splishsplash",
+  "steps": 10
+}
