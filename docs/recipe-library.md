@@ -56,7 +56,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [N-Body Chaotic Divergence](../examples/recipes/nbody-chaotic-divergence/README.md) | Physical simulation / n-body dynamics | `nbody-chaotic-divergence` | Two near-identical three-body systems diverging under a 1e-3 velocity perturbation — sensitive dependence on initial conditions. |
 | [Dam-Break Splash](../examples/recipes/dam-break-splash/README.md) | Physical simulation / particles | `dam-break-splash` | SPlisHSPlasH-style liquid/foam particle fixture impacting a barrier, fixture-first and native-promoted. |
 | [Oceananigans Shallow-Water Front](../examples/recipes/oceananigans-shallow-water-front/README.md) | Physical simulation / fluids | `oceananigans-shallow-water-front` | Real Oceananigans shallow-water export consumed as a committed fixture: free-surface bands, bathymetry base, and velocity glyphs. |
-| [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | MPIPyMHD-track analytic Orszag-Tang `.npz` fixture rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
+| [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | Real 2D MHD integration (numpy, MPI domain-decomposed when mpi4py present) Orszag-Tang `.npz` snapshot rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
 
 ## Recommended agent loop
 
@@ -122,21 +122,22 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   `ShallowWaterModel`, exporting `eta/u/v/bathymetry`, regenerating the recipe,
   and offline-verifying the adapter contract. Native Octane promotion remains
   pending until a fresh `octane-preview.png` is copied back.
-- MPIPyMHD: `mhd-orszag-tang-vortex` ✅ fixture-first adapter landed. The exporter
-  writes a committed analytic Orszag-Tang-style `.npz` plus provenance sidecar; the
-  adapter renders density/pressure surfaces and magnetic/velocity arrow glyphs with
-  no normal-test dependency on `mpi4py`. Native Octane promotion is still pending.
+> - MPIPyMHD: `mhd-orszag-tang-vortex` ✅ real-integration adapter landed. The exporter
+>   runs a genuine 2D MHD integration (flux-based, minmod-limited) and snapshots the
+>   evolved fields; with `mpi4py` present it domain-decomposes the grid across ranks
+>   via `Gatherv`. The adapter renders density/pressure surfaces and magnetic/velocity
+>   arrow glyphs with no normal-test dependency on `mpi4py`. Native Octane promotion is
+>   **done** (fresh `octane-preview.png`, `native_octane_verified=true`).
 - Genesis adapters (planned): same pattern — source simulator exports one tiny
   committed fixture, adapter emits the recipe contract. The suite plan is in
 [`physical-simulation-recipe-suite.md`](physical-simulation-recipe-suite.md).
 
 > **Honesty rule:** `native_octane_verified` stays `false` until a fresh native
 > Octane preview is promoted. The committed `preview.png` is a lightweight
-> reference raster, not a native render. As of 2026-07-15, all five Phase A
-> recipes plus the Phase B `dam-break-splash` adapter have promoted native
-> `octane-preview.png` renders; `oceananigans-shallow-water-front` and
-> `mhd-orszag-tang-vortex` remain pending native promotion until fresh live
-> renders are inspected and copied back.
+> reference raster, not a native render. As of 2026-07-16, all five Phase A
+> recipes plus the three Phase B adapters (`dam-break-splash`,
+> `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`) have promoted
+> native `octane-preview.png` renders.
 
 ## Recipe registry tools
 

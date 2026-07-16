@@ -33,7 +33,7 @@ class TestMPIPyMHDAdapter(TestCase):
             self.assertEqual(meta1["fixture_sha256"], meta2["fixture_sha256"])
             self.assertEqual(meta1["grid_shape"], [12, 12])
             self.assertEqual(meta1["source_library"], "MPIPyMHD")
-            self.assertEqual(meta1["model"], "Orszag-Tang analytic MHD snapshot")
+            self.assertTrue(meta1["model"].startswith("Orszag-Tang MHD integration"))
             self.assertEqual(meta1["time_steps"], 3)
             arrays = exporter.load_fixture_arrays(out1)
             self.assertEqual(sorted(arrays), ["Bx", "By", "density", "pressure", "vx", "vy"])
@@ -64,7 +64,7 @@ class TestMPIPyMHDAdapter(TestCase):
         self.assertEqual(sim["fixture"], str(FIXTURE))
         self.assertIn("fixture_sha256", sim)
         self.assertEqual(sim["fixture_arrays"], ["Bx", "By", "density", "pressure", "vx", "vy"])
-        self.assertEqual(sim["model"], "Orszag-Tang analytic MHD snapshot")
+        self.assertTrue(sim["model"].startswith("Orszag-Tang MHD integration"))
         self.assertIn("magnetic_field", sim["physical_variables"])
 
         commands = data["commands"]

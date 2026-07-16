@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use `development/octanex-visual-recipe-workflows` and `development/octanex-benchmark-suite` before implementing this plan. Use the repo's canonical `unittest` commands, not pytest.
 
-> **Status (2026-07-16):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B now has three fixture-first adapters checked in (`dam-break-splash`, `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`). `dam-break-splash` is native-promoted; `oceananigans-shallow-water-front` and `mhd-orszag-tang-vortex` are offline-contract verified and pending native promotion.
+> **Status (2026-07-16):** Phase A implemented + native-promoted; Tier 7 benchmark tasks live-verified; Phase B has three fixture-first adapters checked in (`dam-break-splash`, `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`). All three are now native-promoted through the live recipe verifier (fresh `octane-preview.png` + `native_octane_verified=true`). The MPIPyMHD B7 adapter was upgraded from an analytic snapshot to a real 2D MHD integration (numpy, MPI domain-decomposed when mpi4py is present).
 > - `scripts/gen_physics_sim_recipes.py` generates all 5 Phase A recipes
 >   (A1–A5) with full contract-correct `scene.json` (incl. `simulation` block),
 >   OBJ/MTL, stdlib `preview.png`, READMEs.
@@ -49,19 +49,22 @@
 >   Oceananigans `ShallowWaterModel`; the Python wrapper packages the CSV bundle
 >   into `examples/fixtures/oceananigans/shallow-water-front/shallow-water-front.npz`
 >   plus sidecar provenance, which is merged into the recipe `simulation` block.
-> - **B7 fixture-first adapter added:** `scripts/export_mpipymhd_orszag_tang_fixture.py`
->   writes a deterministic Orszag-Tang-style `.npz` snapshot plus provenance sidecar;
->   `scripts/gen_mpipymhd_orszag_tang_recipe.py` consumes it into
+> - **B7 real-integration adapter landed:** `scripts/export_mpipymhd_orszag_tang_fixture.py`
+>   runs a genuine explicit 2D MHD integration (Orszag-Tang initial condition advanced
+>   by a flux-based, minmod-limited scheme) and snapshots the evolved fields into a
+>   deterministic `.npz` plus provenance sidecar. When `mpi4py`/OpenMPI is present it
+>   domain-decomposes the grid across ranks via `Gatherv` (real distributed-MPI run,
+>   `mpi_mode: domain_decomposed`); otherwise it falls back to a serial numpy run.
+>   `scripts/gen_mpipymhd_orszag_tang_recipe.py` consumes the fixture into
 >   `examples/recipes/mhd-orszag-tang-vortex/` with density/pressure surfaces,
->   magnetic/velocity arrow glyphs, explicit material bindings, and optional
->   `simulation` metadata. Covered by `tests/test_mpipymhd_adapter.py`. Normal
->   verification does not require `mpi4py`; the real MPIPyMHD smoke remains blocked
->   until the local MPI Python dependency is installed.
+>   magnetic/velocity arrow glyphs, explicit material bindings, and `simulation`
+>   metadata. Covered by `tests/test_mpipymhd_adapter.py` (asserts `model` starts with
+>   `Orszag-Tang MHD integration`; no mpi4py needed for the offline suite).
 > - **Next:** B3–B6 adapters (additional SPlisHSPlasH/Genesis fixtures) should keep
 >   the same fixture-first contract tests and include/refresh matching real-library
->   smoke evidence when the corresponding runtime is unblocked. MPIPyMHD's next step
->   is upgrading the analytic fixture to a real source-backed export once `mpi4py`
->   and a bounded local smoke path are available.
+>   smoke evidence when the corresponding runtime is unblocked. The SPlisHSPlasH
+>   `dam-break-splash` adapter is a candidate to upgrade from fixture-only to a real
+>   `pysplishsplash` `Simulation` run now that `pysplishsplash` imports cleanly.
 
 **Goal:** Extend the OctaneX recipe and benchmark harness from static visualisation into a disciplined physical-simulation repertoire: fluids, particles, rigid/soft bodies, magnetohydrodynamics, numerical diagnostics, and simulation-to-render interchange.
 
@@ -145,7 +148,7 @@ actual local simulator import/configure/run status.
 | B4 | `splash-two-phase-droplets` | SPlisHSPlasH | two material particle classes | droplet mixing / surface tension | two particle colour families, translucent liquid material |
 | B5 | `genesis-cloth-on-rigid` | Genesis | cloth vertex states + rigid body mesh | cloth drapes over a moving rigid object | cloth mesh frames, rigid mesh, contact markers |
 | B6 | `genesis-mpm-sand-wheel` | Genesis | particle positions + wheel transform | granular material displaced by a wheel | sand particles + wheel mesh + displacement trail |
-| B7 | `mhd-orszag-tang-vortex` | MPIPyMHD | committed analytic Orszag-Tang `.npz` (`examples/fixtures/mpipymhd/orszag-tang-vortex/`) | MHD vortex and compressed magnetic structures | density/pressure heightfields + magnetic/velocity arrow glyphs |
+| B7 | `mhd-orszag-tang-vortex` | MPIPyMHD | real 2D MHD integration snapshot `.npz` (`examples/fixtures/mpipymhd/orszag-tang-vortex/`) | MHD vortex and compressed magnetic structures | density/pressure heightfields + magnetic/velocity arrow glyphs |
 | B8 | `mhd-alfven-wave` | MPIPyMHD | 1D/2D wave field snapshots | propagating Alfvén wave | field-line ribbons + amplitude panels |
 
 ### Phase C: Simulation-to-render and numerical-diagnostics recipes

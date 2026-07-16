@@ -5,7 +5,7 @@ Phase B fixture-first adapter recipe for an MPIPyMHD/Orszag-Tang-style MHD snaps
 ## Provenance
 
 - Fixture: `/Users/craig/octanex-mcp/examples/fixtures/mpipymhd/orszag-tang-vortex/orszag-tang-vortex.npz`
-- SHA-256: `4bed01e87899454997724f6fc1b6eb257a830bc70ecf394c7a00810d9690c540`
+- SHA-256: `ec98fdb6698d9a43ef4a57ae66e31c3fc587f2ce621240d6ac5098851f20b1bd`
 - Grid: `32×32`
 - Magnetic glyphs: `36`
 - Velocity glyphs: `36`

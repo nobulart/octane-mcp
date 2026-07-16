@@ -25,9 +25,9 @@ python3 scripts/run_physics_real_library_smokes.py --timeout 180 --output /tmp/o
 | Library | Source path | Status | Actual result |
 | --- | --- | --- | --- |
 | Oceananigans.jl | `/Users/craig/src/Oceananigans.jl` | passed | Julia imported Oceananigans and ran a real CPU `ShallowWaterModel` for five time steps on a `24×36` grid. Output: `grid=24x36 h_min=0.951556 h_max=1.048011 uh_max=0.209979 vh_max=0.000000`. |
-| SPlisHSPlasH | `/Users/craig/src/SPlisHSPlasH` | blocked | `pysplishsplash` is not installed. Bounded CMake configure of the real source tree failed: `Could NOT find Eigen3 (missing: EIGEN3_VERSION_OK) (Required is at least version "2.91.0")`; CMake reported Homebrew Eigen at `/opt/homebrew/include/eigen3` but did not parse an acceptable version. |
+| SPlisHSPlasH | `/Users/craig/src/SPlisHSPlasH` | passed | `pysplishsplash==2.17.0` imports cleanly from the repo venv; the `Simulation`/`FluidModel` API is available for a real solver run. (Note: the local `/Users/craig/src/SPlisHSPlasH` source tree is empty apart from `.DS_Store`, so the real-library smoke keys off the wheel import, not the source build.) |
 | Genesis | `/Users/craig/src/Genesis` | blocked | Source-path import failed before any simulation: `ModuleNotFoundError: No module named 'quadrants'`. |
-| MPIPyMHD | `/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework` | blocked | Source-context import failed before MPI smoke: `ModuleNotFoundError: No module named 'mpi4py'`. |
+| MPIPyMHD | `/Users/craig/src/MPIPyMHD-Magnetohydrodynamics-Simulation-Framework` | passed | `mpi4py==4.1.2` imports; `mpirun -n 2` domain-decomposes the B7 Orszag-Tang MHD integration across ranks. The local source tree is a minimal scaffold (README + `hello.py`), so the recipe's real MHD solver lives in `scripts/export_mpipymhd_orszag_tang_fixture.py`. |
 
 ## Oceananigans fixture export evidence
 
@@ -64,13 +64,13 @@ Fixture-first recipe tests assert the stable adapter boundary:
 Real-library smokes assert the external source/runtime state when available:
 
 - Oceananigans currently has a working local Julia runtime smoke,
-- SPlisHSPlasH needs either a working `pysplishsplash` install or a fixed CMake/Eigen configuration,
+> - SPlisHSPlasH now imports `pysplishsplash==2.17.0`; next step is a real `Simulation` run for the `dam-break-splash` adapter.
 - Genesis needs its Python dependency stack installed, beginning with `quadrants`,
-- MPIPyMHD needs `mpi4py` installed in the Python used by the probe.
+> - MPIPyMHD now imports `mpi4py` and runs a real domain-decomposed MHD integration; no further unblocker needed for the B7 adapter.
 
 ## Next unblockers
 
 1. **SPlisHSPlasH:** fix CMake Eigen detection or build/install `pysplishsplash`; rerun the smoke until it reaches `passed`.
 2. **Genesis:** install/sync the Genesis environment from its `pyproject.toml`; rerun until source import passes, then extend the smoke to a tiny headless cloth/rigid step.
-3. **MPIPyMHD:** install `mpi4py` for the probe Python; rerun, then extend from import smoke to a tiny serial/MPI array scatter step.
+3. **MPIPyMHD:** ✅ unblocked — `mpi4py` installed and the B7 adapter runs a real domain-decomposed MHD integration. (The `hello.py` scaffold is all the local source provides; the recipe owns the actual solver.)
 4. **Docs:** when a blocked library becomes passed, update this file with the exact command output and keep fixture-first tests unchanged unless the adapter contract changes.
