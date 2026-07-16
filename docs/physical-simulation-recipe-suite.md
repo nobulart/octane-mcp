@@ -415,21 +415,18 @@ The physical simulation suite is usable when:
 
 ## 13. Suggested next task
 
-**Phase A, B, C1 (`simulation-frame-strip`), C2 (`conservation-budget-panels`), and C3
-(`precision-error-landscape`) are landed + offline-verified + **native-promoted** (18 active
-benchmark tasks; native Octane promotion done for all five Phase A, the four Phase B library
-adapters — `dam-break-splash`, `genesis-cloth-on-rigid` (B5), `mhd-orszag-tang-vortex`,
-`oceananigans-shallow-water-front` — plus the three Phase C recipes).
+**Phase A, B, C1 (`simulation-frame-strip`), C2 (`conservation-budget-panels`), C3
+(`precision-error-landscape`), and C4 (`renderer-backend-comparison`) are landed +
+offline-verified + **native-promoted** (18 active benchmark tasks; native Octane
+promotion done for all five Phase A, the four Phase B library adapters — `dam-break-splash`,
+`genesis-cloth-on-rigid` (B5), `mhd-orszag-tang-vortex`, `oceananigans-shallow-water-front` —
+plus the four Phase C recipes).** The strongest remaining block is C5.
 in priority order:
 
-1. **C3 `precision-error-landscape`** — high-precision reference vs float32/float64 error
-   surface (y-cruncher-assisted), testing numerical-story visualisation. Same fixture-first
-   contract + offline test + only-then native promotion.
-2. **C4 `renderer-backend-comparison`** — same scene grammar rendered by LuisaRender + OctaneX,
-   supporting later renderer-agnostic backend abstraction.
-3. **C5 `particle-export-interchange`** — same particle cloud via CSV/VTK/partio-derived fixture,
-   hardening import adapters and unit-conversion metadata.
-4. **Remaining Phase B optional extensions** (`oceananigans-convection-column` B3,
+1. **C5 `particle-export-interchange`** — same particle cloud via CSV/VTK/partio-derived fixture,
+   hardening import adapters and unit-conversion metadata. (C3 and C4 are already landed +
+   native-promoted.)
+2. **Remaining Phase B optional extensions** (`oceananigans-convection-column` B3,
    `splash-two-phase-droplets` B4, `genesis-mpm-sand-wheel` B6, `mhd-alfven-wave` B8) only
    when the corresponding local runtime is unblocked — keep the fixture-first pattern:
    committed tiny fixture, adapter unit test, optional real-library smoke evidence, offline

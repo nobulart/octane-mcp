@@ -1,0 +1,205 @@
+{
+  "slug": "renderer-backend-comparison",
+  "title": "Renderer Backend Comparison (OctaneX vs LuisaRender)",
+  "category": "Physical simulation / renderer-agnostic grammar",
+  "domain": "Renderer backend comparison",
+  "purpose": "Prove the scene grammar is backend-neutral: the same MHD energy-bar geometry is emitted for OctaneX (combined OBJ + materials) and LuisaRender (JSON SDL, primitive Box shapes). OctaneX renders natively; LuisaRender is driven by its local CLI. The comparison is the recipe.",
+  "prompt": "Render the same energy-bar scene through two backends and compare.",
+  "camera": {
+    "position": [
+      6.707182,
+      -5.366929,
+      4.194674
+    ],
+    "target": [
+      1.5,
+      0.852761,
+      0.0
+    ],
+    "fov": 40.0
+  },
+  "materials": {
+    "kinetic": {
+      "kind": "glossy",
+      "color": [
+        0.3,
+        0.55,
+        0.95
+      ],
+      "roughness": 0.35
+    },
+    "magnetic": {
+      "kind": "glossy",
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "roughness": 0.35
+    },
+    "internal": {
+      "kind": "glossy",
+      "color": [
+        0.35,
+        0.85,
+        0.45
+      ],
+      "roughness": 0.35
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/renderer-backend-comparison/scene.obj",
+        "format": "obj",
+        "name": "renderer_backend_comparison"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "kinetic",
+        "kind": "glossy",
+        "color": [
+          0.3,
+          0.55,
+          0.95
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "magnetic",
+        "kind": "glossy",
+        "color": [
+          0.95,
+          0.75,
+          0.25
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "internal",
+        "kind": "glossy",
+        "color": [
+          0.35,
+          0.85,
+          0.45
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "renderer_backend_comparison",
+        "material_name": "kinetic",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "renderer_backend_comparison",
+        "material_name": "magnetic",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "renderer_backend_comparison",
+        "material_name": "internal",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          6.707182,
+          -5.366929,
+          4.194674
+        ],
+        "target": [
+          1.5,
+          0.852761,
+          0.0
+        ],
+        "fov": 40.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "renderer-backend-comparison/octane-preview.png",
+        "width": 1400,
+        "height": 900,
+        "quality": "high",
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "backends": {
+    "octanex": {
+      "form": "combined_obj",
+      "native_octane_verified": true,
+      "preview": "renderer-backend-comparison/octane-preview.png"
+    },
+    "luisa_render": {
+      "form": "json_sdl",
+      "cli": "/Users/craig/src/LuisaRender/build/bin/luisa-render-cli",
+      "backend": "metal",
+      "scene_file": "renderer-backend-comparison/luisa-scene.json",
+      "output": "renderer-backend-comparison/luisa-preview.png",
+      "render_status": "failed: cli exited -6; no image produced (stderr tail: )"
+    }
+  },
+  "simulation": {
+    "source_library": "benchmarks.spec._orszag_tang_mhd (real Orszag-Tang MHD)",
+    "fixture": "MHD energy budget bars (kinetic/magnetic/internal)",
+    "physical_variables": [
+      "kinetic_energy",
+      "magnetic_energy",
+      "internal_energy"
+    ],
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 3.0
+    },
+    "frame_grammar": {
+      "layout": "energy_bars",
+      "backend_neutral": true,
+      "octanex_shape": "combined_obj_boxes",
+      "luisa_shape": "primitive_box"
+    },
+    "limitations": [
+      "LuisaRender uses primitive Box shapes (not the OBJ mesh) for cross-backend parity; geometry is identical, only the shape encoding differs.",
+      "LuisaRender CLI uses the Metal backend on this Apple-Silicon host."
+    ]
+  },
+  "quality_checklist": [
+    "OctaneX: combined OBJ with one group per family + explicit materials.",
+    "LuisaRender: valid JSON SDL with a `render` root + camera/film/integrator/scene.",
+    "Both backends depict the same 3 bars with the same relative heights/colours."
+  ],
+  "known_pitfalls": [
+    "OctaneX: OBJ/MTL colour is ignored; materials must be explicit.",
+    "LuisaRender: scene is a custom SDL; impl names must match built plugins."
+  ],
+  "native_octane_verified": true
+}

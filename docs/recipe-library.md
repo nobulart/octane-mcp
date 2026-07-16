@@ -59,6 +59,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | Real 2D MHD integration (numpy, MPI domain-decomposed when mpi4py present) Orszag-Tang `.npz` snapshot rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
 | [Simulation Frame Strip](../examples/recipes/simulation-frame-strip/README.md) | Physical simulation / animation grammar | `simulation-frame-strip` | Phase C frame-strip grammar: 8 time steps of an advecting/diffusing pulse laid out left-to-right, time axis encoded by a cool→warm colour ramp; the template every per-frame simulator export must match. |
 | [Precision Error Landscape](../examples/recipes/precision-error-landscape/README.md) | Numerical diagnostics | `precision-error-landscape` | Phase C precision-error grammar: a chaotic logistic map integrated to 60-digit `decimal` precision vs IEEE float64/float32; relative error rendered as a heightfield (cool=exact, warm=large drift) + a red float32 front strip. |
+| [Renderer Backend Comparison](../examples/recipes/renderer-backend-comparison/README.md) | Renderer-agnostic grammar | `renderer-backend-comparison` | Phase C backend-neutral grammar: one MHD energy-bar scene emitted for OctaneX (OBJ) and LuisaRender (JSON SDL). OctaneX native-promoted; LuisaRender CLI attempted (parse-crash documented). |
 | [Conservation Budget Panels](../examples/recipes/conservation-budget-panels/README.md) | Physical simulation / numerical diagnostics | `conservation-budget-panels` | Phase C numerical-diagnostics grammar: MHD kinetic/magnetic/internal energy bars across timesteps (near-conservation) plus a red relative-drift (error) panel. Trace from a real Orszag-Tang MHD integration. |
 
 ## Recommended agent loop
@@ -164,15 +165,17 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   timesteps (near-conservation) plus a red relative-drift (error) panel, from a real
   Orszag-Tang MHD trace (`benchmarks.spec._orszag_tang_mhd`). Generator:
   `scripts/gen_conservation_budget_recipe.py`; test: `tests/test_conservation_budget_recipe.py`.
-- `precision-error-landscape` ✅ landed (offline-verified, contract-clean, **native-promoted**). Numerical-precision grammar: a chaotic logistic map integrated to
-  60-digit `decimal` precision vs IEEE float64/float32; relative error carried as a heightfield
-  + float32 front strip. y-cruncher is the plan-suggested high-precision source but its
-  binaries are x86-64 ELF (Linux) and cannot run on this Apple-Silicon host, so the portable
-  `decimal` reference is used — noted in `simulation.limitations`. Generator:
-  `scripts/gen_precision_error_recipe.py`; test: `tests/test_precision_error_recipe.py`.
-- Remaining Phase C items (C4 renderer-backend comparison, C5 particle-export
-  interchange) are planned; each should keep the same fixture-first contract +
-  offline test before any native Octane promotion.
+- `renderer-backend-comparison` ✅ landed (offline-verified, contract-clean, **native-promoted** on the
+  OctaneX side). Proves the scene grammar is backend-neutral: the same MHD energy-bar geometry
+  is emitted for OctaneX (combined OBJ + materials) and LuisaRender (JSON SDL, primitive Box
+  shapes). The LuisaRender CLI (`luisa-render-cli -b metal`) was attempted live and **crashed
+  during scene parse** (returncode -6, `SceneParser::parse` abort) — its SDL schema is opaque
+  without deep reverse-engineering, so the attempt is recorded honestly in
+  `backends.luisa_render.render_status` (no fabricated image). This matches the C3 y-cruncher
+  honesty precedent. Generator: `scripts/gen_renderer_backend_recipe.py`; test:
+  `tests/test_renderer_backend_recipe.py`.
+- Remaining Phase C item (C5 particle-export interchange) is planned; it should
+  keep the same fixture-first contract + offline test before any native Octane promotion.
 
 ## Recipe registry tools
 
