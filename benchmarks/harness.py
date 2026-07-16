@@ -182,6 +182,7 @@ def run_task(
         if run.preview_path and run.preview_path.exists():
             run.preview_path.unlink()
             run.notes.append("removed stale preview PNG before render")
+        baseline = run.preview_path.stat().st_mtime if (run.preview_path and run.preview_path.exists()) else 0.0
 
         drain_result = drain_oneshot(ws, timeout_seconds=drain_timeout)
         run.drain = drain_result
@@ -190,16 +191,17 @@ def run_task(
             run.duration_seconds = time.time() - start
             return run
 
-        # poll for preview file
+        # Detect completion from the rendered PNG's fresh mtime, not the queue
+        # (the queue empties the instant Octane is dispatched, long before the
+        # render converges). Baseline is captured before drain so a leftover
+        # stale PNG from a prior session can never false-pass.
+        baseline = run.preview_path.stat().st_mtime if (run.preview_path and run.preview_path.exists()) else 0.0
+        fresh = _wait_for_fresh_preview(run.preview_path, drain_timeout=drain_timeout, baseline_mtime=baseline)
         preview = run.preview_path
-        waited = 0.0
-        while not (preview and preview.exists()) and waited < 15.0:
-            time.sleep(1.0)
-            waited += 1.0
-        if preview and preview.exists():
+        if fresh and preview.exists():
             run.acceptance = acceptance.evaluate_acceptance(preview, spec["acceptance"])
         else:
-            run.error = "preview not written by bridge"
+            run.error = "preview not written (or not refreshed) by bridge within budget"
             run.acceptance = acceptance.evaluate_acceptance(preview or Path("/nonexistent.png"), spec["acceptance"])
 
     except Exception as exc:  # noqa: BLE001
@@ -223,6 +225,44 @@ def _validate_obj_indices(obj_path: Path) -> None:
         raise ValueError(f"OBJ face index out of range: max={max_idx} vcount={vcount}")
     if vcount == 0:
         raise ValueError("OBJ has no vertices")
+
+
+def _wait_for_fresh_preview(
+    preview: Path,
+    *,
+    drain_timeout: float,
+    baseline_mtime: float | None = None,
+    poll_seconds: float = 3.0,
+) -> bool:
+    """Block until ``preview`` exists with a newer mtime than ``baseline_mtime``.
+
+    Completion is detected from the rendered PNG itself (filesystem mtime),
+    NOT from the command queue — the queue drains the instant the one-shot
+    bridge dispatches Octane, long before the render actually converges. Using
+    the queue as the completion signal was the root cause of the drain-wait
+    false-negative: the runner returned before Octane finished, so acceptance
+    saw either a missing or a stale PNG.
+
+    Honors ``drain_timeout`` as the *render* budget (starts after the drain
+    click, so it is not consumed by the queue poll). Returns True on a fresh
+    PNG, False on timeout.
+    """
+    if baseline_mtime is None:
+        try:
+            baseline_mtime = preview.stat().st_mtime if preview.exists() else 0.0
+        except OSError:
+            baseline_mtime = 0.0
+    waited = 0.0
+    budget = max(30.0, float(drain_timeout))
+    while waited < budget:
+        try:
+            if preview.exists() and preview.stat().st_mtime > baseline_mtime:
+                return True
+        except OSError:
+            pass
+        time.sleep(poll_seconds)
+        waited += poll_seconds
+    return bool(preview.exists() and preview.stat().st_mtime > baseline_mtime)
 
 
 def drain_oneshot(ws: Workspace, *, timeout_seconds: float = 60.0) -> dict[str, Any]:
@@ -257,20 +297,33 @@ def drain_oneshot(ws: Workspace, *, timeout_seconds: float = 60.0) -> dict[str, 
     if not result.get("last_bridge_result", {}).get("ok"):
         return result
 
-    # Poll until queue drains AND the active processing slot clears. Queue files
-    # move into processing/ while Octane renders; queue/ empty alone is not done.
-    while waited < timeout_seconds:
+    # Clear orphaned processing/ files left by a previous killed/stuck drain.
+    # The one-shot bridge moves a command into processing/ while rendering; if a
+    # prior run was killed mid-render, that file lingers and would otherwise make
+    # every subsequent drain poll time out (a stale processing file is NOT a live
+    # render). Only do this before the click so we never race an active drain.
+    for stale in ws.processing_dir.glob("*.json"):
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+
+    # Poll until the queue drains (the one-shot bridge consumed all commands).
+    # This only confirms Octane was *dispatched* — it does NOT mean the render
+    # converged (that is detected via the PNG mtime by _wait_for_fresh_preview).
+    # Cap this dispatch-confirm window so the full drain_timeout is preserved for
+    # the actual render wait; a long queue poll here would starve the PNG wait.
+    dispatch_cap = min(float(timeout_seconds), 90.0)
+    while waited < dispatch_cap:
         q = list(ws.queue_dir.glob("*.json"))
-        p = list(ws.processing_dir.glob("*.json"))
         result["queue_remaining"] = len(q)
-        result["processing_remaining"] = len(p)
-        if not q and not p:
+        if not q:
             result["ok"] = True
             break
         time.sleep(2.0)
         waited += 2.0
     if not result["ok"]:
-        result.setdefault("error", "queue/processing did not fully drain within timeout")
+        result.setdefault("error", "queue did not fully drain within timeout")
     return result
 
 

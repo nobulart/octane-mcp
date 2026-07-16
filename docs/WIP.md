@@ -119,6 +119,16 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
     render is non-blank but **FAILS** its own `color_family` acceptance (magnetic
     bars at 0.48% of non-bg vs 0.5% min) — left `False`; real geometry/magnitude
     defect, not a flag to flip.
+- Today — fix(benchmarks): drain-wait false-negative fixed at root. `run_recipe` /
+  `run_task` now detect render completion from the PNG's **fresh mtime**
+  (`_wait_for_fresh_preview` in `benchmarks/harness.py`), not the command queue
+  (which empties the instant Octane is dispatched, ~200s before convergence).
+  `drain_oneshot` now (a) clears orphaned `processing/` files from killed prior
+  runs so a stale file can no longer block every future drain, and (b) only waits
+  for `queue/` to empty (dispatch confirm), leaving the full `drain_timeout` for
+  the PNG wait. Baseline mtime is snapshotted before the drain so a freshly
+  written frame registers as new. Verified end-to-end: live vortex render now
+  returns `acceptance_passed: true` and auto-promotes (was `acceptance: null`).
 - Today — fix(spec): promote `t8_mhd_field_ribbons` to `native_octane_verified=True`
   (evidence-backed; acceptance passes on the live render).
 - Today — **physical-simulation roadmap closure (all 4 libraries integrated):**

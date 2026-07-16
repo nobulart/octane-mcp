@@ -48,7 +48,7 @@ from octanex_mcp.recipes import (
 )
 
 import benchmarks.acceptance as acceptance
-from benchmarks.harness import drain_oneshot
+from benchmarks.harness import drain_oneshot, _wait_for_fresh_preview
 
 
 # Review issues that always disqualify a recipe render (mirrors benchmark acceptance).
@@ -285,10 +285,13 @@ def run_recipe(
 
     # Delete any pre-existing preview so acceptance guards on a FRESH mtime,
     # never a stale frame left by a prior session (which would look like a
-    # successful render without actually running).
+    # successful render without actually running). Snapshot the baseline mtime
+    # AFTER the delete (i.e. 0.0 if removed) but BEFORE the drain, so any PNG
+    # written during/after the drain is strictly newer and registers as fresh.
     if run.preview_path and run.preview_path.exists():
         run.preview_path.unlink()
         run.notes.append("removed stale preview PNG before render")
+    baseline = run.preview_path.stat().st_mtime if (run.preview_path and run.preview_path.exists()) else 0.0
 
     drain_result = drain_oneshot(ws, timeout_seconds=max(30, int(drain_timeout)))
     if not drain_result.get("ok"):
@@ -296,16 +299,12 @@ def run_recipe(
         run.duration_seconds = time.time() - start
         return run
 
-    # Wait for the native render to converge and write its PNG. The render can
-    # take far longer than the queue-drain, so honor drain_timeout as the render
-    # budget (not the hardcoded 15s that previously gave up on a blank frame).
-    wait_budget = max(30.0, float(drain_timeout))
-    waited = 0.0
-    while not (run.preview_path and run.preview_path.exists()) and waited < wait_budget:
-        time.sleep(2.0)
-        waited += 2.0
-
-    if run.preview_path and run.preview_path.exists():
+    # Detect completion from the rendered PNG's fresh mtime, not the queue (the
+    # queue empties the instant the one-shot bridge dispatches Octane, long
+    # before the render converges). Baseline was captured before the drain, so
+    # this only returns True once Octane writes a NEW frame.
+    fresh = _wait_for_fresh_preview(run.preview_path, drain_timeout=drain_timeout, baseline_mtime=baseline)
+    if fresh and run.preview_path and run.preview_path.exists():
         criteria = derive_criteria(slug, data)
         run.acceptance = acceptance.evaluate_acceptance(run.preview_path, criteria)
 
@@ -332,7 +331,7 @@ def run_recipe(
         elif copy_back and vision_check and not run.vision_ok:
             run.notes.append("NOT promoted: vision tier rejected subject")
     else:
-        run.error = "preview not written by bridge"
+        run.error = "preview not written (or not refreshed) by bridge within budget"
         run.acceptance = acceptance.evaluate_acceptance(run.preview_path or Path("/nonexistent.png"), derive_criteria(slug, data))
 
     run.duration_seconds = time.time() - start
