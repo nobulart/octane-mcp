@@ -1114,7 +1114,18 @@ def _orszag_tang_mhd(steps: int, grid: int = 24, dt: float = 0.02) -> dict[str, 
     """
     import numpy as np
 
-    from mhd_integrator import integrate_mhd
+    # mhd_integrator lives in scripts/; import robustly whether or not that dir is
+    # already on sys.path (it is when running generator scripts, but not always
+    # when the benchmark suite is invoked standalone).
+    try:
+        from mhd_integrator import integrate_mhd
+    except ModuleNotFoundError:
+        import os
+        import sys
+        _scripts = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
+        if _scripts not in sys.path:
+            sys.path.insert(0, _scripts)
+        from mhd_integrator import integrate_mhd
 
     xs = 2.0 * math.pi * np.arange(grid) / grid
     ys = 2.0 * math.pi * np.arange(grid) / grid

@@ -20,7 +20,13 @@
 >   grammar (8 frames, one material group per frame, cool→warm time-axis ramp) from a
 >   deterministic closed-form advection-diffusion pulse — no external simulator. Generator
 >   `scripts/gen_simulation_frame_strip_recipe.py`; test `tests/test_frame_strip_recipe.py`.
->   The recipe is contract-clean but not yet native-promoted (`native_octane_verified=false`).
+>   The recipe is **native-promoted** (`native_octane_verified=true`) via the live Octane path.
+> - **Phase C continued:** `conservation-budget-panels` (C2) is landed, offline-verified, and
+>   **native-promoted**. It reuses the `t8_conservation_budget` MHD grammar as a standalone
+>   recipe: kinetic/magnetic/internal energy bars across 9 Orszag-Tang timesteps (near-conservation)
+>   plus a red relative-drift (error) panel, from a real MHD trace (`benchmarks.spec._orszag_tang_mhd`).
+>   Generator `scripts/gen_conservation_budget_recipe.py`; test `tests/test_conservation_budget_recipe.py`.
+>   Active harness total remains **18 tasks** (C2 is a recipe, not a new benchmark tier).
 > - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
 >   (17 active tasks), `test_physics_fixture_io`, `test_splishsplash_adapter`,
 >   and `test_mpipymhd_adapter`.
@@ -409,22 +415,22 @@ The physical simulation suite is usable when:
 
 ## 13. Suggested next task
 
-**Phase A, B, and the C1 frame-strip grammar are landed + offline-verified (18 active
-benchmark tasks; native Octane promotion done for all five Phase A, the four Phase B
-library adapters — `dam-break-splash`, `oceananigans-shallow-water-front`,
-`mhd-orszag-tang-vortex`, `genesis-cloth-on-rigid` — but NOT yet `simulation-frame-strip`).**
-The strongest next blocks, in priority order:
+**Phase A, B, C1 (`simulation-frame-strip`), and C2 (`conservation-budget-panels`) are
+landed + offline-verified + **native-promoted** (18 active benchmark tasks; native
+Octane promotion done for all five Phase A, the four Phase B library adapters —
+`dam-break-splash`, `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`,
+`genesis-cloth-on-rigid` — plus the two Phase C recipes).** The strongest next blocks,
+in priority order:
 
-1. **Native-promote `simulation-frame-strip`** through the live recipe verifier
-   (`OCTANEX_LIVE=1 ... verify_recipes --live --copy-back --slug simulation-frame-strip`)
-   so the Phase C anchor carries a fresh `octane-preview.png` like the rest of the suite.
-2. **C2 `conservation-budget-panels`** — extend the existing `t8_conservation_budget`
-   geometry into a repo-native recipe (mass/energy/error budgets as 3D panels) using the
-   same fixture-first contract. Keep the offline adapter test + `simulation` metadata.
-3. **Remaining Phase B optional extensions** (`oceananigans-convection-column` B3,
+1. **C3 `precision-error-landscape`** — high-precision reference vs float32/float64 error
+   surface (y-cruncher-assisted), testing numerical-story visualisation. Same fixture-first
+   contract + offline test + only-then native promotion.
+2. **C4 `renderer-backend-comparison`** — same scene grammar rendered by LuisaRender + OctaneX,
+   supporting later renderer-agnostic backend abstraction.
+3. **C5 `particle-export-interchange`** — same particle cloud via CSV/VTK/partio-derived fixture,
+   hardening import adapters and unit-conversion metadata.
+4. **Remaining Phase B optional extensions** (`oceananigans-convection-column` B3,
    `splash-two-phase-droplets` B4, `genesis-mpm-sand-wheel` B6, `mhd-alfven-wave` B8) only
    when the corresponding local runtime is unblocked — keep the fixture-first pattern:
    committed tiny fixture, adapter unit test, optional real-library smoke evidence, offline
    recipe-contract verification, and only then native Octane promotion.
-4. **C3–C5** (precision-error landscape, renderer-backend comparison, particle-export
-   interchange) build on the frame-strip grammar and should wait until C1 is native-promoted.
