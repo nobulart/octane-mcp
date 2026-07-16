@@ -1,9 +1,9 @@
 # OctaneX MCP — Work In Progress
 
 Living WIP board. Mirror of `docs/roadmap.md` §Status snapshot + §Development
-brainstorm, kept as a fast-glance status doc. Last updated **2026-07-15**
-against HEAD `29989a2` plus the local LuisaRender/physical-simulation planning
-docs in this commit.
+brainstorm, kept as a fast-glance status doc. Last updated **2026-07-16**
+against HEAD `08a1cb5` plus the live real-physics-library smokes and Tier 8
+MHD benchmark work since then.
 
 ## 2026-07-14 fix-log (this steward)
 
@@ -29,10 +29,10 @@ docs in this commit.
 
 | Area | State |
 |------|-------|
-| Repo | `main` = `db533a4` (`feat(physics): promote remaining phase-a recipes`), tracking `origin/main`; tree clean and contains the harness-drain fix (SimpleNamespace missing `processing_dir`). |
+| Repo | `main` = `08a1cb5` (`feat(physics): unblock Genesis + SPlisHSPlasH real-library smokes (all 4 passed)`), tracking `origin/main`; tree clean. |
 | Tests | **509 ran / 0 failing / 10 skipped** on a clean checkout via `unittest discover -s tests` — fully green. The 3 pre-existing `test_harness_drain` errors (missing `processing_dir` in factory `SimpleNamespace`) were fixed this run. The previously-failing `test_physics_fixture_io` import path issue was fixed in HEAD. Recipe + benchmark + Lua-parity suite green; `compileall src` clean. |
 | Doctor / bridge | `octanex-mcp doctor --json` returned `ok: true`. Octane X bridge status seen as `status=processed`, `render_stage=ready`, `samples_done=256`, `samples_target=256`, last_preview=`recipe_nbody-chaotic-divergence_octane-preview.png`. Bridge module `hermes_bridge_oneshot_v2.lua` in one-shot mode. |
-| Recipe library | **41 recipe dirs** (growth from 32 → 41 since last snapshot). Offline contract **40/41 OK** — only `earth-moon-space` fails (no checked-in preview). `earth-hemisphere` is intentionally **regenerable**: its large `scene.obj` is gitignored and rebuilt via the committed `scripts/gen_earth_hemisphere.py`. Both `recipes.py:validate_recipe_library` and `benchmarks/verify_recipes.py` use the shared `_is_regenerable_recipe`. `native_octane_verified` counts pending live sweep. |
+| Recipe library | **54 recipe dirs**. Offline contract pending live re-sweep; `earth-moon-space` remains the known no-preview gap and `earth-hemisphere` is **regenerable** (`scene.obj` gitignored, rebuilt via `scripts/gen_earth_hemisphere.py`; shared `_is_regenerable_recipe` in `recipes.py`). `native_octane_verified` counts pending live sweep. |
 | Core mechanics | Broad coverage across schema/dispatch guards, command queue, pixel QA, live scene harvest, scene-plan/live-graph sanity checks, recipe registry, WP6 promoted tools, WP7 geo tool, WP8 animation tool, WP9 corpus/retrieval/iteration, `swap_geometry`, API-corpus/capability/probe tools. This sweep also removes a library-layering trap by lazy-importing `benchmarks.spec` inside `iteration.py` instead of importing repo-root benchmark code at package import time. |
 | Documentation corpus | Added/curated `docs/3DXM/` as a 3D-XplorMath / Collected ATOs math-surface grammar reference for the gallery pipeline. Existing `docs/recipe-gap-fill.md` remains the proposal for filling blocked 3DXM surfaces with parametric/Weierstrass meshers. New planning docs: `docs/physical-simulation-recipe-suite.md` and `docs/luisa-render-backend-investigation.md`. |
 | Unscaffolded / open | WP12 single-source Lua handler generation, WP13 material/light compatibility registry, live WP7 geo exercise, live WP8 orbit clip with subject + optional ffmpeg encode, Agentic Canvas Phase B status/operator surface, multi-host Studio, visual memory, WP15 renderer-agnostic backend abstraction with LuisaRender QualityBackend spike, and a 3DXM parametric/Weierstrass mesher for non-implicit gallery surfaces. |
@@ -41,19 +41,38 @@ docs in this commit.
 
 ## Ranked backlog / next steps
 
-1. **I — Capability-driven bridge hardening** (MEDIUM effort / VERY HIGH fit): finish WP12 single-source Lua handler generation and WP13 registry-backed material/light behavior reporting. *First step:* make handler edits single-source, then prove one material/light command path against the registry.
-2. **J — Pre-render sanity adoption** (LOW effort / HIGH reliability): use `octane_check_scene_plan` and `octane_scene_sanity` as mandatory guards before recipe/live drains. *First step:* add a verifier path that writes sanity reports next to render outputs.
-3. **M — 3DXM parametric/Weierstrass mesher** (MEDIUM-HIGH effort / HIGH research fit): turn `docs/3DXM/` and `docs/recipe-gap-fill.md` into reusable mesh generators for non-implicit math-museum surfaces. *First step:* implement one parametric surface recipe from `docs/3DXM/minimal-surfaces.md` and gate it with pixel QA + local vision.
-4. **B — Geo / terrain grammar live path** (HIGH research fit): `octane_visualize_geojson` ships with graceful `geo` extra handling. *Remaining:* exercise the shapely-backed path live under `uv sync --extra geo` and record the output/QA.
-5. **F2-live — Animation live drain** (HIGH communication fit): `octane_build_animation` queues per-frame camera motion. *Remaining:* import a real subject, render a short orbit clip, verify frames differ, and optionally encode with ffmpeg.
-6. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
-7. **G — Texture / material generation**: image-gen → `texture_path` / `normal_path` material payloads, closing the "texture approximated with geometry" recipe pitfall.
-8. **L — Renderer-agnostic backend abstraction** (MEDIUM effort / HIGH strategic fit): decouple the command DSL from Octane X so it becomes one of N render backends; research in `docs/visualization-backends-research.md`. *First step:* extract a `Backend` interface (OctaneBackend first), then ship `WebGLBackend` (three.js in Agentic Canvas) as the Phase-1 realtime + shareable win.
-9. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `scripts/spike_luisa_scene.py` now codifies the smoke: it writes a minimal `.luisa` inline-mesh scene, runs `luisa-render-cli -b metal`, converts EXR→PNG, and fails nonzero on blank/flat pixel stats. *Next step:* translate one simple `BenchmarkTask` through the same path.
+1. **0 — Physics render closure (HIGH effort / HIGHEST fit):** all four source
+   libraries (Oceananigans, SPlisHSPlasH, Genesis, MPIPyMHD) now pass real-library
+   smokes. *First step:* promote one real-library-derived recipe through a native
+   OctaneX render and run the Tier 8 MHD diagnostics end-to-end; record acceptance.
+2. **I — Capability-driven bridge hardening** (MEDIUM effort / VERY HIGH fit): finish WP12 single-source Lua handler generation and WP13 registry-backed material/light behavior reporting. *First step:* make handler edits single-source, then prove one material/light command path against the registry.
+3. **J — Pre-render sanity adoption** (LOW effort / HIGH reliability): use `octane_check_scene_plan` and `octane_scene_sanity` as mandatory guards before recipe/live drains. *First step:* add a verifier path that writes sanity reports next to render outputs.
+4. **M — 3DXM parametric/Weierstrass mesher** (MEDIUM-HIGH effort / HIGH research fit): turn `docs/3DXM/` and `docs/recipe-gap-fill.md` into reusable mesh generators for non-implicit math-museum surfaces. *First step:* implement one parametric surface recipe from `docs/3DXM/minimal-surfaces.md` and gate it with pixel QA + local vision.
+5. **B — Geo / terrain grammar live path** (HIGH research fit): `octane_visualize_geojson` ships with graceful `geo` extra handling. *Remaining:* exercise the shapely-backed path live under `uv sync --extra geo` and record the output/QA.
+6. **F2-live — Animation live drain** (HIGH communication fit): `octane_build_animation` queues per-frame camera motion. *Remaining:* import a real subject, render a short orbit clip, verify frames differ, and optionally encode with ffmpeg.
+7. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
+8. **G — Texture / material generation**: image-gen → `texture_path` / `normal_path` material payloads, closing the "texture approximated with geometry" recipe pitfall.
+9. **L — Renderer-agnostic backend abstraction** (MEDIUM effort / HIGH strategic fit): decouple the command DSL from Octane X so it becomes one of N render backends; research in `docs/visualization-backends-research.md`. *First step:* extract a `Backend` interface (OctaneBackend first), then ship `WebGLBackend` (three.js in Agentic Canvas) as the Phase-1 realtime + shareable win.
+10. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `scripts/spike_luisa_scene.py` now codifies the smoke: it writes a minimal `.luisa` inline-mesh scene, runs `luisa-render-cli -b metal`, converts EXR→PNG, and fails nonzero on blank/flat pixel stats. *Next step:* translate one simple `BenchmarkTask` through the same path.
 
 ## Recommended next move
 
-Continue **N** by translating one simple `BenchmarkTask` into `.luisa` using the now-reproducible smoke script as the reference path. Keep **I/J** as the reliability spine for live Octane work, and keep **L/WebGLBackend** as the realtime Canvas path; LuisaRender is the offline quality tier, not the live viewport.
+The physics frontier is now **real-library closure**, not LuisaRender (N). All four
+source libraries pass local smokes (see `docs/physics-real-library-smokes.md`), so
+the high-leverage work is:
+
+1. **Render closure** — ✅ `mhd-orszag-tang-vortex` (MPIPyMHD adapter) promoted:
+   native Octane render re-queued from `scene.json` (14 authoritative commands, all
+   5 `assign_material` group_index calls), pixel-QA + vision subject-check passed,
+   `native_octane_verified` flipped true. Tier 8 `t8_mhd_field_ribbons` rendered
+   (pixel-QA ok); `t8_conservation_budget` re-run clean after a shared-queue
+   contamination wedged the first attempt. Next: confirm budget PNG + run a second
+   real-library recipe (e.g. `oceananigans-shallow-water-front`) through the same path.
+2. **Adapter hardening** — wire `dam-break-splash` to the live `pysplishsplash`
+   `Simulation` API (not just the headless CLI) and extend Genesis to multi-body/cloth.
+3. Keep **I/J** (WP12/WP13 bridge + pre-render sanity) as the reliability spine for
+   live Octane work, and **L/WebGLBackend** as the realtime Canvas path.
+   LuisaRender (N) is the offline quality tier, now secondary to physics closure.
 
 ## PDF Consolidation (docs/3DXM/ — 3DXM Virtual Math Museum)
 
@@ -72,6 +91,21 @@ MinerU text extractions saved at `docs/3DXM/mineru_text/*.txt` (total 610 KB) fo
 
 ## Done recently
 
+- Today — **physics render closure**: re-queued `mhd-orszag-tang-vortex` from
+  `scene.json` (14 authoritative commands incl. all 5 `assign_material` group_index
+  calls), native Octane render landed (pixel-QA ok, vision subject-check ok),
+  `native_octane_verified` flipped true. Tier 8 `t8_mhd_field_ribbons` rendered
+  (pixel-QA ok); `t8_conservation_budget` re-run clean after a shared-queue
+  contamination (15 stray `assign_material` commands injected mid-run) wedged the
+  first attempt — do not assume queue isolation when another agent/steward is live.
+- Today — fix(test): `test_verify_recipe_library_dry_run_counts` drift `41→42`
+  total / `40→41` contract_ok (new physics recipes); `cathedral` now fails the
+  contract on a **real** missing `scene.mtl` — generated the hint MTL from
+  `scene.json` MATERIALS so it passes; `earth-moon-space` remains the only
+  intentional contract gap (no checked-in preview).
+- Today — docs: sync `WIP.md` to HEAD `08a1cb5` (recipe count 54 dirs, physics
+  frontier supersedes LuisaRender N) and fix the contradictory summary/"Next
+  unblockers" in `docs/physics-real-library-smokes.md` (all 4 libraries pass).
 - Today — fix(test): repair `test_harness_drain` (3 errors → OK): add `processing_dir` to the `_ws()` factory's `SimpleNamespace` so `drain_oneshot` can poll the processing slot.
 - Today — docs: refresh WIP.md + roadmap.md status snapshots to HEAD `db533a4`, 509 tests, 41 recipe dirs, sample count 256/256.
 - Today — fix(test): recipe count drift 31→32 in dry_run parity check (`test_verify_recipes.py`).

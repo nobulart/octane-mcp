@@ -20,7 +20,7 @@ python3 scripts/run_physics_real_library_smokes.py --timeout 180 --output /tmp/o
 - Date: 2026-07-16
 - Host context: macOS, local source trees under `/Users/craig/src/`
 - Result file: `/tmp/octanex-physics-real-smokes.json` during the run
-- Summary: `1 passed`, `3 blocked`, `0 skipped`
+- Summary: `4 passed`, `0 blocked`, `0 skipped`
 
 | Library | Source path | Status | Actual result |
 | --- | --- | --- | --- |
@@ -63,14 +63,27 @@ Fixture-first recipe tests assert the stable adapter boundary:
 
 Real-library smokes assert the external source/runtime state when available:
 
-- Oceananigans currently has a working local Julia runtime smoke,
-> - SPlisHSPlasH now imports `pysplishsplash==2.17.0`; next step is a real `Simulation` run for the `dam-break-splash` adapter.
-- Genesis needs its Python dependency stack installed, beginning with `quadrants`,
-> - MPIPyMHD now imports `mpi4py` and runs a real domain-decomposed MHD integration; no further unblocker needed for the B7 adapter.
+- Oceananigans.jl: working local Julia runtime smoke (real `ShallowWaterModel`).
+- SPlisHSPlasH: source-built DFSPH runs headless; adapter should move to the live
+  `pysplishsplash` `Simulation` API (see forward work below).
+- Genesis: env synced and headless box-drop verified; extend to multi-body/cloth.
+- MPIPyMHD: `mpi4py` installs and the B7 adapter runs real domain-decomposed MHD.
 
-## Next unblockers
+## Next unblockers / forward work
 
-1. **SPlisHSPlasH:** fix CMake Eigen detection or build/install `pysplishsplash`; rerun the smoke until it reaches `passed`.
-2. **Genesis:** install/sync the Genesis environment from its `pyproject.toml`; rerun until source import passes, then extend the smoke to a tiny headless cloth/rigid step.
-3. **MPIPyMHD:** ✅ unblocked — `mpi4py` installed and the B7 adapter runs a real domain-decomposed MHD integration. (The `hello.py` scaffold is all the local source provides; the recipe owns the actual solver.)
-4. **Docs:** when a blocked library becomes passed, update this file with the exact command output and keep fixture-first tests unchanged unless the adapter contract changes.
+All four source libraries now pass local smokes (see table above). Remaining work
+is on the adapter/render side, not library unblocking:
+
+1. **SPlisHSPlasH:** smoke used the headless `SPHSimulator` binary; wire the
+   `dam-break-splash` adapter to the live `pysplishsplash` `Simulation` API so the
+   export path matches the Python library, not just the CLI.
+2. **Genesis:** extend the headless box-drop smoke to a cloth/rigid multi-body or
+   fluid-coupled example to exercise the transform/export path harder.
+3. **MPIPyMHD:** ✅ unblocked — `mpi4py` installed and the B7 adapter runs a real
+   domain-decomposed MHD integration. The local source is a `hello.py` scaffold;
+   the recipe owns the actual solver.
+4. **Render closure:** promote at least one real-library-derived recipe through a
+   native OctaneX render and run the Tier 8 MHD diagnostics end-to-end.
+5. **Docs:** keep the table above as the source of truth; the summary line and
+   forward work must match it. Fixture-first tests stay unchanged unless the
+   adapter contract changes.
