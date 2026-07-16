@@ -57,6 +57,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [Dam-Break Splash](../examples/recipes/dam-break-splash/README.md) | Physical simulation / particles | `dam-break-splash` | SPlisHSPlasH-style liquid/foam particle fixture impacting a barrier, fixture-first and native-promoted. |
 | [Oceananigans Shallow-Water Front](../examples/recipes/oceananigans-shallow-water-front/README.md) | Physical simulation / fluids | `oceananigans-shallow-water-front` | Real Oceananigans shallow-water export consumed as a committed fixture: free-surface bands, bathymetry base, and velocity glyphs. |
 | [MHD Orszag-Tang Vortex](../examples/recipes/mhd-orszag-tang-vortex/README.md) | Physical simulation / magnetohydrodynamics | `mhd-orszag-tang-vortex` | Real 2D MHD integration (numpy, MPI domain-decomposed when mpi4py present) Orszag-Tang `.npz` snapshot rendered as density/pressure surfaces plus magnetic and velocity arrow glyphs. |
+| [Simulation Frame Strip](../examples/recipes/simulation-frame-strip/README.md) | Physical simulation / animation grammar | `simulation-frame-strip` | Phase C frame-strip grammar: 8 time steps of an advecting/diffusing pulse laid out left-to-right, time axis encoded by a cool→warm colour ramp; the template every per-frame simulator export must match. |
 
 ## Recommended agent loop
 
@@ -76,6 +77,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 - **Physics:** orbital trajectories.
 - **Physical simulation (Phase A):** Kelvin–Helmholtz shear roll-up, advection–diffusion pulse, mass-spring cloth drape, rigid-stack contact forces, n-body chaotic divergence. All fixture-first (deterministic, no external simulator at render time). See [Physical Simulation Recipe Suite](#physical-simulation-recipe-suite) below.
 - **Physical simulation (Phase B):** source-backed/adapter-track fixtures for dam-break particles, Oceananigans shallow water, and MPIPyMHD Orszag-Tang MHD. These remain fixture-first; only promoted recipes with fresh `octane-preview.png` claim native Octane verification.
+- **Physical simulation (Phase C):** repo-native simulation-to-render and numerical-diagnostics grammar. `simulation-frame-strip` (C1) defines the canonical animation-preview layout — a left-to-right strip of N discrete simulation states, one material group per frame, cool→warm ramp encoding the time axis — which every future per-frame simulator export must match.
 - **Systems:** MCP architecture flow remains a catalogue recipe but is retired from the active benchmark harness.
 - **Agent communication:** Hermes avatar guide.
 - **Feedback loops:** render/vision review loop and corrective camera/material iteration.
@@ -137,7 +139,25 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
 > reference raster, not a native render. As of 2026-07-16, all five Phase A
 > recipes plus the three Phase B adapters (`dam-break-splash`,
 > `oceananigans-shallow-water-front`, `mhd-orszag-tang-vortex`) have promoted
-> native `octane-preview.png` renders.
+> native `octane-preview.png` renders. `genesis-cloth-on-rigid` (B5) is also
+> native-promoted. `simulation-frame-strip` (Phase C / C1) is landed and
+> offline-verified but not yet native-promoted (`native_octane_verified=false`).
+
+**Phase C — simulation-to-render and numerical-diagnostics grammar:**
+
+- `simulation-frame-strip` ✅ landed (offline-verified, contract-clean). Defines the
+  canonical **animation-preview** layout: a left-to-right strip of N discrete
+  simulation states, one `usemtl` group per frame, a cool→warm colour ramp encoding
+  the time axis, and a shared base slab. Built from a deterministic closed-form
+  advection-diffusion pulse (no external simulator), so it is the template every
+  future per-frame export adapter (later Phase C / simulator exports) maps onto.
+  Generator: `scripts/gen_simulation_frame_strip_recipe.py`; test:
+  `tests/test_frame_strip_recipe.py`. It is also promoted into the benchmark harness
+  as Tier 9 task `t9_simulation_frame_strip` (18 active tasks total).
+- Remaining Phase C items (C2 conservation-budget panels, C3 precision-error
+  landscape, C4 renderer-backend comparison, C5 particle-export interchange) are
+  planned; each should keep the same fixture-first contract + offline test before
+  any native Octane promotion.
 
 ## Recipe registry tools
 

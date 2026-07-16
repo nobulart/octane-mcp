@@ -1288,6 +1288,83 @@ def _t8_conservation_budget() -> dict[str, Any]:
     }
 
 
+def _t9_simulation_frame_strip() -> dict[str, Any]:
+    """Canonical animation-preview grammar: a spatial strip of N simulation frames.
+
+    Each frame is an advection-diffusion pulse at a later time index, laid out
+    left-to-right in a single row so one static render communicates time
+    evolution. The frame colour ramps cool->warm along the time axis. This is the
+    repo-native Phase C "frame strip" — the template every per-frame simulator
+    export must match so a single render shows evolution. No external simulator.
+    """
+    N = 6
+    G = 16
+    PANEL = 2.0
+    GAP = 0.4
+    HEIGHT = 1.6
+    U = 0.6
+    D = 0.05
+    T_MAX = 2.6
+
+    def coolwarm(t: float) -> list[float]:
+        return [0.15 + 0.70 * t, 0.45 + 0.25 * (1.0 - t), 0.95 - 0.70 * t]
+
+    obj = CombinedObj("t9_frame_strip")
+    assignments = []
+    gi = 0
+    for i in range(N):
+        t = T_MAX * i / (N - 1)
+        verts: list[list[tuple[float, float, float]]] = []
+        for gi_ in range(G):
+            row: list[tuple[float, float, float]] = []
+            for gj in range(G):
+                x = -PANEL / 2 + PANEL * gj / (G - 1)
+                y = -PANEL / 2 + PANEL * gi_ / (G - 1)
+                sigma2 = 0.25 + 2.0 * D * t
+                peak = math.exp(-((x - U * t) ** 2) / (2 * sigma2))
+                z = peak * HEIGHT - HEIGHT * 0.5
+                ox = (PANEL + GAP) * i
+                row.append((ox + x, y, z))
+            verts.append(row)
+        mat = f"frame_{i:02d}_mat"
+        b = ObjBuilder(f"f{i}")
+        b.add_surface(vertices=verts, material=mat)
+        gi += 1
+        obj.add_group(f"f{i}", mat, b)
+        assignments.append({"group_index": gi, "material_name": mat})
+
+    strip_len = N * PANEL + (N - 1) * GAP
+    floor_b = ObjBuilder("floor")
+    floor_b.add_box(center=(strip_len / 2 - PANEL / 2, 0, -HEIGHT * 0.5 - 0.05),
+                    size=(strip_len + 1.0, PANEL + 1.0, 0.04), material="floor_mat")
+    gi += 1
+    obj.add_group("floor", "floor_mat", floor_b)
+    assignments.append({"group_index": gi, "material_name": "floor_mat"})
+
+    mats = [_mat(f"frame_{i:02d}_mat", "glossy", coolwarm(i / (N - 1)), roughness=0.35)
+            for i in range(N)]
+    mats.append(_mat("floor_mat", "diffuse", [0.06, 0.07, 0.09], roughness=0.9))
+
+    return {
+        "mesh_name": "t9_frame_strip",
+        "obj": obj.text(),
+        "bounds": obj.bounds(),
+        "materials": mats,
+        "assignments": assignments,
+        "camera": camera_for_bounds(obj.bounds(), view="iso", margin=1.3, fov=40),
+        "lighting": "soft_studio",
+        "save": {"quality": "high", "width": 1200, "height": 800},
+        "acceptance": [
+            {"kind": "non_empty", "min_mean_dev": 1.0, "min_nonbg": 1.0},
+            {"kind": "review_ok", "fail_on": ["mostly near-black", "mostly near-white",
+                                              "likely object too small"]},
+            {"kind": "color_family", "target": coolwarm(0.0), "hue_tol": 50, "min_fraction": 0.01},
+            {"kind": "color_family", "target": coolwarm(1.0), "hue_tol": 50, "min_fraction": 0.01},
+            {"kind": "shape_profile", "min_rows": 8},
+        ],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -1301,6 +1378,7 @@ TIER_TITLES = {
     6: "Photoreal / stress — high face counts, multi-material families",
     7: "Physical simulation fixtures — deterministic physics grammar",
     8: "MHD diagnostics — field topology + conservation carried by geometry",
+    9: "Simulation frame grammar — animation-preview strips carried by geometry",
 }
 
 ALL_TASKS: list[BenchmarkTask] = [
@@ -1321,6 +1399,7 @@ ALL_TASKS: list[BenchmarkTask] = [
     BenchmarkTask(7, "t7_particle_splash_fixture", "Particle splash fixture", "physics-particles", "Seeded liquid + foam particle families (dam-break splash).", _t7_particle_splash_fixture, True),
     BenchmarkTask(8, "t8_mhd_field_ribbons", "MHD field-line ribbons", "mhd-field", "Magnetic field lines traced from the real Orszag-Tang MHD integration, rendered as ribbons.", _t8_mhd_field_ribbons, True),
     BenchmarkTask(8, "t8_conservation_budget", "MHD energy budget", "mhd-conservation", "Kinetic/magnetic/internal energy bars across MHD timesteps; near-conservation carried by bar heights.", _t8_conservation_budget, True),
+    BenchmarkTask(9, "t9_simulation_frame_strip", "Simulation frame strip", "sim-frame-grammar", "8 time steps of an advecting/diffusing pulse laid out as a left-to-right strip; time axis encoded by a cool→warm colour ramp.", _t9_simulation_frame_strip, True),
 ]
 
 

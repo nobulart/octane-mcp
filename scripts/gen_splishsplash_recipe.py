@@ -67,9 +67,11 @@ def _write_mtl(d: Path, mats: dict[str, dict]) -> None:
 
 def _write_preview(d: Path) -> None:
     # 160x160 stdlib raster: liquid teal on left, foam white on right (proxy only).
+    # PNG needs a per-scanline filter byte (type 0 = None) before zlib compression.
     w = h = 160
     raw = bytearray()
     for y in range(h):
+        raw.append(0)
         for x in range(w):
             if x < w * 0.7:
                 raw += bytes([int(255 * LIQUID_COLOR[0]), int(255 * LIQUID_COLOR[1]), int(255 * LIQUID_COLOR[2])])
@@ -169,6 +171,18 @@ def main(output_root: Path = RECIPES) -> dict[str, Any]:
     d = output_root / SLUG
     d.mkdir(parents=True, exist_ok=True)
     out = _build()
+    # Preserve a prior live-promotion flag so a committed recipe doesn't lose
+    # its native_octane_verified status when the generator is re-run.
+    existing = d / "scene.json"
+    if existing.exists():
+        try:
+            prev = json.loads(existing.read_text())
+            if isinstance(prev.get("native_octane_verified"), bool):
+                out["scene"]["native_octane_verified"] = prev["native_octane_verified"]
+            if isinstance(prev.get("status"), str):
+                out["scene"]["status"] = prev["status"]
+        except Exception:
+            pass
     (d / "scene.obj").write_text(str(out["obj_text"]).rstrip("\n") + "\n", encoding="utf-8")
     _write_mtl(d, out["mats"])  # type: ignore[arg-type]
     (d / "scene.json").write_text(json.dumps(out["scene"], indent=2) + "\n", encoding="utf-8")

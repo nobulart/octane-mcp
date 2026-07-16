@@ -1,0 +1,386 @@
+{
+  "slug": "simulation-frame-strip",
+  "title": "Simulation Frame Strip (8 frames)",
+  "category": "Physical simulation / animation grammar",
+  "domain": "Physics simulation",
+  "purpose": "Define the repo-native animation-preview grammar: a spatial strip of N discrete simulation states, one per frame, laid out left-to-right so a single static render communicates time evolution. Here the state is a closed-form advection-diffusion pulse (same field as the Phase A recipe) advanced through 8 evenly spaced time indices. Each frame is its own material group bound to a cool->warm ramp encoding the time axis. Deterministic and external-simulator-free, so it is the template every future per-frame export adapter maps onto.",
+  "prompt": "Visualise a simulation frame strip: 8 time steps of an advecting/diffusing pulse laid out as a spatial sequence.",
+  "camera": {
+    "position": [
+      45.917202,
+      -40.213603,
+      27.02077
+    ],
+    "target": [
+      12.25,
+      0.0,
+      -0.100032
+    ],
+    "fov": 40.0
+  },
+  "materials": {
+    "frame_00": {
+      "kind": "glossy",
+      "color": [
+        0.15,
+        0.7,
+        0.95
+      ],
+      "roughness": 0.35
+    },
+    "frame_01": {
+      "kind": "glossy",
+      "color": [
+        0.25,
+        0.6642857142857144,
+        0.85
+      ],
+      "roughness": 0.35
+    },
+    "frame_02": {
+      "kind": "glossy",
+      "color": [
+        0.35,
+        0.6285714285714286,
+        0.75
+      ],
+      "roughness": 0.35
+    },
+    "frame_03": {
+      "kind": "glossy",
+      "color": [
+        0.44999999999999996,
+        0.5928571428571429,
+        0.6499999999999999
+      ],
+      "roughness": 0.35
+    },
+    "frame_04": {
+      "kind": "glossy",
+      "color": [
+        0.5499999999999999,
+        0.5571428571428572,
+        0.55
+      ],
+      "roughness": 0.35
+    },
+    "frame_05": {
+      "kind": "glossy",
+      "color": [
+        0.65,
+        0.5214285714285715,
+        0.44999999999999996
+      ],
+      "roughness": 0.35
+    },
+    "frame_06": {
+      "kind": "glossy",
+      "color": [
+        0.75,
+        0.48571428571428577,
+        0.35
+      ],
+      "roughness": 0.35
+    },
+    "frame_07": {
+      "kind": "glossy",
+      "color": [
+        0.85,
+        0.45,
+        0.25
+      ],
+      "roughness": 0.35
+    },
+    "strip_base": {
+      "kind": "diffuse",
+      "color": [
+        0.06,
+        0.07,
+        0.09
+      ],
+      "roughness": 0.9
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/simulation-frame-strip/scene.obj",
+        "format": "obj",
+        "name": "simulation_frame_strip"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_00",
+        "kind": "glossy",
+        "color": [
+          0.15,
+          0.7,
+          0.95
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_01",
+        "kind": "glossy",
+        "color": [
+          0.25,
+          0.6642857142857144,
+          0.85
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_02",
+        "kind": "glossy",
+        "color": [
+          0.35,
+          0.6285714285714286,
+          0.75
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_03",
+        "kind": "glossy",
+        "color": [
+          0.44999999999999996,
+          0.5928571428571429,
+          0.6499999999999999
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_04",
+        "kind": "glossy",
+        "color": [
+          0.5499999999999999,
+          0.5571428571428572,
+          0.55
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_05",
+        "kind": "glossy",
+        "color": [
+          0.65,
+          0.5214285714285715,
+          0.44999999999999996
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_06",
+        "kind": "glossy",
+        "color": [
+          0.75,
+          0.48571428571428577,
+          0.35
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "frame_07",
+        "kind": "glossy",
+        "color": [
+          0.85,
+          0.45,
+          0.25
+        ],
+        "roughness": 0.35
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "strip_base",
+        "kind": "diffuse",
+        "color": [
+          0.06,
+          0.07,
+          0.09
+        ],
+        "roughness": 0.9
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_00",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_01",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_02",
+        "group_index": 3
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_03",
+        "group_index": 4
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_04",
+        "group_index": 5
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_05",
+        "group_index": 6
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_06",
+        "group_index": 7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "frame_07",
+        "group_index": 8
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "simulation_frame_strip",
+        "material_name": "strip_base",
+        "group_index": 9
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          45.917202,
+          -40.213603,
+          27.02077
+        ],
+        "target": [
+          12.25,
+          0.0,
+          -0.100032
+        ],
+        "fov": 40.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "simulation-frame-strip/octane-preview.png",
+        "width": 1400,
+        "height": 900,
+        "quality": "standard",
+        "samples": 128,
+        "min_samples": 16,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "analytic (closed-form advection-diffusion)",
+    "fixture": "embedded 8-frame pulse, N=24 grid, no external simulator",
+    "physical_variables": [
+      "tracer_concentration"
+    ],
+    "units": {
+      "length": "m",
+      "time": "s"
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0,
+      "height_scale": 1.8,
+      "frame_layout": "left_to_right_strip",
+      "frame_count": 8,
+      "panel_width": 3.0,
+      "panel_gap": 0.5
+    },
+    "time": {
+      "frames": 8,
+      "t_seconds": 2.6
+    },
+    "null_model": "single frame (N=1): no time evolution to read",
+    "frame_grammar": {
+      "layout": "spatial_strip",
+      "orientation": "left_to_right_increasing_time",
+      "per_frame_group": true,
+      "color_axis": "cool_to_warm_encodes_t",
+      "shared_base_slab": true
+    },
+    "limitations": [
+      "state function is a 1D pulse shown as 2D heightfields, not a full 3D field",
+      "no live PDE solve; downstream adapters swap the generator for exported frames"
+    ]
+  },
+  "quality_checklist": [
+    "Eight distinct panels are visible in a left-to-right row.",
+    "Each panel is a distinct cool->warm colour (time axis encoded by hue).",
+    "The pulse peak is tallest in early panels and broadens/lowers toward later panels.",
+    "Each frame group has an explicit create_material + assign_material(group_index).",
+    "Camera frames the whole strip with margin."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colours are ignored by the bridge; the per-frame ramp needs explicit materials.",
+    "One usemtl group PER frame yields many groups; the bridge handles it but keep N modest (8) until animation workflows mature.",
+    "The strip is wide; an iso camera with enough margin avoids clipping the end panels."
+  ],
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-16)"
+}

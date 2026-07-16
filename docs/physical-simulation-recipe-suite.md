@@ -14,6 +14,13 @@
 >   `t7_cloth_drape_contact`, `t7_particle_splash_fixture`) — deterministic physics
 >   grammar — plus **Tier 8** (2 tasks: `t8_mhd_field_ribbons`, `t8_conservation_budget`)
 >   for MHD diagnostics carried by geometry. The active harness totals 17 tasks.
+> - **Phase C started:** `simulation-frame-strip` (C1) is landed, offline-verified, and
+>   promoted into the harness as **Tier 9** task `t9_simulation_frame_strip` (18 active
+>   tasks total). It defines the canonical left-to-right frame-strip animation-preview
+>   grammar (8 frames, one material group per frame, cool→warm time-axis ramp) from a
+>   deterministic closed-form advection-diffusion pulse — no external simulator. Generator
+>   `scripts/gen_simulation_frame_strip_recipe.py`; test `tests/test_frame_strip_recipe.py`.
+>   The recipe is contract-clean but not yet native-promoted (`native_octane_verified=false`).
 > - Offline suite green: `test_verify_recipes`, `test_recipes`, `test_benchmarks`
 >   (17 active tasks), `test_physics_fixture_io`, `test_splishsplash_adapter`,
 >   and `test_mpipymhd_adapter`.
@@ -402,4 +409,22 @@ The physical simulation suite is usable when:
 
 ## 13. Suggested next task
 
-Native-promote `oceananigans-shallow-water-front` and `mhd-orszag-tang-vortex` through the live recipe verifier once Octane is available, then implement the next source-backed fixture that closes a remaining physical class gap. The strongest next build is either `genesis-cloth-on-rigid` (if the Genesis environment is unblocked) or `splash-two-phase-droplets` (if SPlisHSPlasH export/build status improves). Keep the same fixture-first pattern: committed tiny fixture, adapter unit test, optional real-library smoke evidence, offline recipe-contract verification, and only then native Octane promotion.
+**Phase A, B, and the C1 frame-strip grammar are landed + offline-verified (18 active
+benchmark tasks; native Octane promotion done for all five Phase A, the four Phase B
+library adapters — `dam-break-splash`, `oceananigans-shallow-water-front`,
+`mhd-orszag-tang-vortex`, `genesis-cloth-on-rigid` — but NOT yet `simulation-frame-strip`).**
+The strongest next blocks, in priority order:
+
+1. **Native-promote `simulation-frame-strip`** through the live recipe verifier
+   (`OCTANEX_LIVE=1 ... verify_recipes --live --copy-back --slug simulation-frame-strip`)
+   so the Phase C anchor carries a fresh `octane-preview.png` like the rest of the suite.
+2. **C2 `conservation-budget-panels`** — extend the existing `t8_conservation_budget`
+   geometry into a repo-native recipe (mass/energy/error budgets as 3D panels) using the
+   same fixture-first contract. Keep the offline adapter test + `simulation` metadata.
+3. **Remaining Phase B optional extensions** (`oceananigans-convection-column` B3,
+   `splash-two-phase-droplets` B4, `genesis-mpm-sand-wheel` B6, `mhd-alfven-wave` B8) only
+   when the corresponding local runtime is unblocked — keep the fixture-first pattern:
+   committed tiny fixture, adapter unit test, optional real-library smoke evidence, offline
+   recipe-contract verification, and only then native Octane promotion.
+4. **C3–C5** (precision-error landscape, renderer-backend comparison, particle-export
+   interchange) build on the frame-strip grammar and should wait until C1 is native-promoted.
