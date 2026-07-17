@@ -3,7 +3,7 @@
   "title": "Renderer Backend Comparison (OctaneX vs LuisaRender)",
   "category": "Physical simulation / renderer-agnostic grammar",
   "domain": "Renderer backend comparison",
-  "purpose": "Prove the scene grammar is backend-neutral: the same MHD energy-bar geometry is emitted for OctaneX (combined OBJ + materials) and LuisaRender (JSON SDL, primitive Box shapes). OctaneX renders natively; LuisaRender is driven by its local CLI. The comparison is the recipe.",
+  "purpose": "Prove the scene grammar is backend-neutral: the same MHD energy-bar geometry is emitted for OctaneX (combined OBJ + materials) and LuisaRender (TEXT SDL .luisa, InlineMesh boxes). OctaneX renders natively; LuisaRender is driven by its local CLI. The comparison is the recipe.",
   "prompt": "Render the same energy-bar scene through two backends and compare.",
   "camera": {
     "position": [
