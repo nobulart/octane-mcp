@@ -113,8 +113,8 @@ def _build() -> dict[str, Any]:
             "quality": "high", "samples": 128, "min_samples": 16, "timeout_seconds": 90}},
     ]
 
-    # --- LuisaRender form: JSON node-graph SDL for the SAME bars ---
-    luisa_scene = _luisa_scene(bars, cam)
+    # --- LuisaRender form: TEXT SDL (`.luisa`) for the SAME bars ---
+    luisa_scene = _luisa_scene_text(bars, cam)
 
     scene = {
         "slug": SLUG,
@@ -138,11 +138,11 @@ def _build() -> dict[str, Any]:
                 "preview": f"{SLUG}/octane-preview.png",
             },
             "luisa_render": {
-                "form": "json_sdl",
+                "form": "luisa_text_sdl",
                 "cli": str(LUISA_CLI),
                 "backend": "metal",
-                "scene_file": f"{SLUG}/luisa-scene.json",
-                "output": f"{SLUG}/luisa-preview.png",
+                "scene_file": f"{SLUG}/luisa-scene.luisa",
+                "output": f"{SLUG}/luisa-preview.exr",
                 "render_status": "pending_live_attempt",
             },
         },
@@ -165,12 +165,12 @@ def _build() -> dict[str, Any]:
         },
         "quality_checklist": [
             "OctaneX: combined OBJ with one group per family + explicit materials.",
-            "LuisaRender: valid JSON SDL with a `render` root + camera/film/integrator/scene.",
+            "LuisaRender: valid TEXT SDL (.luisa) with a `render` root + camera/integrator/shapes/env.",
             "Both backends depict the same 3 bars with the same relative heights/colours.",
         ],
         "known_pitfalls": [
             "OctaneX: OBJ/MTL colour is ignored; materials must be explicit.",
-            "LuisaRender: scene is a custom SDL; impl names must match built plugins.",
+            "LuisaRender: scene is a custom TEXT SDL; node names/impls must match built plugins.",
         ],
         "native_octane_verified": False,
     }
@@ -179,54 +179,106 @@ def _build() -> dict[str, Any]:
             "mats": scene["materials"], "cam": cam}
 
 
-def _luisa_scene(bars: list[dict], cam: dict) -> dict:
-    """Author a minimal but valid LuisaRender JSON scene for the same bars."""
-    shapes = []
-    for b in bars:
+_BOX_CORNERS = [
+    (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+    (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1),
+]
+_BOX_INDICES = [
+    0, 1, 2, 0, 2, 3,    # -Z
+    4, 6, 5, 4, 7, 6,    # +Z
+    0, 4, 5, 0, 5, 1,    # -Y
+    3, 2, 6, 3, 6, 7,    # +Y
+    0, 3, 7, 0, 7, 4,    # -X
+    1, 5, 6, 1, 6, 2,    # +X
+]
+
+
+def _luisa_scene_text(bars: list[dict], cam: dict) -> str:
+    """Author a minimal but valid LuisaRender TEXT scene (`.luisa` SDL) for the same bars.
+
+    Format reverse-engineered from the repo's `tools/tungsten2luisa.py` converter.
+    Uses InlineMesh boxes (no OBJ dependency) so geometry is identical to the
+    OctaneX render. Node graph: Surface/Shape/Camera/Env, rooted by `render`.
+    """
+    import math
+
+    def v3(x, y, z):
+        return f"{x:.4f}, {y:.4f}, {z:.4f}"
+
+    S = 3.0  # LuisaRender scene scale: enlarge the small MHD bars so they fill the frame
+    surf_lines = []
+    shape_lines = []
+    for i, b in enumerate(bars):
         c = b["center"]
         s = b["size"]
+        hx, hy, hz = s[0] / 2 * S, s[1] / 2 * S, s[2] / 2 * S
         col = b["color"]
-        shapes.append({
-            "impl": "Box",
-            "prop": {
-                "transform": {
-                    "impl": "Transform",
-                    "prop": {
-                        "matrix": [
-                            s[0], 0, 0, c[0],
-                            0, s[1], 0, c[1],
-                            0, 0, s[2], c[2],
-                            0, 0, 0, 1,
-                        ],
-                    },
-                },
-                "material": {
-                    "impl": "Matte",
-                    "prop": {"color": {"impl": "Constant", "prop": {"color": list(col)}}},
-                },
-            },
-        })
-    # inline node encoding: each shape is an internal node
-    scene_node = {
-        "impl": "Scene",
-        "prop": {"shapes": [{"impl": "Shape", "prop": s} for s in shapes]},
-    }
-    render = {
-        "camera": {
-            "impl": "Pinhole",
-            "prop": {
-                "fov": cam.get("fov", 40.0),
-                "position": [6.0, 4.0, 8.0],
-                "look_at": [1.0, 1.0, 0.0],
-                "up": [0.0, 1.0, 0.0],
-            },
-        },
-        "film": {"impl": "HDRFilm", "prop": {"resolution": [1400, 900], "exposure": 0.0}},
-        "integrator": {"impl": "Path", "prop": {"max_depth": 8}},
-        "scene": scene_node,
-        "background": {"impl": "Env", "prop": {"color": {"impl": "Constant", "prop": {"color": [0.05, 0.06, 0.08]}}}},
-    }
-    return {"render": render}
+        mat = b["family"]
+        surf_lines.append(
+            f"Surface {mat} : Matte {{\n"
+            f"  albedo : Constant {{\n    v {{ {v3(col[0], col[1], col[2])} }}\n  }}\n}}"
+        )
+        # bake world-space box corners (center +/- half), scaled, identity transform
+        pos = []
+        for (cx, cy, cz) in _BOX_CORNERS:
+            pos += [(c[0] + cx * hx) * S, (c[1] + cy * hy) * S, (c[2] + cz * hz) * S]
+        positions = ", ".join(f"{p:.4f}" for p in pos)
+        indices = ", ".join(str(k) for k in _BOX_INDICES)
+        shape_lines.append(
+            f"Shape shape_{i} : InlineMesh {{\n"
+            f"  positions {{ {positions} }}\n"
+            f"  indices {{ {indices} }}\n"
+            f"  surface {{ @{mat} }}\n"
+            f"  transform : Matrix {{\n    m {{ "
+            f"1, 0, 0, 0,\n        0, 1, 0, 0,\n        0, 0, 1, 0,\n        0, 0, 0, 1 }}\n  }}\n}}"
+        )
+
+    # Explicit camera: clean 3/4 view from above, looking at the (scaled) bar cluster center.
+    bar_centers = [b["center"] for b in bars]
+    cx = sum(c[0] for c in bar_centers) / len(bar_centers) * S
+    cy = sum(c[1] for c in bar_centers) / len(bar_centers) * S
+    cz = sum(c[2] for c in bar_centers) / len(bar_centers) * S
+    target = [cx, cy, cz]
+    eye = [cx, cy + 1.0, cz + 14.0]
+    up = [0.0, 1.0, 0.0]
+    front = [target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]]
+    flen = math.sqrt(sum(x * x for x in front)) or 1.0
+    front = [x / flen for x in front]
+    fov = 40.0
+
+    lines = []
+    lines.extend(surf_lines)
+    # Canonical basic-example lighting: a Directional key light + Null (black) environment.
+    # Bars are plain Matte (colored albedo) lit by the key light; background stays dark.
+    lines.append(
+        f"Env dir : Directional {{\n"
+        f"  emission : Constant {{\n    v {{ 12.0, 12.0, 12.0 }}\n  }}\n"
+        f"  transform : Matrix {{\n    m {{ "
+        f"0.577, 0.577, 0.577, 0,\n        -0.577, 0.577, -0.577, 0,\n        0.577, -0.577, 0.577, 0,\n        0, 0, 0, 1 }}\n  }}\n}}"
+    )
+    lines.extend(shape_lines)
+    lines.append(
+        f"Camera camera : Pinhole {{\n"
+        f"  fov {{ {fov:.4f} }}\n"
+        f"  spp {{ 64 }}\n"
+        f"  filter : Gaussian {{ radius {{ 1 }} }}\n"
+        f"  film : Color {{\n    resolution {{ 1400, 900 }}\n  }}\n"
+        f'  file {{ "luisa-preview.exr" }}\n'
+        f"  transform : View {{\n"
+        f"    position {{ {v3(eye[0], eye[1], eye[2])} }}\n"
+        f"    front {{ {v3(front[0], front[1], front[2])} }}\n"
+        f"    up {{ {v3(up[0], up[1], up[2])} }}\n"
+        f"  }}\n}}"
+    )
+    shape_refs = ",\n    ".join(f"@shape_{i}" for i in range(len(bars)))
+    lines.append(
+        f"render {{\n"
+        f"  cameras {{ @camera }}\n"
+        f"  integrator : MegaPath {{\n    sampler : PMJ02BN {{}}\n  }}\n"
+        f"  shapes {{\n    {shape_refs}\n  }}\n"
+        f"  environment {{ @dir }}\n}}"
+    )
+    return "\n\n".join(lines) + "\n"
 
 
 def _write_mtl(d: Path, mats: dict[str, dict]) -> None:
@@ -270,16 +322,15 @@ def _write_preview(d: Path) -> None:
 
 
 def _attempt_luisa_render(d: Path) -> dict:
-    """Best-effort: run the local LuisaRender CLI on the emitted scene. Report honestly."""
+    """Best-effort: run the local LuisaRender CLI on the emitted TEXT scene. Report honestly."""
     out = {"attempted": False, "rendered": False, "error": None, "output_path": None}
-    scene_file = d / "luisa-scene.json"
+    scene_file = d / "luisa-scene.luisa"
     if not LUISA_CLI.exists():
         out["error"] = "luisa-render-cli not built"
         return out
     if not scene_file.exists():
-        out["error"] = "luisa-scene.json missing"
+        out["error"] = "luisa-scene.luisa missing"
         return out
-    out_png = d / "luisa-preview.png"
     out["attempted"] = True
     try:
         proc = subprocess.run(
@@ -290,7 +341,8 @@ def _attempt_luisa_render(d: Path) -> dict:
         out["stderr"] = proc.stderr[-2000:] if proc.stderr else ""
         out["stdout"] = proc.stdout[-1000:] if proc.stdout else ""
         # LuisaRender writes an EXR/HDR by default; accept any produced image file.
-        for cand in (out_png, d / "luisa-preview.exr", d / "render.exr", d / "result.exr"):
+        for cand in (d / "luisa-preview.exr", d / "render.exr", d / "result.exr",
+                     d / "luisa-preview.png", d / "render.png"):
             if cand.exists():
                 out["rendered"] = True
                 out["output_path"] = str(cand)
@@ -319,14 +371,14 @@ def main(output_root: Path = RECIPES, attempt_luisa: bool = False) -> dict[str, 
     (d / "scene.obj").write_text(out["obj_text"].rstrip("\n") + "\n", encoding="utf-8")
     _write_mtl(d, out["mats"])
     (d / "scene.json").write_text(json.dumps(out["scene"], indent=2) + "\n", encoding="utf-8")
-    (d / "luisa-scene.json").write_text(json.dumps(out["luisa_scene"], indent=2) + "\n", encoding="utf-8")
+    (d / "luisa-scene.luisa").write_text(out["luisa_scene"], encoding="utf-8")
     _write_preview(d)
     (d / "README.md").write_text(
         "# Renderer Backend Comparison (C4)\n\n"
         "Phase C renderer-agnostic grammar: the same MHD energy-bar geometry is emitted for "
-        "OctaneX (combined OBJ) and LuisaRender (JSON SDL, primitive Boxes). OctaneX renders "
-        "natively; LuisaRender is driven by its local CLI. See `backends` in scene.json for "
-        "the live LuisaRender attempt result.\n",
+        "OctaneX (combined OBJ) and LuisaRender (TEXT SDL `.luisa`, InlineMesh boxes). OctaneX "
+        "renders natively; LuisaRender is driven by its local CLI (`-b metal`). See `backends` "
+        "in scene.json for the live LuisaRender attempt result. The comparison is the recipe.\n",
         encoding="utf-8",
     )
     result = {"slug": SLUG, "bars": len(out["scene"]["simulation"]["physical_variables"])}

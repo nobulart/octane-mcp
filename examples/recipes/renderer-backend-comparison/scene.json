@@ -161,12 +161,12 @@
       "preview": "renderer-backend-comparison/octane-preview.png"
     },
     "luisa_render": {
-      "form": "json_sdl",
+      "form": "luisa_text_sdl",
       "cli": "/Users/craig/src/LuisaRender/build/bin/luisa-render-cli",
       "backend": "metal",
-      "scene_file": "renderer-backend-comparison/luisa-scene.json",
-      "output": "renderer-backend-comparison/luisa-preview.png",
-      "render_status": "failed: cli exited -6; no image produced (stderr tail: )"
+      "scene_file": "renderer-backend-comparison/luisa-scene.luisa",
+      "output": "/Users/craig/octanex-mcp/examples/recipes/renderer-backend-comparison/luisa-preview.exr",
+      "render_status": "rendered"
     }
   },
   "simulation": {
@@ -194,12 +194,12 @@
   },
   "quality_checklist": [
     "OctaneX: combined OBJ with one group per family + explicit materials.",
-    "LuisaRender: valid JSON SDL with a `render` root + camera/film/integrator/scene.",
+    "LuisaRender: valid TEXT SDL (.luisa) with a `render` root + camera/integrator/shapes/env.",
     "Both backends depict the same 3 bars with the same relative heights/colours."
   ],
   "known_pitfalls": [
     "OctaneX: OBJ/MTL colour is ignored; materials must be explicit.",
-    "LuisaRender: scene is a custom SDL; impl names must match built plugins."
+    "LuisaRender: scene is a custom TEXT SDL; node names/impls must match built plugins."
   ],
   "native_octane_verified": true
 }

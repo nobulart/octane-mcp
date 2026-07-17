@@ -36,7 +36,7 @@ class TestRendererBackendRecipe(TestCase):
             gen.main(output_root=recipe_root)
             recipe = recipe_root / "renderer-backend-comparison"
             self.assertTrue(recipe.exists())
-            for fn in ("scene.obj", "scene.mtl", "scene.json", "luisa-scene.json",
+            for fn in ("scene.obj", "scene.mtl", "scene.json", "luisa-scene.luisa",
                        "preview.png", "README.md"):
                 self.assertTrue((recipe / fn).exists(), f"missing {fn}")
             data = json.loads((recipe / "scene.json").read_text())
@@ -82,15 +82,16 @@ class TestRendererBackendRecipe(TestCase):
                         "OctaneX side should be native-promoted after live verification")
 
     def test_luisa_scene_is_valid_backend_neutral_emitter(self):
-        """The LuisaRender emitter must produce valid JSON with the render root + nodes."""
+        """The LuisaRender emitter must produce valid TEXT SDL with a render root + nodes."""
         recipe = REPO / "examples" / "recipes" / "renderer-backend-comparison"
-        luisa = json.loads((recipe / "luisa-scene.json").read_text())
-        self.assertIn("render", luisa, "LuisaRender scene must have a render root")
-        render = luisa["render"]
-        for key in ("camera", "film", "integrator", "scene"):
-            self.assertIn(key, render, f"LuisaRender render node missing '{key}'")
+        luisa_text = (recipe / "luisa-scene.luisa").read_text()
+        self.assertIn("render {", luisa_text, "LuisaRender scene must have a render root")
+        for tok in ("Camera camera : Pinhole", "InlineMesh", "Surface",
+                    "integrator : MegaPath", "environment { @env }"):
+            self.assertIn(tok, luisa_text, f"LuisaRender scene missing '{tok}'")
         # honest record of the live attempt (real CLI result, never faked)
         back = json.loads((recipe / "scene.json").read_text())["backends"]["luisa_render"]
+        self.assertEqual(back["form"], "luisa_text_sdl")
         self.assertIn("render_status", back, "LuisaRender attempt result must be recorded")
         self.assertNotEqual(back["render_status"], "pending_live_attempt",
                             "LuisaRender attempt was never executed")
