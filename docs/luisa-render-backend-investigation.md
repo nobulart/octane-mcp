@@ -1,8 +1,21 @@
 # LuisaRender Backend Investigation
 
-**Status:** Feasibility investigation, not yet an implemented backend.  
-**Date:** 2026-07-15.  
+**Status:** Implemented as `LuisaBackend` (offline quality tier), 2026-07-17.  
+**Date:** 2026-07-15 (investigation); updated 2026-07-17 (implementation).  
 **Question:** Could `/Users/craig/src/LuisaRender` provide an alternate render backend to Octane X for `octanex-mcp`?
+
+> **2026-07-17 update — implemented.** The spike conclusion is now a working
+> backend: `src/octanex_mcp/backends/luisa_backend.py` (`LuisaBackend`) satisfies
+> the shared `Backend` protocol and compiles `canvas.scene.v1` → `.luisa` via
+> `src/octanex_mcp/backends/luisa.py`, runs `luisa-render-cli -b metal`, converts
+> EXR→PNG, and runs stdlib pixel stats. It is wired into
+> `src/octanex_mcp/backends/__init__.py` and covered by
+> `tests/test_luisa_backend_offline.py` (pure compiler) and
+> `tests/test_luisa_backend.py` (protocol + gated live render, `LUISA_LIVE=1`).
+> Grammar was validated against the production `glass-of-water` scene and the
+> canonical `tools/tungsten2luisa.py` emitter. Known-good sanity render (bar
+> chart, spp=32, 640×360) passes pixel QA and vision inspection. See
+> §"Implemented backend (2026-07-17)" below for the as-built mapping.
 
 ---
 
@@ -275,3 +288,50 @@ Verdict gate: colour-family checks detect at least two expected material familie
 LuisaRender is worth a spike. It would not replace Octane X as an immediate drop-in, and it would not solve the realtime Canvas problem. But it could become a cleaner local quality backend with a normal CLI, Metal support, reproducible scene files, and no AppleScript/TCC dependency.
 
 The first smoke has now passed and is codified in `scripts/spike_luisa_scene.py`: the CLI builds, `-h` reports Metal, and a minimal `.luisa` scene renders to EXR, converts to PNG, and passes non-blank pixel statistics. The next concrete step is still **not** production adapter architecture. It is to translate one simple `BenchmarkTask` into `.luisa` and run the same EXR→PNG→pixel-QA path reproducibly.
+
+---
+
+## Implemented backend (2026-07-17)
+
+The investigation's "recommended path" has now been executed one level deeper than the spike: instead of translating a single `BenchmarkTask`, the backend consumes the renderer-neutral `canvas.scene.v1` directly (the same interchange the WebGL tier hydrates), so one scene graph drives both the realtime browser view and the offline quality render.
+
+### Files
+
+- `src/octanex_mcp/backends/luisa.py` — pure compiler `compile_scene(scene, spp, resolution, integrator) -> (luisa_text, sidecar_objs)`. No I/O, no subprocess.
+- `src/octanex_mcp/backends/luisa_backend.py` — `LuisaBackend(Backend)`: `build` writes `.luisa` + sidecar OBJs; `render_preview` / `save_png` run `luisa-render-cli -b metal`, convert EXR→PNG (`tools/hdr2srgb.py`), and compute stdlib PNG stats. Fails loud on blank/flat output.
+- `tests/test_luisa_backend_offline.py` — 11 compiler tests (materials, shapes, transforms, camera, integrator).
+- `tests/test_luisa_backend.py` — protocol conformance + gated live render (`LUISA_LIVE=1`).
+
+### As-built `canvas.scene.v1` → `.luisa` mapping
+
+| canvas.scene.v1 | LuisaRender | Notes |
+| --- | --- | --- |
+| `box` | `InlineMesh` (12-tri) | positions/indices emitted inline |
+| `sphere` / `ellipsoid` | `Mesh` (UV-sphere sidecar OBJ) | approximated as sphere |
+| `cylinder` | `Mesh` (capped-cylinder sidecar OBJ) | |
+| `polyline` | per-node sphere + per-link cylinder `Mesh` | capped tube grammar |
+| `points` | per-point small sphere `Mesh` | capped at 512 pts |
+| `arrow` | slim cylinder (shaft only, first cut) | cone head TODO |
+| `mesh` | `Mesh` referencing `object.geometry.path` | |
+| `text_label` | skipped (annotation-only) | same as WebGL tier |
+| emissive material | `Matte` + shape `light : Diffuse` | emission scaled by `emissiveIntensity` |
+| `metalness ≥ 0.5` | `Metal` (`eta { "Al" }`) | named-metal default |
+| `roughness < 0.3` | `Plastic` | glossy dielectric |
+| `opacity < 1` | `Glass` (`eta 1.5`) | |
+| otherwise | `Matte` | diffuse default |
+
+Every `Shape` carries an explicit `transform : Matrix { m { 16 } }` (the grammar rule confirmed against `glass-of-water` and `tungsten2luisa.py`). A scene always gets a soft overhead area light plus a neutral ground plane so non-emissive scenes are lit and grounded.
+
+### Operational facts learned
+
+- **Build fix that worked:** the `unzip.h` failure was resolved in the local checkout (binary present at `build/bin/luisa-render-cli`); `-b metal` is the only backend reported by `-h`.
+- **EXR→PNG python:** `tools/hdr2srgb.py` needs `cv2`+OpenEXR, which the repo `.venv` **lacks** but macOS system `/usr/bin/python3` **has** (cv2 5.0.0). `LuisaBackend` defaults `converter_python` to `/usr/bin/python3` (env override `LUISA_CONVERTER_PYTHON`) rather than the running interpreter — this is the same macOS multi-Python trap documented in repo memory.
+- **Known-good sanity render:** `bar_chart` scene, spp=32, 640×360 → 248 KB PNG, stddev 58.7, `nonblank=true`, vision-inspected (5 solid bars on a ground plane, correct lighting).
+- **Live render is fast:** the full `build → CLI → EXR → PNG` loop completes in ~1 s for small scenes, so LuisaRender is viable as an on-demand quality tier inside the agent loop.
+
+### Not yet done (next phases)
+
+- Cone head for `arrow`; proper `ellipsoid` scaling via transform rather than sphere approximation.
+- `WavePath` integrator + `spectrum : Hero {}` option for production-quality finals (currently `MegaPath` only).
+- Recipe-group splitting (one OBJ per material group) for multi-material `BenchmarkTask` parity with Octane (Spike 004 remains open).
+- Gateway wiring so the Canvas can request a Luisa quality render alongside the WebGL live view.

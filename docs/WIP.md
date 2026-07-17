@@ -53,7 +53,7 @@ MHD benchmark work since then.
 7. **K — Canvas/status operator surface** (MEDIUM effort / HIGH communication fit): expose bridge readiness, capabilities, queue state, and recipe index in Agentic Canvas. *First step:* status pill + capability panel backed by `/mcp/call`.
 8. **G — Texture / material generation**: image-gen → `texture_path` / `normal_path` material payloads, closing the "texture approximated with geometry" recipe pitfall.
 9. **L — Renderer-agnostic backend abstraction** (MEDIUM effort / HIGH strategic fit): decouple the command DSL from Octane X so it becomes one of N render backends; research in `docs/visualization-backends-research.md`. *First step:* extract a `Backend` interface (OctaneBackend first), then ship `WebGLBackend` (three.js in Agentic Canvas) as the Phase-1 realtime + shareable win.
-10. **N — LuisaRender QualityBackend smoke spike** (MEDIUM effort / HIGH strategic fit): prove the open, local, Metal-backed path before production adapter work. `scripts/spike_luisa_scene.py` now codifies the smoke: it writes a minimal `.luisa` inline-mesh scene, runs `luisa-render-cli -b metal`, converts EXR→PNG, and fails nonzero on blank/flat pixel stats. *Next step:* translate one simple `BenchmarkTask` through the same path.
+10. **N — LuisaRender QualityBackend** ~~smoke spike~~ (**implemented 2026-07-17**): `LuisaBackend` now satisfies the `Backend` protocol, compiling `canvas.scene.v1` → `.luisa` and rendering real PNGs via `luisa-render-cli -b metal`. `scripts/spike_luisa_scene.py` remains the minimal smoke; the backend is the production path. *Next step:* gateway wiring so the Canvas can request a Luisa quality render alongside WebGL, and `WavePath` integrator for finals.
 
 ## Recommended next move
 
