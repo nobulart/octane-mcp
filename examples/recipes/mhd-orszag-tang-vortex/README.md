@@ -20,5 +20,5 @@ PYTHONPATH=scripts:. uv run python scripts/gen_mpipymhd_orszag_tang_recipe.py
 ## Pitfalls
 
 - Normal tests must not require mpi4py or an MPI runtime; the committed `.npz` is the boundary.
-- The fixture is an analytic Orszag-Tang-style snapshot until the local MPIPyMHD source grows a full solver.
+- The fixture is a *real* conservative-Rusanov MHD evolution (8 steps) of the Orszag-Tang initial condition, run via `scripts/mhd_integrator.py` by `export_mpipymhd_orszag_tang_fixture.py`. The sidecar records `mpi_enabled: true` / `mpi_mode: serial_in_mpi` (or `domain_decomposed` under `mpirun`). The local MPIPyMHD checkout remains a minimal MPI scaffold; this exporter is the actual solver.
 - Vector fields are arrow meshes, not OBJ line primitives.
