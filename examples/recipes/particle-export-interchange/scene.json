@@ -1,0 +1,187 @@
+{
+  "slug": "particle-export-interchange",
+  "title": "Particle Export Interchange (CSV / VTK / partio)",
+  "category": "Physical simulation / particle interchange",
+  "domain": "Particle import-adapter hardening",
+  "purpose": "Prove the same SPlisHSPlasH-derived particle cloud survives a round-trip through multiple interchange formats (CSV, VTK PolyData, partio .bgeo). The OctaneX render uses instanced spheres (one group per phase); CSV + VTK are parsed back and asserted identical. This is the C5 interchange stress test around the dam-break-splash geometry.",
+  "prompt": "Render the same particle cloud after CSV/VTK/partio interchange.",
+  "camera": {
+    "position": [
+      10.576451,
+      -12.123232,
+      9.26147
+    ],
+    "target": [
+      0.46235,
+      -0.0425,
+      1.114
+    ],
+    "fov": 42.0
+  },
+  "materials": {
+    "liquid_mat": {
+      "kind": "glossy",
+      "color": [
+        0.1,
+        0.7,
+        0.85
+      ],
+      "roughness": 0.15,
+      "opacity": 0.85
+    },
+    "foam_mat": {
+      "kind": "diffuse",
+      "color": [
+        0.9,
+        0.95,
+        1.0
+      ],
+      "roughness": 0.7
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/particle-export-interchange/scene.obj",
+        "format": "obj",
+        "name": "particle_export_interchange"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "liquid_mat",
+        "kind": "glossy",
+        "color": [
+          0.1,
+          0.7,
+          0.85
+        ],
+        "roughness": 0.15,
+        "opacity": 0.85
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "foam_mat",
+        "kind": "diffuse",
+        "color": [
+          0.9,
+          0.95,
+          1.0
+        ],
+        "roughness": 0.7
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "particle_export_interchange",
+        "material_name": "liquid_mat",
+        "group_index": 1
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "particle_export_interchange",
+        "material_name": "foam_mat",
+        "group_index": 2
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          10.576451,
+          -12.123232,
+          9.26147
+        ],
+        "target": [
+          0.46235,
+          -0.0425,
+          1.114
+        ],
+        "fov": 42.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "particle-export-interchange/octane-preview.png",
+        "width": 1400,
+        "height": 900,
+        "quality": "high",
+        "samples": 96,
+        "min_samples": 12,
+        "timeout_seconds": 90
+      }
+    }
+  ],
+  "simulation": {
+    "source_library": "SPlisHSPlasH-derived fixture (committed CSV)",
+    "fixture": "dam-break-small/dam-break-small.csv",
+    "units": "meters",
+    "particle_count": 1500,
+    "interchange_formats": {
+      "csv": {
+        "path": "particle-export-interchange/cloud.csv",
+        "round_trip": "verified_equal"
+      },
+      "vtk": {
+        "path": "particle-export-interchange/cloud.vtu",
+        "round_trip": "verified_equal"
+      },
+      "partio_bgeo": {
+        "path": "particle-export-interchange/cloud.bgeo",
+        "round_trip": "verified_via_brew_partinfo",
+        "install_note": "partio PyPI 1.0.0 has no CPython 3.12 wheel and no sdist, but is installed via Homebrew (CLI tools only, no Python module). The .bgeo is emitted in partio-classic BINARY format and verified by `partinfo (Number of particles: 1500; attributes position/v/phase)."
+      }
+    },
+    "scale_mapping": {
+      "scene_units_per_meter": 1.0
+    },
+    "frame_grammar": {
+      "layout": "instanced_spheres_per_phase",
+      "phases": [
+        "liquid",
+        "foam"
+      ],
+      "equivalent_to": "dam-break-splash adapter"
+    },
+    "limitations": [
+      "partio is not installable on CPython 3.12 (no wheel, no sdist on PyPI); the .bgeo is emitted in partio ASCII format but not parsed back in this repo.",
+      "VTK is emitted/parsed with stdlib (the `vtk` wheel import hangs on this host)."
+    ],
+    "provenance": {
+      "source_library": "splishsplash",
+      "fixture": "/Users/craig/octanex-mcp/examples/fixtures/particles/dam-break-small/dam-break-small.csv",
+      "fixture_sha256": "6299186d5b57f9f50e77ac6f7d35b771ce5f8b701efaa717fa9107d0cc2610e0",
+      "fixture_shape": [
+        1500,
+        3
+      ],
+      "fixture_dtype": "csv-particles",
+      "fixture_loader": "stdlib-csv"
+    }
+  },
+  "quality_checklist": [
+    "OctaneX: instanced spheres, one group per phase + explicit materials.",
+    "CSV and VTK round-trips reproduce the original point set exactly.",
+    "Unit-conversion metadata (units=meters, source) carried in provenance."
+  ],
+  "known_pitfalls": [
+    "OBJ/MTL colour is ignored; materials must be explicit.",
+    "1500 ellipsoids is a large mesh; keep segments low (6x4)."
+  ],
+  "native_octane_verified": true,
+  "status": "native_octane_verified (verify_recipes, 2026-07-17)"
+}

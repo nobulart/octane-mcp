@@ -1,0 +1,14 @@
+{
+  "source": "SPlisHSPlasH-derived dam-break-small fixture",
+  "units": "meters",
+  "count": 1500,
+  "columns": [
+    "x",
+    "y",
+    "z",
+    "phase",
+    "vx",
+    "vy",
+    "vz"
+  ]
+}

@@ -60,6 +60,7 @@ targets unless re-reconciled through `benchmarks/spec.py::ALL_TASKS`.
 | [Simulation Frame Strip](../examples/recipes/simulation-frame-strip/README.md) | Physical simulation / animation grammar | `simulation-frame-strip` | Phase C frame-strip grammar: 8 time steps of an advecting/diffusing pulse laid out left-to-right, time axis encoded by a cool→warm colour ramp; the template every per-frame simulator export must match. |
 | [Precision Error Landscape](../examples/recipes/precision-error-landscape/README.md) | Numerical diagnostics | `precision-error-landscape` | Phase C precision-error grammar: a chaotic logistic map integrated to 60-digit `decimal` precision vs IEEE float64/float32; relative error rendered as a heightfield (cool=exact, warm=large drift) + a red float32 front strip. |
 | [Renderer Backend Comparison](../examples/recipes/renderer-backend-comparison/README.md) | Renderer-agnostic grammar | `renderer-backend-comparison` | Phase C backend-neutral grammar: one MHD energy-bar scene emitted for OctaneX (OBJ) and LuisaRender (JSON SDL). OctaneX native-promoted; LuisaRender CLI attempted (parse-crash documented). |
+| [Particle Export Interchange](../examples/recipes/particle-export-interchange/README.md) | Particle import-adapter hardening | `particle-export-interchange` | Phase C interchange stress test: the same SPlisHSPlasH-derived dam-break particle cloud emitted as CSV + VTK PolyData + partio .bgeo, rendered in OctaneX as instanced spheres (per-phase groups). CSV/VTK round-trips asserted equal; partio .bgeo verified by brew `partinfo` (1500 particles). Native-promoted. |
 | [Conservation Budget Panels](../examples/recipes/conservation-budget-panels/README.md) | Physical simulation / numerical diagnostics | `conservation-budget-panels` | Phase C numerical-diagnostics grammar: MHD kinetic/magnetic/internal energy bars across timesteps (near-conservation) plus a red relative-drift (error) panel. Trace from a real Orszag-Tang MHD integration. |
 
 ## Recommended agent loop
@@ -174,8 +175,15 @@ external simulators live in `scripts/physics_fixture_io.py` (`.npz` grids and
   `backends.luisa_render.render_status` (no fabricated image). This matches the C3 y-cruncher
   honesty precedent. Generator: `scripts/gen_renderer_backend_recipe.py`; test:
   `tests/test_renderer_backend_recipe.py`.
-- Remaining Phase C item (C5 particle-export interchange) is planned; it should
-  keep the same fixture-first contract + offline test before any native Octane promotion.
+- `particle-export-interchange` ✅ landed (offline-verified, contract-clean, **native-promoted**). Hardens the
+  particle import-adapter boundary: the same SPlisHSPlasH-derived dam-break cloud (1500 particles,
+  liquid + foam phases) is emitted as **CSV**, **VTK PolyData** (legacy ASCII, stdlib round-trip),
+  and **partio .bgeo** (partio-classic binary, layout from `wdas/partio` `BGEO.cpp`). CSV + VTK are
+  parsed back and asserted identical; the `.bgeo` is verified by the brew-installed `partinfo` CLI
+  (`Number of particles: 1500`; attributes `position`/`v`/`phase`). OctaneX render uses instanced
+  spheres (one group per phase), identical to `dam-break-splash`. Generator:
+  `scripts/gen_particle_export_recipe.py`; test: `tests/test_particle_export_recipe.py`.
+- All five Phase C blocks (C1–C5) are now landed + offline-verified + native-promoted.
 
 ## Recipe registry tools
 
