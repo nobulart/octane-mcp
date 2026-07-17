@@ -7,8 +7,8 @@ backend forms and rendered by two engines:
 
   * **OctaneX** -- combined OBJ + create/assign_material commands. Rendered
     natively (live verify_recipes); `native_octane_verified = true`.
-  * **LuisaRender** -- a JSON scene description (node-graph SDL) for the *same*
-    bar positions / colours, using primitive `Box` shapes (no OBJ plumbing).
+  * **LuisaRender** -- a TEXT SDL `.luisa` scene for the *same*
+    bar positions / colours, using `InlineMesh` boxes (no OBJ plumbing).
     Rendered by the locally-built `luisa-render-cli -b metal`. The CLI result is
     attempted and reported honestly: a real PNG if it renders, or the exact
     parser/launch error if it does not (never faked).
@@ -123,8 +123,8 @@ def _build() -> dict[str, Any]:
         "domain": "Renderer backend comparison",
         "purpose": (
             "Prove the scene grammar is backend-neutral: the same MHD energy-bar geometry "
-            "is emitted for OctaneX (combined OBJ + materials) and LuisaRender (JSON SDL, "
-            "primitive Box shapes). OctaneX renders natively; LuisaRender is driven by its "
+            "is emitted for OctaneX (combined OBJ + materials) and LuisaRender (TEXT SDL "
+            "`.luisa`, InlineMesh boxes). OctaneX renders natively; LuisaRender is driven by its "
             "local CLI. The comparison is the recipe."
         ),
         "prompt": "Render the same energy-bar scene through two backends and compare.",
@@ -211,19 +211,31 @@ def _luisa_scene_text(bars: list[dict], cam: dict) -> str:
     for i, b in enumerate(bars):
         c = b["center"]
         s = b["size"]
-        hx, hy, hz = s[0] / 2 * S, s[1] / 2 * S, s[2] / 2 * S
+        # Unscaled half-extents; S is applied ONCE to the final world-space corner
+        # (previously hx was pre-scaled by S AND the corner offset multiplied by S
+        # again -> bars came out S^2=9x too wide and overlapped into unreadable slabs).
+        hx, hy, hz = s[0] / 2, s[1] / 2, s[2] / 2
         col = b["color"]
         mat = b["family"]
         surf_lines.append(
             f"Surface {mat} : Matte {{\n"
-            f"  albedo : Constant {{\n    v {{ {v3(col[0], col[1], col[2])} }}\n  }}\n}}"
+            # Canonical LuisaRender Matte parameter is `Kd` (diffuse reflectance),
+            # NOT `albedo` — matte.cpp reads `property_node_or_default("Kd")` and
+            # silently ignores `albedo`, which produced a black frame. See
+            # docs/luisa-render-backend-investigation.md.
+            f"  Kd : Constant {{\n    v {{ {v3(col[0], col[1], col[2])} }}\n  }}\n}}"
         )
-        # bake world-space box corners (center +/- half), scaled, identity transform
+        # bake world-space box corners (center + corner*half), scaled once by S
         pos = []
         for (cx, cy, cz) in _BOX_CORNERS:
             pos += [(c[0] + cx * hx) * S, (c[1] + cy * hy) * S, (c[2] + cz * hz) * S]
         positions = ", ".join(f"{p:.4f}" for p in pos)
         indices = ", ".join(str(k) for k in _BOX_INDICES)
+        # Diffuse bars lit by the directional key light — NO per-shape emissive
+        # `light : Diffuse`. The previous `col*6` emission blew the bars out to
+        # white and washed out the Kd colour (verified: brightest pixels were
+        # (255,255,255) instead of blue/gold/green). Match the Octane reference:
+        # diffuse bars, studio key light, balanced exposure.
         shape_lines.append(
             f"Shape shape_{i} : InlineMesh {{\n"
             f"  positions {{ {positions} }}\n"
@@ -233,28 +245,46 @@ def _luisa_scene_text(bars: list[dict], cam: dict) -> str:
             f"1, 0, 0, 0,\n        0, 1, 0, 0,\n        0, 0, 1, 0,\n        0, 0, 0, 1 }}\n  }}\n}}"
         )
 
-    # Explicit camera: clean 3/4 view from above, looking at the (scaled) bar cluster center.
-    bar_centers = [b["center"] for b in bars]
-    cx = sum(c[0] for c in bar_centers) / len(bar_centers) * S
-    cy = sum(c[1] for c in bar_centers) / len(bar_centers) * S
-    cz = sum(c[2] for c in bar_centers) / len(bar_centers) * S
-    target = [cx, cy, cz]
-    eye = [cx, cy + 1.0, cz + 14.0]
+    # Camera: explicit 3/4 view from above-right, framed on the bar cluster's true
+    # bounds (not the mean of centres — that pointed at empty space between bars
+    # and read as a flat/ambiguous straight-on shot). We want clear perspective so
+    # the 3 distinct bars + their relative heights are unambiguous.
+    xs = [(bar["center"][0] - bar["size"][0] / 2) * S for bar in bars] + \
+         [(bar["center"][0] + bar["size"][0] / 2) * S for bar in bars]
+    ys = [0.0] + [(bar["center"][1] + bar["size"][1] / 2) * S for bar in bars]
+    zs = []
+    for bar in bars:
+        zs += [(-bar["size"][2] / 2) * S, (bar["size"][2] / 2) * S]
+    bcx = (min(xs) + max(xs)) / 2
+    bcy = (min(ys) + max(ys)) / 2
+    bcz = (min(zs) + max(zs)) / 2
+    span = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs))
+    target = [bcx, bcy, bcz]
+    # pull back + rise + offset to the right for a 3/4 perspective
+    dist = span * 1.9
+    eye = [bcx + dist * 0.55, bcy + dist * 0.65, bcz + dist * 0.95]
     up = [0.0, 1.0, 0.0]
     front = [target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]]
     flen = math.sqrt(sum(x * x for x in front)) or 1.0
     front = [x / flen for x in front]
-    fov = 40.0
+    # Narrower FOV (was 40) to tighten framing on the 3 bars and reduce dead space.
+    fov = 30.0
 
     lines = []
     lines.extend(surf_lines)
-    # Canonical basic-example lighting: a Directional key light + Null (black) environment.
-    # Bars are plain Matte (colored albedo) lit by the key light; background stays dark.
+    # Lighting: a bright Directional key light (matches Octane soft_studio exposure)
+    # + a soft Spherical environment fill so shadows/background are not pure black.
+    # Bars are plain Matte (Kd colour) lit by these — no self-emission.
     lines.append(
         f"Env dir : Directional {{\n"
-        f"  emission : Constant {{\n    v {{ 12.0, 12.0, 12.0 }}\n  }}\n"
+        f"  emission : Constant {{\n    v {{ 4.0, 4.0, 4.0 }}\n  }}\n"
+        f"  scale {{ 2.0 }}\n"
         f"  transform : Matrix {{\n    m {{ "
         f"0.577, 0.577, 0.577, 0,\n        -0.577, 0.577, -0.577, 0,\n        0.577, -0.577, 0.577, 0,\n        0, 0, 0, 1 }}\n  }}\n}}"
+    )
+    lines.append(
+        f"Env env : Spherical {{\n"
+        f"  emission : Constant {{\n    v {{ 0.28, 0.36, 0.52 }}\n  }}\n}}"
     )
     lines.extend(shape_lines)
     lines.append(
@@ -271,12 +301,19 @@ def _luisa_scene_text(bars: list[dict], cam: dict) -> str:
         f"  }}\n}}"
     )
     shape_refs = ",\n    ".join(f"@shape_{i}" for i in range(len(bars)))
+    # Combine the directional key + spherical fill into one environment for the render.
+    lines.insert(len(lines) - 1,  # before the render block
+        f"Env sky : Combined {{\n"
+        f"  a {{ @dir }}\n"
+        f"  b {{ @env }}\n"
+        f"}}"
+    )
     lines.append(
         f"render {{\n"
         f"  cameras {{ @camera }}\n"
         f"  integrator : MegaPath {{\n    sampler : PMJ02BN {{}}\n  }}\n"
         f"  shapes {{\n    {shape_refs}\n  }}\n"
-        f"  environment {{ @dir }}\n}}"
+        f"  environment {{ @sky }}\n}}"
     )
     return "\n\n".join(lines) + "\n"
 
