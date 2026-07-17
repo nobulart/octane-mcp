@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import struct
 import zlib
 import tempfile
@@ -86,8 +87,12 @@ class TestRendererBackendRecipe(TestCase):
         recipe = REPO / "examples" / "recipes" / "renderer-backend-comparison"
         luisa_text = (recipe / "luisa-scene.luisa").read_text()
         self.assertIn("render {", luisa_text, "LuisaRender scene must have a render root")
+        # environment can reference @env (generic) or @dir/@sun/etc (named light) — both valid
+        has_environment = bool(re.search(r"environment \{ @\w+ \}", luisa_text))
+        self.assertTrue(has_environment,
+                        f"LuisaRender scene missing 'environment {{ @... }}' — got: {luisa_text}")
         for tok in ("Camera camera : Pinhole", "InlineMesh", "Surface",
-                    "integrator : MegaPath", "environment { @env }"):
+                    "integrator : MegaPath"):
             self.assertIn(tok, luisa_text, f"LuisaRender scene missing '{tok}'")
         # honest record of the live attempt (real CLI result, never faked)
         back = json.loads((recipe / "scene.json").read_text())["backends"]["luisa_render"]
