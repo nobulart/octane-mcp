@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
 import unittest
+from pathlib import Path
 
 from octanex_mcp import sanity
 
@@ -166,6 +169,75 @@ class ManifestPlanTests(unittest.TestCase):
         self.assertIn("issues", d)
         self.assertIn("summary", d)
         self.assertEqual(d["summary"]["errors"], len(rep.errors))
+
+
+class WriteSanityReportTests(unittest.TestCase):
+    def _plan(self, **overrides) -> dict:
+        base = {
+            "scene_id": "demo",
+            "objects": [
+                {"id": "box", "type": "box", "size": [2, 1, 0.5],
+                 "material": "matte",
+                 "bounds": {"center": [0.0, 0.0, 0.0], "radius": 2.0}},
+            ],
+            "materials": [{"name": "matte", "kind": "glossy"}],
+            "camera": {"position": [4, 4, 4], "target": [0, 0, 0], "fov": 45},
+            "lighting": {"preset": "soft_studio"},
+        }
+        base.update(overrides)
+        return base
+
+    def _write_default(self, rep) -> str:
+        # Default output_path resolves to <cwd>/sanity_report.json; run inside a
+        # temp dir so the test leaves no stray file in the repo root.
+        import tempfile
+        d = tempfile.mkdtemp()
+        cwd = os.getcwd()
+        os.chdir(d)
+        try:
+            return sanity.write_sanity_report(rep)
+        finally:
+            os.chdir(cwd)
+
+    def test_write_report_creates_json(self) -> None:
+        rep = sanity.analyze_scene_plan(self._plan())
+        path = self._write_default(rep)
+        self.assertTrue(os.path.exists(path))
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        self.assertIn("ok", data)
+        self.assertIn("issues", data)
+
+    def test_write_report_with_custom_path(self) -> None:
+        rep = sanity.analyze_scene_plan(self._plan())
+        path = "/tmp/test_sanity_report.json"
+        out = sanity.write_sanity_report(rep, output_path=path)
+        self.assertTrue(os.path.exists(out))
+        self.assertEqual(out, path)
+        os.remove(out)
+
+    def test_write_report_embeds_harvest_plan_slug(self) -> None:
+        rep = sanity.analyze_scene_plan(self._plan())
+        harvest = {"nodes": [], "count": 0}
+        plan = self._plan()
+        path = "/tmp/test_sanity_report_embed.json"
+        out = sanity.write_sanity_report(
+            rep,
+            output_path=path,
+            harvest=harvest,
+            plan=plan,
+            recipe_slug="test-recipe",
+        )
+        data = json.loads(Path(out).read_text(encoding="utf-8"))
+        self.assertEqual(data["recipe_slug"], "test-recipe")
+        self.assertIn("harvest", data)
+        self.assertIn("plan", data)
+        os.remove(out)
+
+    def test_write_report_defaults_to_cwd(self) -> None:
+        rep = sanity.analyze_scene_plan(self._plan())
+        path = self._write_default(rep)
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue("sanity_report.json" in path)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 # ---------------------------------------------------------------------------
@@ -522,6 +523,50 @@ def _is_vec3(value: Any) -> bool:
 # ---------------------------------------------------------------------------
 # Chat-facing summary
 # ---------------------------------------------------------------------------
+
+def write_sanity_report(
+    report: SanityReport,
+    output_path: str | Path | None = None,
+    *,
+    harvest: Mapping[str, Any] | None = None,
+    plan: Mapping[str, Any] | None = None,
+    recipe_slug: str | None = None,
+) -> str:
+    """Write a sanity report to disk as JSON.
+
+    Args:
+        report: the SanityReport to serialize.
+        output_path: filesystem path to write. Defaults to
+            ``sanity_report.json`` in the same directory as the current
+            working directory (useful for recipes that run in their own
+            directory before or after a render).
+        harvest: optional live graph data to embed alongside the report.
+        plan: optional manifest/plan data to embed.
+        recipe_slug: optional recipe slug to identify the report's origin.
+
+    Returns:
+        The resolved filesystem path of the written report.
+    """
+    import json
+    from pathlib import Path
+
+    if output_path is None:
+        output_path = Path.cwd() / "sanity_report.json"
+
+    payload: dict[str, Any] = report.as_dict()
+    if harvest is not None:
+        payload["harvest"] = harvest
+    if plan is not None:
+        payload["plan"] = plan
+    if recipe_slug is not None:
+        payload["recipe_slug"] = str(recipe_slug)
+
+    Path(output_path).write_text(
+        json.dumps(payload, indent=2, default=str),
+        encoding="utf-8",
+    )
+    return str(output_path)
+
 
 def summarize(report: SanityReport) -> str:
     """One-line-ish human summary of a sanity report (for chat output)."""
