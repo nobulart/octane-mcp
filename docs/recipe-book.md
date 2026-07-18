@@ -1556,3 +1556,30 @@ geometry, the launcher `-2741` bug, and TCC.
 - **Invisible relief = displacement too small.** A ~4 mm flute term on a 2 m spire is nothing; ~11 cm reads as carved stone. Scale the displacement, don't just add frequency.
 - **Bulbous/snowman** = `1.9×` base flare + fat trunk fusion (`merge_r 0.70`); slim to `1.30×` / `0.32`. **Ice-cream** = round lobes + heavy smoothing; re-inject lobes + lighter smoothing. **Pancake stack** = 3.6 rad twist coil; slash to ~1.3.
 - Bridge `create_material` now wires `normal_path` (both templates, regenerated via `octanex-mcp init`; parity 8/8 OK).
+
+## Menger sponge — recursive fractal cube (depth 3)
+
+- **Outcome:** success (verified by live render + vision 2026-07-18)
+- **Recorded:** 2026-07-18
+- **Context:** Native Octane render of the Menger sponge (3D Sierpinski analogue) from a procedurally generated OBJ, triggered by a "Visualise a Menger sponge" prompt.
+
+### Steps
+- Generated `examples/recipes/menger-sponge/scene.obj` via `scripts/gen_menger.py`
+  (recursive occupancy test → solid boxes, one combined OBJ, flat-shaded).
+- Bound a single blue glossy material (`mat_sponge` `[0.16,0.34,0.86]`).
+- `soft_studio` lighting, camera `[7.5,5.5,9.5]→[0,0,0]`, `save_preview` 1000 spp / 1280² / 30 s cap.
+- Verified with pixel QA (gray min/mean/max 1/206/243, stddev 59.1, near-black 0.1%) then native-vision confirmed the recursive square-void pattern.
+
+### Signals / evidence
+- Native preview: `examples/recipes/menger-sponge/octane-preview.png` (470 KB, 1280×1280, 1000/1000 samples).
+- Depth-3 mesh: 8,000 cubes · 192,000 verts · 96,000 faces. Face-index invariant holds (max index = vertex count).
+- `octane_queue_recipe --slug menger-sponge` is wired via `scene.json`; `queue_menger.py` regenerates + stages into the container.
+
+### Pitfalls (root-cause, this build)
+- **Wrong removal rule = solid cube.** First generator removed a subcube only when *all three* base-3 digits == 1, leaving 26³ = 17,576 near-solid cubes (vision saw a plain cube). Correct Menger rule removes when **≥2 of 3 digits == 1** → 20³ = 8,000 porous cubes. Always assert the cube count against 20ᵈ, not just that the OBJ imports.
+- **Stale scene graph on Octane launch.** Octane reopens its last project; warm-reset (`octane_reset_octane_scene`) + flush before draining. Confirm via OBJ vertex count + native-vision.
+- **TCC `-1719` blocks the drain, not the render.** Queue can populate without Accessibility; only the UI-scripted bridge click needs it. Grant the Hermes agent-runtime python, not `Hermes.app`.
+
+### Follow-ups
+- Depth-4 (160,000 cubes) is feasible but ~12× heavier; expose depth as a recipe param if needed.
+- Multi-material variant: colour survivors by recursion depth for a "fractal layers" look.

@@ -1,7 +1,7 @@
 ---
 name: octanex-mcp
 description: Use when configuring, testing, or operating the OctaneX MCP server from Hermes Agent, especially for queue draining, render-ready PNG previews, and local vision review loops.
-version: 1.9.17
+version: 1.9.18
 author: OctaneX MCP contributors
 license: MIT
 platforms: [macos]

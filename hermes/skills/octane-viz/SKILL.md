@@ -5,7 +5,7 @@ description: >-
   trigger an OctaneX MCP preview and return the PNG image preview result inline
   in the chat. Produces a REAL OctaneX render via the octanex-mcp project —
   never a model-generated image.
-version: 1.3.4
+version: 1.3.5
 author: Hermes Agent
 license: MIT
 platforms: [macos]
@@ -160,3 +160,4 @@ Before returning the PNG, inspect it with `vision_analyze`:
 | `Visualise it simply` | Construct default cube with glossy blue, render, inspect, return real PNG preview |
 | `Visualise the helix with a copper material` | Generate/import a helix OBJ, apply copper material, render, inspect, return real PNG preview |
 | `Visualise a photorealistic mathematical 3D surface` | Generate a parametric surface OBJ in Python (`octanex-mcp` → `scripts/gen_math_surface.py`), `import_geometry` + explicit glossy material + `assign_material` + camera/lighting + `save_preview`; flush stale commands before queueing, drain once, then poll `queue/` empty and verify. See `octanex-mcp` → `references/photoreal-math-surface.md`. |
+| `Visualise a Menger sponge` | Generate a recursive fractal-cube OBJ in Python (`octanex-mcp` → `scripts/gen_menger.py`), `import_geometry` + single blue glossy material + `assign_material` + camera/lighting + `save_preview`; one bridge click drains the queue. Or `octane_queue_recipe --slug menger-sponge`. See `examples/recipes/menger-sponge/`. |
