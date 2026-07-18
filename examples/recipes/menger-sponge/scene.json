@@ -1,0 +1,120 @@
+{
+  "slug": "menger-sponge",
+  "title": "Menger Sponge (recursive fractal cube, depth 3)",
+  "category": "Mathematics/geometry",
+  "purpose": "Render the Menger sponge — the 3D Sierpinski analogue — as a real geometry fractal (recursive square-void cube), to demonstrate procedural fractal mesh generation and clean single-material glossy rendering.",
+  "prompt": "Visualise a Menger sponge",
+  "camera": {
+    "position": [
+      7.5,
+      5.5,
+      9.5
+    ],
+    "target": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "fov": 45.0
+  },
+  "materials": {
+    "mat_sponge": {
+      "name": "mat_sponge",
+      "kind": "glossy",
+      "color": [
+        0.16,
+        0.34,
+        0.86
+      ],
+      "roughness": 0.18,
+      "clearcoat": 0.4,
+      "ior": 1.45,
+      "emission": 0.0
+    }
+  },
+  "commands": [
+    {
+      "op": "import_geometry",
+      "payload": {
+        "path": "examples/recipes/menger-sponge/scene.obj",
+        "format": "obj",
+        "name": "menger"
+      }
+    },
+    {
+      "op": "create_material",
+      "payload": {
+        "name": "mat_sponge",
+        "kind": "glossy",
+        "color": [
+          0.16,
+          0.34,
+          0.86
+        ],
+        "roughness": 0.18,
+        "clearcoat": 0.4,
+        "ior": 1.45,
+        "emission": 0.0
+      }
+    },
+    {
+      "op": "assign_material",
+      "payload": {
+        "object_name": "menger",
+        "material_name": "mat_sponge"
+      }
+    },
+    {
+      "op": "set_camera",
+      "payload": {
+        "position": [
+          7.5,
+          5.5,
+          9.5
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov": 45.0
+      }
+    },
+    {
+      "op": "set_lighting",
+      "payload": {
+        "preset": "soft_studio"
+      }
+    },
+    {
+      "op": "save_preview",
+      "payload": {
+        "path": "examples/recipes/menger-sponge/octane-preview.png",
+        "width": 1280,
+        "height": 1280,
+        "samples": 1000,
+        "min_samples": 64,
+        "timeout_seconds": 30,
+        "max_render_time": 25
+      }
+    }
+  ],
+  "acceptance": [
+    {
+      "kind": "non_empty",
+      "min_mean_dev": 2.0,
+      "min_nonbg": 2.0
+    },
+    {
+      "kind": "review_ok",
+      "fail_on": [
+        "mostly near-white",
+        "very low contrast",
+        "all objects white",
+        "solid cube (recursive holes missing)"
+      ]
+    }
+  ],
+  "native_octane_verified": true,
+  "status": "native_octane_verified"
+}
